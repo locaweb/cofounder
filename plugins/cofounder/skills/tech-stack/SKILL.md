@@ -127,8 +127,8 @@ These match the **locaweb-cloud-deploy** skill requirements:
 - Single container on **port 80** (controlled by `PORT` env var, defaulting to `8080` for local dev)
 - Health check: **`GET /up` → HTTP 200**
 - Database via `DATABASE_URL` (preferred) or individual `POSTGRES_*` env vars — **fail hard if missing**
-- File storage at `BLOB_STORAGE_PATH` (default `/data/blobs`)
-- No Redis, no external caches, no message queues — use PostgreSQL for everything
+- File storage at `BLOB_STORAGE_PATH` (e.g. `/data/blobs`) — configured via `env.clear` in `deploy.yml`
+- PostgreSQL as the primary data store (with 60+ bundled extensions via `supabase/postgres`). If the application needs services beyond what Postgres provides, additional accessories can be added via the deploy skill's Kamal layer
 - No ORMs, no JavaScript frameworks beyond React, no CSS preprocessors
 
 ## Dockerfile

@@ -7,18 +7,18 @@
   - [VM Plans](#vm-plans)
   - [Choosing the Right Plan](#choosing-the-right-plan)
     - [1. Runtime footprint](#1-runtime-footprint)
-    - [2. Database sizing](#2-database-sizing)
+    - [2. Accessory sizing](#2-accessory-sizing)
     - [3. Environment purpose](#3-environment-purpose)
   - [Scaling the Web Tier](#scaling-the-web-tier)
   - [Scaling Workers](#scaling-workers)
-  - [Scaling the Database](#scaling-the-database)
+  - [Scaling Accessories](#scaling-accessories)
   - [Disk Sizes](#disk-sizes)
     - [Choosing disk sizes](#choosing-disk-sizes)
   - [How Scaling Works](#how-scaling-works)
 
 ## VM Plans
 
-Available plans (same options for `web_plan`, `workers_plan`, `db_plan`):
+Available plans (same options for `web_plan`, `workers_plan`, and accessory plans):
 
 | Plan | vCPUs | Memory (GiB) |
 |------|-------|--------------|
@@ -38,14 +38,17 @@ Plan selection should consider three factors:
 
 Different language runtimes (e.g., Go, Python, Node.js, Java) have varying baseline CPU and memory requirements. The specific framework, number of server workers, and application complexity also affect the resource footprint. Choose a plan that matches the actual resource consumption of your application, taking into account the target environment as well (for example, preview environments typically require fewer resources than production).
 
-### 2. Database sizing
+### 2. Accessory sizing
 
-For `db_plan`, consider the expected data size and query patterns:
+Each accessory (database, redis, etc.) has its own `plan` inside the `accessories` JSON input. Consider the expected workload for each:
 
-- **Small datasets (<1 GB), simple queries**: `small` or `medium`
-- **Medium datasets (1-10 GB), moderate queries**: `medium` or `large`
-- **Large datasets (>10 GB), complex queries or many connections**: `large` or above
-- PostgreSQL benefits from available memory for OS page cache
+- **Database (db)**:
+  - Small datasets (<1 GB), simple queries: `small` or `medium`
+  - Medium datasets (1-10 GB), moderate queries: `medium` or `large`
+  - Large datasets (>10 GB), complex queries or many connections: `large` or above
+  - PostgreSQL benefits from available memory for OS page cache
+- **Redis**: Typically `small` or `medium` is sufficient unless caching large datasets
+- **Other accessories**: Size based on the specific service's requirements
 
 ### 3. Environment purpose
 
@@ -70,11 +73,12 @@ Workers scale **horizontally** by changing `workers_replicas`:
 
 ```yaml
 with:
-  workers_enabled: true
-  workers_replicas: 3    # scale from 1 to 3
-  workers_cmd: "python worker.py"
+  workers_replicas: 3    # scale from 1 to 3 (0 = no workers)
   workers_plan: "small"
 ```
+
+- `workers_replicas: 0` means no workers (disabled).
+- Set to 1 or more to enable workers.
 
 Scale up: re-deploy with a higher `workers_replicas`. New VMs are provisioned and containers deployed.
 
@@ -82,40 +86,41 @@ Scale down: re-deploy with a lower `workers_replicas`. Excess worker VMs are des
 
 Workers can also scale vertically via `workers_plan`. **Vertical scaling of workers causes a restart with brief downtime** on the affected VMs.
 
-## Scaling the Database
+## Scaling Accessories
 
-The database scales **vertically only** (single VM):
+Each accessory scales **vertically only** (single VM per accessory). Change the `plan` inside the `accessories` JSON:
 
 ```yaml
 with:
-  db_enabled: true
-  db_plan: "large"  # upgrade from "medium"
+  accessories: '{"db": {"plan": "large", "disk_size_gb": 100}, "redis": {"plan": "medium", "disk_size_gb": 10}}'
 ```
 
-**Vertical scaling causes a restart with brief downtime.** The database container will restart after the VM is resized. Ensure the application handles transient database disconnections gracefully.
+**Vertical scaling causes a restart with brief downtime.** The accessory container will restart after the VM is resized. Ensure the application handles transient disconnections gracefully (e.g., database reconnection logic).
+
+To add a new accessory, add its key to the `accessories` JSON and re-deploy. To remove an accessory, remove its key from the JSON -- the teardown of the removed accessory's resources happens automatically.
 
 ## Disk Sizes
 
 | Disk | Input | Default | Attached to |
 |------|-------|---------|-------------|
-| Blob storage | `blob_disk_size_gb` | 20 GB | Web VM at `/data/blobs` |
-| Database data | `db_disk_size_gb` | 20 GB | DB VM at `/data/db` |
+| Web disk | `web_disk_size_gb` | 20 GB | Web VM at `/data` |
+| Accessory disks | `accessories` JSON `disk_size_gb` | 20 GB | Each accessory VM at `/data/<accessory-name>` |
 
 Disks can be **grown** by re-deploying with a larger value. **Shrinking is not supported** -- the workflow will fail with an error if you specify a smaller size than the current disk.
 
 ### Choosing disk sizes
 
 - **Preview environments**: 20 GB default is usually sufficient
-- **Production blob storage**: Size based on expected upload volume. If the app stores user uploads, media files, etc., plan for growth.
-- **Production database**: Size based on expected data volume plus headroom for WAL, temporary files, and vacuuming. A good rule of thumb is 2-3x the expected data size.
+- **Production web disk**: Size based on expected upload volume. If the app stores user uploads, media files, etc., plan for growth.
+- **Production database disk**: Size based on expected data volume plus headroom for WAL, temporary files, and vacuuming. A good rule of thumb is 2-3x the expected data size.
+- **Redis / other accessories**: Typically small disks are sufficient unless persisting large datasets.
 
 Example -- production with larger disks:
 
 ```yaml
 with:
-  db_enabled: true
-  db_disk_size_gb: 100
-  blob_disk_size_gb: 50
+  web_disk_size_gb: 50
+  accessories: '{"db": {"plan": "medium", "disk_size_gb": 100}, "redis": {"plan": "small", "disk_size_gb": 10}}'
 ```
 
 Workers are stateless and do not have data disks.
@@ -128,6 +133,7 @@ Scaling happens through the normal deploy workflow -- there is no separate "scal
 2. For VMs: compares current service offering to desired; if different, stops the VM, scales it, and starts it again (expect brief downtime)
 3. For disks: compares current size to desired; grows in-place if larger
 4. For workers: creates new VMs if `workers_replicas` increased; destroys excess VMs if decreased
-5. Kamal redeploys containers on all hosts (existing and new)
+5. For accessories: adds new accessory VMs if new keys appear in the JSON; removes VMs if keys are removed
+6. Kamal redeploys containers on all hosts (existing and new)
 
 This means scaling and code deployment happen together in a single workflow run.

@@ -222,6 +222,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `tech-stack` | Build the app (Go + React + Postgres) |
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
+| `kamal` | Kamal deployment concepts and configuration |
 | `locaweb-cloud-deploy` | Deploy to Locaweb Cloud |
 
 ---

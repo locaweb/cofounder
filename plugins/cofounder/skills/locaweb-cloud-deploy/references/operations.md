@@ -1,6 +1,6 @@
 # Post-Deployment Operations
 
-Reference for interacting with deployed infrastructure: finding IPs, SSH access, database access, container debugging.
+Reference for interacting with deployed infrastructure: finding IPs, SSH access, accessory access, container debugging.
 
 ## Finding Deployment IPs
 
@@ -22,10 +22,28 @@ The JSON contains:
 
 | Key              | Description                                                        |
 |------------------|--------------------------------------------------------------------|
-| `web_ip`         | Public IP of the web VM — used for SSH and app URL (`<web_ip>.nip.io`) |
-| `worker_ips`     | JSON array of public worker VM IPs — used for SSH                  |
-| `db_ip`          | **Public** IP of the database VM — used for **SSH only**           |
-| `db_internal_ip` | **Private** IP of the database VM — used by the app to connect to Postgres (set automatically via `POSTGRES_HOST`) |
+| `web_ip`         | Public IP of the web VM -- used for SSH and app URL (`https://<web_ip>.nip.io`) |
+| `worker_ips`     | JSON array of public worker VM IPs -- used for SSH                  |
+| `accessories`    | JSON object with accessory IPs. Each key is the accessory name (e.g., `db`, `redis`) with `ip` (public, SSH only) and `internal_ip` (private, used by the app) fields. |
+
+Example `provision-output.json`:
+
+```json
+{
+  "web_ip": "200.234.x.x",
+  "worker_ips": ["200.234.y.y"],
+  "accessories": {
+    "db": {
+      "ip": "200.234.z.z",
+      "internal_ip": "10.1.1.x"
+    },
+    "redis": {
+      "ip": "200.234.w.w",
+      "internal_ip": "10.1.1.y"
+    }
+  }
+}
+```
 
 ### Fallback: get IPs from the workflow run summary
 
@@ -54,39 +72,45 @@ gh run view <run-id>
 ```bash
 # Preview environment
 ssh -i ~/.ssh/<repo-name> root@<web_ip>
-ssh -i ~/.ssh/<repo-name> root@<db_ip>
+ssh -i ~/.ssh/<repo-name> root@<accessory_ip>
 ssh -i ~/.ssh/<repo-name> root@<worker_ip>
 
 # Production (or other named environment)
 ssh -i ~/.ssh/<repo-name>-production root@<web_ip>
-ssh -i ~/.ssh/<repo-name>-production root@<db_ip>
+ssh -i ~/.ssh/<repo-name>-production root@<accessory_ip>
 ssh -i ~/.ssh/<repo-name>-production root@<worker_ip>
 ```
 
-## Database Access
+Use the accessory's `ip` field from the provision output for `<accessory_ip>`. For example, to SSH into the database VM: `root@<accessories.db.ip>`.
 
-The database VM runs PostgreSQL inside a Docker container. There is **no externally exposed psql port** — you must SSH into the DB VM first, then connect locally.
+## Accessory Access
 
-### Connect to the database
+Each accessory runs inside a Docker container on its own VM. Accessory VMs only expose SSH (port 22) — service ports are **not** reachable from the public internet. You must SSH into the accessory VM first, then connect locally via `docker exec`.
+
+The container name follows Kamal's naming convention: `<service-name>-<accessory-name>`. For example, a database accessory named `db` runs as `<repo-name>-db`.
+
+### Understanding accessory IPs
+
+- **`accessories.<name>.ip`** -- public IP, used for **SSH access** to the accessory VM
+- **`accessories.<name>.internal_ip`** -- private IP on the CloudStack network. App containers connect to the accessory by its short hostname (e.g., `db`, `redis`) via CloudStack internal DNS — no IP needed.
+
+### Example: connecting to PostgreSQL
+
+The examples below use a Postgres accessory named `db`. The same pattern applies to any accessory — replace the `docker exec` command with what's appropriate for the service.
 
 ```bash
-# 1. SSH into the database VM
-ssh -i ~/.ssh/<repo-name> root@<db_ip>
+# 1. SSH into the accessory VM
+ssh -i ~/.ssh/<repo-name> root@<accessories.db.ip>
 
 # 2. Connect to Postgres via the container
 docker exec -it <repo-name>-db psql -U postgres
 ```
 
-### Understanding `db_ip` vs `db_internal_ip`
-
-- **`db_ip`** — public IP, used for **SSH access** to the DB VM
-- **`db_internal_ip`** — private IP on the CloudStack network, used by the app containers to connect to Postgres. The deploy workflow sets this automatically via the `POSTGRES_HOST` env var. You never need to use `db_internal_ip` for manual access.
-
-### Run a one-off query
+### Run a one-off command
 
 ```bash
-# From outside the DB VM (combines SSH + docker exec)
-ssh -i ~/.ssh/<repo-name> root@<db_ip> \
+# From outside the accessory VM (combines SSH + docker exec)
+ssh -i ~/.ssh/<repo-name> root@<accessories.db.ip> \
   'docker exec <repo-name>-db psql -U postgres -c "SELECT version();"'
 ```
 
@@ -110,12 +134,11 @@ curl -s localhost:80/up
 # View kamal-proxy logs (web VM only)
 docker logs kamal-proxy --tail 50
 
-# Check Postgres container logs (database VM only)
+# Check accessory container logs (e.g. Postgres on the db accessory VM)
 docker logs <repo-name>-db --tail 100
 
 # Check disk mounts
-df -h /data/blobs    # web VM — blob/file storage
-df -h /data/db       # database VM — Postgres data
+df -h /data    # web VM or accessory VM
 
 # Check container environment variables
 docker exec $(docker ps -q --filter "label=service=<repo-name>") env
@@ -128,15 +151,15 @@ docker exec -it $(docker ps -q --filter "label=service=<repo-name>") sh
 
 ### Stale artifact files
 
-`gh run download` **does not** clean the target directory — it merges files, and existing files cause a collision error or are silently kept. **Always** `rm -rf /tmp/provision-output` before downloading.
+`gh run download` **does not** clean the target directory -- it merges files, and existing files cause a collision error or are silently kept. **Always** `rm -rf /tmp/provision-output` before downloading.
 
 ### Wrong SSH key for the environment
 
 Each environment has its own SSH key. Using the preview key to SSH into a production VM (or vice versa) will fail with `Permission denied (publickey)`. Double-check the key path matches the environment.
 
-### Database VM has no direct psql port
+### Accessory VMs have no externally exposed service ports
 
-You cannot `psql -h <db_ip>` from your local machine. The DB VM's firewall only allows SSH (port 22). You must SSH in first, then use `docker exec` to reach Postgres.
+You cannot `psql -h <accessories.db.ip>` or `redis-cli -h <accessories.redis.ip>` from your local machine. Accessory VM firewalls only allow SSH (port 22). You must SSH in first, then use `docker exec` to reach the service.
 
 ### Getting the repo name
 
