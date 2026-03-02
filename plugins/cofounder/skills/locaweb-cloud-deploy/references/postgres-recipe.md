@@ -40,7 +40,7 @@ accessories:
     host: <%= ENV['INFRA_DB_IP'] %>
 ```
 
-The `.kamal/secrets` file (agent-owned, app secrets only -- registry is handled by the workflow):
+The `.kamal/secrets.<destination>` file (agent-owned, one per environment, app secrets only -- registry is handled by the workflow):
 
 ```
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD

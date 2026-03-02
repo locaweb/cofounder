@@ -213,19 +213,26 @@ The agent creates the following files as part of setup:
 
 The Kamal deploy configuration. Contains service name, image, server hosts, environment variables, accessories, and other deployment settings. The agent generates this based on the application's requirements.
 
-### .kamal/secrets
+### .kamal/secrets.\<destination\>
 
-Maps secret environment variable names so Kamal can read them from the deploy environment:
+One secrets file per destination. Each maps secret environment variable names so Kamal can read them from the deploy environment:
 
 ```bash
+# .kamal/secrets.preview
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 DATABASE_URL=$DATABASE_URL
 API_KEY=$API_KEY
 ```
 
-### Destination files
+```bash
+# .kamal/secrets.production
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+DATABASE_URL=$DATABASE_URL
+API_KEY=$API_KEY
+STRIPE_LIVE_KEY=$STRIPE_LIVE_KEY
+```
 
-For multi-environment setups, the agent creates destination-specific overrides (e.g., `.kamal/secrets.production`).
+Since all deploys use `-d <destination>`, Kamal looks for `.kamal/secrets-common` and `.kamal/secrets.<destination>` — **not** `.kamal/secrets`. We use only per-destination files so each is a self-contained, verifiable manifest of what that environment needs.
 
 ## Deploy Cycle
 
