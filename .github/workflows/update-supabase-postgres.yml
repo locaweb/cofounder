@@ -1,0 +1,135 @@
+# Update Supabase Postgres
+#
+# Checks Docker Hub for newer supabase/postgres 17.x tags and opens
+# a PR when a newer version is found. Marketplace owns this tag and
+# locaweb-cloud-provision syncs from here.
+#
+# Runs weekly on Monday at 08:00 UTC, or on-demand via workflow_dispatch.
+
+name: Update Supabase Postgres
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"     # Monday 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-update:
+    name: Check for New Version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect current version
+        id: current
+        run: |
+          version=$(grep -oP "supabase/postgres:\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" \
+            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Current pinned version: **$version**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Query Docker Hub for latest 17.x tag
+        id: latest
+        run: |
+          all_tags=""
+          url="https://hub.docker.com/v2/repositories/supabase/postgres/tags?page_size=100"
+
+          while [ -n "$url" ] && [ "$url" != "null" ]; do
+            response=$(curl -sf "$url")
+            page_tags=$(echo "$response" | jq -r '.results[].name')
+            all_tags="${all_tags}${page_tags}"$'\n'
+            url=$(echo "$response" | jq -r '.next')
+          done
+
+          latest=$(echo "$all_tags" \
+            | grep -E '^17\.[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1)
+
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+          echo "Latest Docker Hub tag: **$latest**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          current="${{ steps.current.outputs.version }}"
+          latest="${{ steps.latest.outputs.version }}"
+
+          if [ "$current" = "$latest" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date ($current)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "Update available: $current -> $latest" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Update pinned version
+        if: steps.compare.outputs.update == 'true'
+        run: |
+          current="${{ steps.current.outputs.version }}"
+          latest="${{ steps.latest.outputs.version }}"
+
+          sed -i "s|supabase/postgres:${current}|supabase/postgres:${latest}|g" \
+            plugins/cofounder/skills/tech-stack/SKILL.md \
+            plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md \
+            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md
+
+      - name: Bump plugin version
+        if: steps.compare.outputs.update == 'true'
+        run: |
+          plugin_json="plugins/cofounder/.claude-plugin/plugin.json"
+          current_ver=$(jq -r '.version' "$plugin_json")
+          # Increment patch version
+          new_ver=$(echo "$current_ver" | awk -F. '{printf "%s.%s.%s", $1, $2, $3+1}')
+          jq --arg v "$new_ver" '.version = $v' "$plugin_json" > tmp.json && mv tmp.json "$plugin_json"
+
+      - name: Create PR
+        if: steps.compare.outputs.update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current="${{ steps.current.outputs.version }}"
+          latest="${{ steps.latest.outputs.version }}"
+          branch="auto/supabase-postgres-${latest}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push origin --delete "$branch" 2>/dev/null || true
+          git checkout -b "$branch"
+          git add \
+            plugins/cofounder/skills/tech-stack/SKILL.md \
+            plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md \
+            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md \
+            plugins/cofounder/.claude-plugin/plugin.json
+          git commit -m "Bump supabase/postgres ${current} -> ${latest}"
+          git push -u origin "$branch"
+
+          gh pr create \
+            --title "Bump supabase/postgres ${current} -> ${latest}" \
+            --body "$(cat <<EOF
+          Automated version bump detected by the **Update Supabase Postgres** workflow.
+
+          | | Version |
+          |---|---|
+          | **Current** | \`${current}\` |
+          | **New** | \`${latest}\` |
+
+          Updated files:
+          - \`plugins/cofounder/skills/tech-stack/SKILL.md\`
+          - \`plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md\`
+          - \`plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md\`
+          - \`plugins/cofounder/.claude-plugin/plugin.json\` (patch version bump)
+
+          > Staying within major version 17, so this is a safe patch/minor bump.
+          EOF
+          )"
+
+          gh pr merge --squash "$branch"
+
+          echo "PR created and merged for \`$branch\`" >> "$GITHUB_STEP_SUMMARY"
