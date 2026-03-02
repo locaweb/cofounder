@@ -20,7 +20,7 @@ The `deploy.yml` snippet for the database accessory:
 ```yaml
 accessories:
   db:
-    image: supabase/postgres:17.6.1.091
+    image: supabase/postgres:17.6.1.093
     # host goes in the destination file (e.g. deploy.preview.yml)
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100"
