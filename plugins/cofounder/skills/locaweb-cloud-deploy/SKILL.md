@@ -21,21 +21,28 @@ Deploy web applications to Locaweb Cloud by calling reusable workflows from `gma
 
 ```
                      Caller workflow (.github/workflows/deploy-*.yml)
-                                    |
-                                    v
-+-----------------------------------------------------------------------+
-|  Workflow layer (gmautner/locaweb-cloud-deploy)                       |
-|                                                                       |
-|  Provisions generic infrastructure:                                   |
-|    VMs, networks, disks, IPs, firewalls, snapshots, DNS               |
-|  Installs Docker on VMs                                               |
-|  Runs `kamal setup` or `kamal deploy -d {env_name}`                   |
-+-----------------------------------------------------------------------+
+                          |                              |
+                     infra job                      deploy job
+                          |                              |
+                          v                              v
++----------------------------------+   +----------------------------------+
+|  Workflow layer                  |   |  Kamal deployment                |
+|  (gmautner/locaweb-cloud-deploy)|   |  (runs in caller's deploy job)   |
+|                                  |   |                                  |
+|  Provisions infrastructure:      |   |  kamal setup / kamal deploy      |
+|    VMs, networks, disks, IPs,    |   |  Builds and pushes Docker image  |
+|    firewalls, snapshots, DNS     |   |  Deploys to provisioned VMs      |
+|  Installs Docker on VMs         |   |  Reboots scaled accessories      |
+|  Outputs: infra_env, IPs,       |   |                                  |
+|    infrastructure_changed,       |   |                                  |
+|    scaled_accessories            |   |                                  |
++----------------------------------+   +----------------------------------+
                                     |
                                     v
 +-----------------------------------------------------------------------+
 |  Generating scripts (this skill's scripts/ directory)                 |
 |                                                                       |
+|  generate_deploy_workflow.py  -> .github/workflows/deploy-{env}.yml   |
 |  generate_kamal_destination.py -> config/deploy.{env}.yml             |
 |  generate_proxy_config.py      -> proxy YAML block for deploy.yml     |
 |  generate_pg_cmd.py            -> postgres cmd string tuned for plan  |
@@ -51,7 +58,7 @@ Deploy web applications to Locaweb Cloud by calling reusable workflows from `gma
 |  config/deploy.yml        -- base Kamal config (accessories, env,     |
 |                              proxy, volumes, workers, timings)        |
 |  config/deploy.{env}.yml  -- generated destination file               |
-|  .kamal/secrets.{env}     -- per-destination secrets (one per env)      |
+|  .kamal/secrets.{env}     -- per-destination secrets (one per env)    |
 |  Dockerfile               -- single Dockerfile at repo root           |
 |  .github/workflows/       -- caller deploy + teardown workflows       |
 +-----------------------------------------------------------------------+
@@ -61,13 +68,11 @@ Deploy web applications to Locaweb Cloud by calling reusable workflows from `gma
 
 - Infrastructure provisioning (VMs, networks, disks, firewall, DNS, snapshots)
 - Docker installation on VMs
-- SSH key placement at `.kamal/ssh_key`
-- Registry credential (`KAMAL_REGISTRY_PASSWORD` = `GITHUB_TOKEN`)
-- GitHub Actions cache exposure for Docker buildx
-- Running `kamal setup` or `kamal deploy`
+- Outputs: `infra_env`, `infrastructure_changed`, `scaled_accessories`, `web_ip`, `worker_ips`, `accessory_ips`
 
 ### What the generating scripts own
 
+- **`.github/workflows/deploy-{env}.yml`** (caller workflow) -- two-job pattern (infra + deploy), trigger, inputs, secrets mapping, all deploy steps
 - **`config/deploy.{env}.yml`** (destination) -- service identity (ERB), image, registry, SSH, builder, server hosts (ERB), accessory hosts (ERB), proxy host (domain or nip.io ERB)
 - **Proxy block** in `deploy.yml` -- platform constraints (`app_port: 80`, `ssl: true`, `forward_headers: false`, healthcheck)
 - **Postgres `cmd` string** -- tuning parameters computed from the VM plan
@@ -88,7 +93,7 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **Single web VM**: No horizontal web scaling. Scale vertically with larger `web_plan`. Prefer runtimes and frameworks that scale well vertically.
 - **Workers use the same Docker image** with a different command (`servers.workers.cmd` in `deploy.yml`).
 - **Volume pattern: `/data/{subdir}`** -- always mount subdirectories of `/data/`, never `/data/` root directly. The ext4 filesystem creates `lost+found` at the mount root, which breaks Docker images that expect a clean directory on first boot (PostgreSQL `initdb`, Redis `appendonly.aof`, etc.).
-- **No Docker build in the caller workflow**: The reusable deploy workflow builds, pushes, and deploys the Docker image internally via Kamal. The caller workflow must **not** include any Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). The caller just calls the reusable workflow -- Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
+- **No Docker build in the caller workflow**: The caller's deploy job builds, pushes, and deploys the Docker image via Kamal. The caller workflow must **not** include any separate Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
 - **No TLS without a domain** -- nip.io URLs get SSL too since `proxy.ssl` is `true`, but Let's Encrypt rate limits may apply to nip.io subdomains.
 - **Accessories are flexible** -- Each accessory gets its own VM with a data disk. The **tech-stack** skill recommends PostgreSQL via `supabase/postgres` and covers database extension choices. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. See [references/postgres-recipe.md](references/postgres-recipe.md) for the Postgres-specific recipe.
 
@@ -107,6 +112,30 @@ The workflow provisions generic infrastructure and knows nothing about the appli
 ## Generating Scripts
 
 These scripts live in this skill's `scripts/` directory. They produce deterministic, correct output for infrastructure bindings and platform constraints. The agent calls these scripts; it does not hand-write the config they generate.
+
+### `generate_deploy_workflow.py`
+
+Writes `.github/workflows/deploy-{env_name}.yml` with the two-job pattern (infra + deploy). Handles secret suffix conventions automatically based on `--env-name`.
+
+```bash
+python3 generate_deploy_workflow.py --env-name preview --trigger push-main --accessories db --secrets POSTGRES_PASSWORD,DATABASE_URL
+python3 generate_deploy_workflow.py --env-name production --trigger push-tags --accessories db --secrets POSTGRES_PASSWORD,DATABASE_URL
+python3 generate_deploy_workflow.py --env-name production --trigger workflow_dispatch --accessories db,redis --workers 2 --secrets POSTGRES_PASSWORD,DATABASE_URL,REDIS_URL
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--env-name` | yes | Environment name (e.g. `preview`, `production`) |
+| `--trigger` | yes | `push-main`, `push-tags`, or `workflow_dispatch` |
+| `--zone` | no | CloudStack zone (default: `ZP01`) |
+| `--web-plan` | no | Web VM plan (default: `small`, omitted from YAML when default) |
+| `--web-disk-size-gb` | no | Web data disk size in GB (default: `20`, omitted when default) |
+| `--accessories` | no | Comma-separated accessory names (e.g. `db,redis`). Each gets `plan: medium, disk_size_gb: 20` in the JSON array |
+| `--workers` | no | Number of worker replicas (default: `0`, omitted when 0) |
+| `--workers-plan` | no | Worker VM plan (default: `small`, omitted when workers=0) |
+| `--secrets` | no | Comma-separated app secret names (e.g. `POSTGRES_PASSWORD,DATABASE_URL`) |
+
+The script handles the suffix convention internally: preview uses unsuffixed names, other environments use `_UPPERCASED_ENV_NAME` suffixes for GitHub Secrets and env vars.
 
 ### `generate_kamal_destination.py`
 
@@ -216,7 +245,6 @@ If the app uses PostgreSQL (the recommended default), set up database secrets:
 For any other app secrets (API keys, SMTP credentials, etc.), ask the user to store each one **individually** as a GitHub Secret via the GitHub UI.
 
 - **Never** accept secret values through the chat
-- **Never** store `SECRET_ENV_VARS` as a single GitHub Secret -- the caller workflow composes it from individual secret references
 
 ### Step 6: Create GitHub secrets
 
@@ -320,11 +348,18 @@ Each line maps a Kamal secret name to a shell env var. Kamal reads these values 
 
 ### Step 8: Create caller workflows
 
-- Start with a preview deploy workflow (triggered on push)
-- Create matching teardown workflow
-- See [references/workflows.md](references/workflows.md) for templates and input reference
+Use `generate_deploy_workflow.py` to create the caller deploy workflow. Start with a preview workflow (triggered on push), then create a matching teardown workflow. See [references/workflows.md](references/workflows.md) for the full two-job pattern and input reference.
 
-**Accessory-to-workflow-input sync:** The `accessories` JSON in the caller workflow must match the accessories declared in `deploy.yml`. Each accessory in `deploy.yml` needs a corresponding entry in the workflow's `accessories` input with a matching `name`, plus the desired `plan` and `disk_size_gb`.
+```bash
+# Generate preview deploy workflow
+python3 <skill_scripts_dir>/generate_deploy_workflow.py \
+  --env-name preview --trigger push-main --accessories db \
+  --secrets POSTGRES_PASSWORD,DATABASE_URL
+```
+
+If the generated defaults don't match the desired configuration (e.g., different plans or disk sizes), edit the generated file or re-run with additional flags.
+
+**Accessory-to-workflow-input sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `deploy.yml`. Each accessory in `deploy.yml` needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`.
 
 Example sync:
 
@@ -335,7 +370,7 @@ accessories:
     image: supabase/postgres:17.6.1.087
     # ... rest of accessory config
 
-# In caller workflow:
+# In caller workflow (infra job):
 with:
   accessories: '[{"name":"db","plan":"medium","disk_size_gb":20}]'
 ```
@@ -354,8 +389,8 @@ For each additional environment:
 - If the app has custom secrets scoped to the environment, suffix them the same way: e.g., `API_KEY_PRODUCTION`, `SMTP_PASSWORD_PRODUCTION`
 - Secrets common to all environments (e.g., `CLOUDSTACK_API_KEY`, `CLOUDSTACK_SECRET_KEY`) don't need to be recreated -- just pass them in every caller workflow
 - Generate a new destination file for the environment: `python3 generate_kamal_destination.py --env-name production [--domain ...] [--accessories ...] [--workers N]`
-- Create a caller deploy workflow for the environment (see [references/workflows.md](references/workflows.md))
-- The caller workflow maps the suffixed secrets to the workflow's standard secret names
+- Generate a caller deploy workflow: `python3 generate_deploy_workflow.py --env-name production --trigger push-tags --accessories db --secrets POSTGRES_PASSWORD,DATABASE_URL`
+- Write a `.kamal/secrets.production` file mapping Kamal secret names to suffixed env var names (e.g., `POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION`)
 - For production with a custom domain, see [DNS Configuration](#dns-configuration-for-custom-domains)
 
 ## Deployment Feedback Loop
@@ -473,7 +508,7 @@ Ensure that:
 
 After a deploy workflow completes, extract information from:
 
-1. **Workflow outputs**: `web_ip`, `worker_ips` (JSON array), accessory IPs (per accessory name in the `accessories` JSON object)
+1. **Workflow outputs**: `web_ip`, `worker_ips` (JSON array), `accessory_ips` (JSON object keyed by accessory name), `infrastructure_changed`, `scaled_accessories`, `infra_env`
 2. **GitHub Actions step summary**: visible in the workflow run UI, shows IP table and app URL
 3. **`provision-output` artifact**: JSON file retained for 90 days
 

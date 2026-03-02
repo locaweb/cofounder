@@ -2,13 +2,11 @@
 
 ## Table of Contents
 
-- [Environment Variables and Secrets Configuration](#environment-variables-and-secrets-configuration)
-  - [Table of Contents](#table-of-contents)
-  - [Clear Variables (deploy.yml)](#clear-variables-deployyml)
-  - [Secret Variables (SECRET\_ENV\_VARS)](#secret-variables-secret_env_vars)
-  - [Passing Variables in Caller Workflows](#passing-variables-in-caller-workflows)
-  - [Database Connection Variables](#database-connection-variables)
-  - [Web Disk Storage Path](#web-disk-storage-path)
+- [Clear Variables (deploy.yml)](#clear-variables-deployyml)
+- [Secret Variables](#secret-variables)
+- [Passing Variables in Caller Workflows](#passing-variables-in-caller-workflows)
+- [Database Connection Variables](#database-connection-variables)
+- [Web Disk Storage Path](#web-disk-storage-path)
 
 ## Clear Variables (deploy.yml)
 
@@ -26,37 +24,36 @@ env:
 
 These become clear (non-secret) environment variables in the container.
 
-## Secret Variables (SECRET_ENV_VARS)
+## Secret Variables
 
-Sensitive configuration is carried from GitHub Secrets to the Kamal deploy environment via the `SECRET_ENV_VARS` workflow secret. The agent writes secret names in `deploy.yml` under `env.secret` and in `.kamal/secrets`.
+Sensitive configuration flows directly from GitHub Secrets through the caller workflow's deploy job `env:` block, into the runner environment, where `.kamal/secrets.<dest>` reads them and passes them to the container.
 
 ### How it works
 
-1. The agent writes secret **names** in two places:
+1. **Agent writes secret names** in two places:
    - `deploy.yml` under `env.secret` -- tells Kamal which env vars are secrets
-   - `.kamal/secrets` -- tells Kamal to read them from the environment
+   - `.kamal/secrets.<destination>` -- tells Kamal to read them from the runner environment
 
-2. The caller workflow **composes** `SECRET_ENV_VARS` from individual GitHub Secret references:
+2. **Caller workflow maps GitHub Secrets as env vars** on the deploy job:
 
 ```yaml
-# In the caller workflow
-secrets:
-  SECRET_ENV_VARS: |-
-    POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-    DATABASE_URL=${{ secrets.DATABASE_URL }}
-    API_KEY=${{ secrets.API_KEY }}
-    SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+# In the caller workflow's deploy job
+deploy:
+  needs: infra
+  runs-on: ubuntu-latest
+  env:
+    POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    API_KEY: ${{ secrets.API_KEY }}
 ```
 
-3. The deploy workflow injects these into the Kamal environment, where `.kamal/secrets` picks them up.
+3. **Kamal reads from the environment** via `.kamal/secrets.<destination>` and injects them into the container.
 
-Store each secret **individually** as a GitHub Secret. **Never** create a single `SECRET_ENV_VARS` GitHub Secret containing all values -- this makes it impossible to update one secret without rewriting them all.
-
-Ask the user to set these via the GitHub UI (see [setup-and-deploy.md -- Secrets the user must set via GitHub UI](setup-and-deploy.md#secrets-the-user-must-set-via-github-ui)). **Never** accept secret values through the chat.
+Store each secret **individually** as a GitHub Secret. Ask the user to set these via the GitHub UI (see [setup-and-deploy.md -- Secrets the user must set via GitHub UI](setup-and-deploy.md#secrets-the-user-must-set-via-github-ui)). **Never** accept secret values through the chat.
 
 ### deploy.yml and .kamal/secrets configuration
 
-The agent writes the secret names in `deploy.yml` and `.kamal/secrets`:
+The agent writes the secret names in `deploy.yml` and `.kamal/secrets.<destination>`:
 
 ```yaml
 # In deploy.yml
@@ -71,35 +68,53 @@ env:
     - SMTP_PASSWORD
 ```
 
+For **preview** (default environment), the `.kamal/secrets` file uses unsuffixed env var names -- the env var name matches the GitHub Secret name:
+
 ```bash
-# .kamal/secrets
+# .kamal/secrets.preview
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 DATABASE_URL=$DATABASE_URL
 API_KEY=$API_KEY
 SMTP_PASSWORD=$SMTP_PASSWORD
 ```
 
+For **non-preview** environments (e.g., production), the `.kamal/secrets` file maps the Kamal secret name (left side) to the suffixed env var name (right side) -- the suffixed name matches the GitHub Secret name:
+
+```bash
+# .kamal/secrets.production
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
+DATABASE_URL=$DATABASE_URL_PRODUCTION
+API_KEY=$API_KEY_PRODUCTION
+SMTP_PASSWORD=$SMTP_PASSWORD_PRODUCTION
+```
+
 ## Passing Variables in Caller Workflows
 
-Complete example showing both clear and secret custom variables for a production environment. Note how environment-scoped secrets use the `_PRODUCTION` suffix, while common secrets (`CLOUDSTACK_*`) are shared across all environments:
+Complete example showing both clear and secret custom variables for a production environment. Note the two-job pattern: infra job handles infrastructure, deploy job handles Kamal and application secrets. Environment-scoped secrets use the `_PRODUCTION` suffix, while common secrets (`CLOUDSTACK_*`) are shared across all environments:
 
 ```yaml
 jobs:
-  deploy:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v0
+  infra:
+    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v0.2
     with:
       env_name: "production"
       zone: "ZP01"
-      accessories: '{"db": {"plan": "medium", "disk_size_gb": 50}}'
+      accessories: '[{"name":"db","plan":"medium","disk_size_gb":50}]'
     secrets:
       CLOUDSTACK_API_KEY: ${{ secrets.CLOUDSTACK_API_KEY }}
       CLOUDSTACK_SECRET_KEY: ${{ secrets.CLOUDSTACK_SECRET_KEY }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION }}
-      SECRET_ENV_VARS: |-
-        POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_PRODUCTION }}
-        DATABASE_URL=${{ secrets.DATABASE_URL_PRODUCTION }}
-        API_KEY=${{ secrets.API_KEY_PRODUCTION }}
-        JWT_SECRET=${{ secrets.JWT_SECRET_PRODUCTION }}
+
+  deploy:
+    needs: infra
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD_PRODUCTION: ${{ secrets.POSTGRES_PASSWORD_PRODUCTION }}
+      DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
+      API_KEY_PRODUCTION: ${{ secrets.API_KEY_PRODUCTION }}
+      JWT_SECRET_PRODUCTION: ${{ secrets.JWT_SECRET_PRODUCTION }}
+    steps:
+      # ... (checkout, load infra_env, Kamal install, deploy steps)
 ```
 
 Clear variables are written directly in `deploy.yml` by the agent -- they are not passed through the workflow.

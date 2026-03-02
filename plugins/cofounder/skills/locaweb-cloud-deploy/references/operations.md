@@ -24,7 +24,7 @@ The JSON contains:
 |------------------|--------------------------------------------------------------------|
 | `web_ip`         | Public IP of the web VM -- used for SSH and app URL (`https://<web_ip>.nip.io`) |
 | `worker_ips`     | JSON array of public worker VM IPs -- used for SSH                  |
-| `accessories`    | JSON object with accessory IPs. Each key is the accessory name (e.g., `db`, `redis`) with `ip` (public, SSH only) and `internal_ip` (private, used by the app) fields. |
+| `accessory_ips`  | JSON object with accessory IPs. Each key is the accessory name (e.g., `db`, `redis`) with `ip` (public, SSH only) and `internal_ip` (private, used by the app) fields. |
 
 Example `provision-output.json`:
 

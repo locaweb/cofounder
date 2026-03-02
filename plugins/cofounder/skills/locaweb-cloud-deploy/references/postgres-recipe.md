@@ -167,10 +167,10 @@ Each plan corresponds to a VM with a fixed amount of RAM. The plan name determin
 
 ## Sync with Workflow
 
-The `accessories` workflow input must include a JSON object for the database accessory:
+The `accessories` workflow input is a JSON array. It must include an entry for the database accessory:
 
 ```json
-{"name": "db", "plan": "<chosen-plan>", "disk_size_gb": <size>}
+[{"name": "db", "plan": "<chosen-plan>", "disk_size_gb": <size>}]
 ```
 
 - **`name`**: must be `db` (matches the accessory name in `deploy.yml`)
@@ -180,5 +180,5 @@ The `accessories` workflow input must include a JSON object for the database acc
 Example for a medium plan with a 50 GB data disk:
 
 ```json
-{"name": "db", "plan": "medium", "disk_size_gb": 50}
+[{"name": "db", "plan": "medium", "disk_size_gb": 50}]
 ```

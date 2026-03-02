@@ -35,7 +35,7 @@ on:
 
 jobs:
   teardown:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/teardown.yml@v0
+    uses: gmautner/locaweb-cloud-deploy/.github/workflows/teardown.yml@v0.2
     with:
       env_name: "preview"
       zone: "ZP01"
@@ -141,4 +141,4 @@ All `cmk` failures during teardown are treated as non-fatal warnings (resources 
 - **env_name must match**: The teardown `env_name` must match the deploy `env_name` exactly. The resource naming pattern is `{repo-name}-{repository-id}-{env_name}`.
 - **Data disks are permanently deleted**: Teardown deletes data volumes (web and accessory disks). However, **snapshots taken before teardown are preserved** and remain in the CloudStack account. These snapshots may be useful for future disaster recovery workflows.
 - **Safe to re-run**: If some resources are already deleted (e.g., partial teardown), the script continues without failing.
-- **Shared concurrency group**: Teardown shares the `deploy-{repository}-{env_name}` concurrency group with the deploy workflow, so a teardown cannot run while a deploy is in progress (and vice versa).
+- **Shared concurrency group**: Teardown shares the `infra-{repository}-{env_name}` concurrency group with the deploy workflow, so a teardown cannot run while a deploy is in progress (and vice versa).

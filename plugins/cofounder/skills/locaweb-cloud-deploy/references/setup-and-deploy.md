@@ -179,22 +179,22 @@ CloudStack credentials (if not already set):
 
 > **Note:** Warn that the keys may take some time to show up after page has loaded. If the user has never generated keys before, they should click the **"Gerar novas chaves"** icon on the top right corner of the user page.
 
-App-specific secrets -- store each one **individually**. **Never** store `SECRET_ENV_VARS` as a single monolithic secret:
+App-specific secrets -- store each one **individually**:
 
 | Name | Where to find the value |
 |------|------------------------|
 | `API_KEY` | *(describe where the user can find this value)* |
 | `SMTP_PASSWORD` | *(describe where the user can find this value)* |
 
-Then compose them in the caller workflow's `SECRET_ENV_VARS` block:
+After adding secrets, map them in the caller workflow's deploy job `env:` block (or regenerate the workflow with `generate_deploy_workflow.py --secrets`):
 
 ```yaml
-secrets:
-  SECRET_ENV_VARS: |-
-    POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-    DATABASE_URL=${{ secrets.DATABASE_URL }}
-    API_KEY=${{ secrets.API_KEY }}
-    SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+# In deploy job
+env:
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  API_KEY: ${{ secrets.API_KEY }}
+  SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
 ```
 
 This way, updating a single secret only requires creating/updating it in the GitHub UI -- no need to remember or rewrite the others.
@@ -218,18 +218,18 @@ The Kamal deploy configuration. Contains service name, image, server hosts, envi
 One secrets file per destination. Each maps secret environment variable names so Kamal can read them from the deploy environment:
 
 ```bash
-# .kamal/secrets.preview
+# .kamal/secrets.preview (unsuffixed — env var names match GitHub Secret names)
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 DATABASE_URL=$DATABASE_URL
 API_KEY=$API_KEY
 ```
 
 ```bash
-# .kamal/secrets.production
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=$DATABASE_URL
-API_KEY=$API_KEY
-STRIPE_LIVE_KEY=$STRIPE_LIVE_KEY
+# .kamal/secrets.production (suffixed — right side matches suffixed GitHub Secret names)
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
+DATABASE_URL=$DATABASE_URL_PRODUCTION
+API_KEY=$API_KEY_PRODUCTION
+STRIPE_LIVE_KEY=$STRIPE_LIVE_KEY_PRODUCTION
 ```
 
 Since all deploys use `-d <destination>`, Kamal looks for `.kamal/secrets-common` and `.kamal/secrets.<destination>` — **not** `.kamal/secrets`. We use only per-destination files so each is a self-contained, verifiable manifest of what that environment needs.

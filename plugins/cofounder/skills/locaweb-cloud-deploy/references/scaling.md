@@ -92,12 +92,12 @@ Each accessory scales **vertically only** (single VM per accessory). Change the 
 
 ```yaml
 with:
-  accessories: '{"db": {"plan": "large", "disk_size_gb": 100}, "redis": {"plan": "medium", "disk_size_gb": 10}}'
+  accessories: '[{"name":"db","plan":"large","disk_size_gb":100},{"name":"redis","plan":"medium","disk_size_gb":10}]'
 ```
 
 **Vertical scaling causes a restart with brief downtime.** The accessory container will restart after the VM is resized. Ensure the application handles transient disconnections gracefully (e.g., database reconnection logic).
 
-To add a new accessory, add its key to the `accessories` JSON and re-deploy. To remove an accessory, remove its key from the JSON -- the teardown of the removed accessory's resources happens automatically.
+To add a new accessory, add an entry to the `accessories` JSON array and re-deploy. To remove an accessory, remove its entry from the JSON array -- the teardown of the removed accessory's resources happens automatically.
 
 ## Disk Sizes
 
@@ -120,7 +120,7 @@ Example -- production with larger disks:
 ```yaml
 with:
   web_disk_size_gb: 50
-  accessories: '{"db": {"plan": "medium", "disk_size_gb": 100}, "redis": {"plan": "small", "disk_size_gb": 10}}'
+  accessories: '[{"name":"db","plan":"medium","disk_size_gb":100},{"name":"redis","plan":"small","disk_size_gb":10}]'
 ```
 
 Workers are stateless and do not have data disks.
