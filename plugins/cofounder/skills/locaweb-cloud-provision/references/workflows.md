@@ -13,7 +13,7 @@
 
 ## Two-Job Pattern
 
-Caller workflows use two jobs: **infra** (infrastructure provisioning) and **deploy** (application deployment with Kamal). The infra job calls the reusable `deploy.yml@v1` workflow, which provisions VMs, networks, disks, and firewall rules. The deploy job runs Kamal to build, push, and deploy the Docker image.
+Caller workflows use two jobs: **infra** (infrastructure provisioning) and **deploy** (application deployment with Kamal). The infra job calls the reusable `provision.yml@v1` workflow, which provisions VMs, networks, disks, and firewall rules. The deploy job runs Kamal to build, push, and deploy the Docker image.
 
 This separation means:
 - The reusable workflow handles only infrastructure and outputs everything the deploy job needs
@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   infra:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v1
+    uses: gmautner/locaweb-cloud-provision/.github/workflows/provision.yml@v1
     with:
       env_name: "preview"
       zone: "ZP01"
@@ -179,7 +179,7 @@ permissions:
 
 jobs:
   infra:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v1
+    uses: gmautner/locaweb-cloud-provision/.github/workflows/provision.yml@v1
     with:
       env_name: "production"
       zone: "ZP01"
@@ -282,7 +282,7 @@ To deploy to production: `git tag v1.0.0 && git push --tags`. The workflow check
 
 ## Deploy Input Reference
 
-All inputs passed to the `infra` job (the reusable `deploy.yml@v1` workflow):
+All inputs passed to the `infra` job (the reusable `provision.yml@v1` workflow):
 
 | Input | Type | Default | When to set |
 |-------|------|---------|-------------|
@@ -335,7 +335,7 @@ permissions:
 
 jobs:
   infra:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v1
+    uses: gmautner/locaweb-cloud-provision/.github/workflows/provision.yml@v1
     with:
       env_name: "preview"                    # Optional, default: "preview"
       zone: "ZP01"                           # Optional, default: "ZP01" (options: ZP01, ZP02)
@@ -466,7 +466,7 @@ The caller's deploy job handles the entire Docker lifecycle via Kamal: it checks
 
 ## No `secrets: inherit`
 
-The reusable workflow lives in a **public repository** (`gmautner/locaweb-cloud-deploy`). GitHub does not allow `secrets: inherit` when calling a reusable workflow from a different repository. Always pass secrets explicitly in the `secrets:` block of the infra job. Application secrets go in the deploy job's `env:` block, not through the reusable workflow.
+The reusable workflow lives in a **public repository** (`gmautner/locaweb-cloud-provision`). GitHub does not allow `secrets: inherit` when calling a reusable workflow from a different repository. Always pass secrets explicitly in the `secrets:` block of the infra job. Application secrets go in the deploy job's `env:` block, not through the reusable workflow.
 
 ## Passing Outputs to Downstream Jobs
 
@@ -475,7 +475,7 @@ The infra job exposes outputs that can be consumed by the deploy job or addition
 ```yaml
 jobs:
   infra:
-    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v1
+    uses: gmautner/locaweb-cloud-provision/.github/workflows/provision.yml@v1
     with:
       # ... inputs
     secrets:

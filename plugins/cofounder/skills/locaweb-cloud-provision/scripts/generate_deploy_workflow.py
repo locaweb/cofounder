@@ -2,7 +2,7 @@
 """Generate a caller deploy workflow with two jobs: infra + deploy.
 
 Writes .github/workflows/deploy-{env_name}.yml with deterministic content.
-The infra job calls deploy.yml@v1 for infrastructure provisioning.
+The infra job calls provision.yml@v1 for infrastructure provisioning.
 The deploy job installs Kamal and deploys the application using the outputs.
 
 Usage:
@@ -79,7 +79,7 @@ def generate(env_name, trigger, zone="ZP01", web_plan="small",
 
     # --- Infra job ---
     lines.append("  infra:")
-    lines.append("    uses: gmautner/locaweb-cloud-deploy/.github/workflows/deploy.yml@v1")
+    lines.append("    uses: gmautner/locaweb-cloud-provision/.github/workflows/provision.yml@v1")
     lines.append("    with:")
     lines.append(f'      env_name: "{env_name}"')
 

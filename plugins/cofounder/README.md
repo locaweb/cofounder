@@ -133,7 +133,7 @@ Basta descrever o que você quer com suas próprias palavras — nenhum conhecim
 | `tech-stack` | Desenvolvimento full-stack (Go, React, PostgreSQL) |
 | `frontend-design` | Orientação de design UI/UX diferenciado |
 | `webapp-testing` | Testes end-to-end com Playwright |
-| `locaweb-cloud-deploy` | Deploy na infraestrutura da Locaweb Cloud |
+| `locaweb-cloud-provision` | Deploy na infraestrutura da Locaweb Cloud |
 
 ## Stack
 

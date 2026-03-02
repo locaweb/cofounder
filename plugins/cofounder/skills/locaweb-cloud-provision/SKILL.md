@@ -1,5 +1,5 @@
 ---
-name: locaweb-cloud-deploy
+name: locaweb-cloud-provision
 description: >
   This skill should be used when the user asks to "deploy to Locaweb Cloud", "set up GitHub Actions
   deployment workflows", "create a preview environment", "add a production environment", "tear down
@@ -13,7 +13,7 @@ description: >
 
 # Locaweb Cloud Deploy
 
-Deploy web applications to Locaweb Cloud by calling reusable workflows from `gmautner/locaweb-cloud-deploy`. The platform provisions CloudStack VMs, networks, disks, and firewall rules. The agent owns the Kamal 2 deployment configuration (`deploy.yml`) and uses generating scripts for deterministic infrastructure bindings.
+Deploy web applications to Locaweb Cloud by calling reusable workflows from `gmautner/locaweb-cloud-provision`. The platform provisions CloudStack VMs, networks, disks, and firewall rules. The agent owns the Kamal 2 deployment configuration (`deploy.yml`) and uses generating scripts for deterministic infrastructure bindings.
 
 **Always respond in the same language the user is using.**
 
@@ -27,7 +27,7 @@ Deploy web applications to Locaweb Cloud by calling reusable workflows from `gma
                           v                              v
 +----------------------------------+   +----------------------------------+
 |  Workflow layer                  |   |  Kamal deployment                |
-|  (gmautner/locaweb-cloud-deploy)|   |  (runs in caller's deploy job)   |
+|  (gmautner/locaweb-cloud-provision)|   |  (runs in caller's deploy job)   |
 |                                  |   |                                  |
 |  Provisions infrastructure:      |   |  kamal setup / kamal deploy      |
 |    VMs, networks, disks, IPs,    |   |  Builds and pushes Docker image  |
