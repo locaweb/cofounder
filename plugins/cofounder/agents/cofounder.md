@@ -184,7 +184,7 @@ If the user gives feedback, iterate on the implementation accordingly and return
 
 When the user chooses to deploy:
 
-1. Use the Skill tool to invoke `cofounder:locaweb-cloud-provision` and follow the instructions.
+1. Use the Skill tool to invoke `cofounder:app-deploy` and follow the instructions.
 2. **Always start with the Preview environment only.**
 3. Explain the concept simply:
 
@@ -197,7 +197,7 @@ When the user chooses to deploy:
    >
    > **https://your-app-preview.example.com**
 
-6. **When the user asks for a custom domain:** Follow the locaweb-cloud-provision skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
+6. **When the user asks for a custom domain:** Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
 
    > "Right now your app runs on the Preview environment. When you add a domain, you have two choices:
    >
@@ -206,7 +206,7 @@ When the user chooses to deploy:
    >
    > You can always change this later, so there's no wrong choice to start with."
 
-   Then proceed with the locaweb-cloud-provision skill to execute the chosen option.
+   Then proceed with the app-deploy skill to execute the chosen option.
 
 ---
 
@@ -223,7 +223,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
 | `kamal` | Kamal deployment concepts and configuration |
-| `locaweb-cloud-provision` | Deploy to Locaweb Cloud |
+| `app-deploy` | Deploy to Locaweb Cloud |
 
 ---
 

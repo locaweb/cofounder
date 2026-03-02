@@ -55,7 +55,7 @@ frontend/node_modules/
 chmod 0600 .env
 ```
 
-The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server (e.g., `set -a && source .env && set +a`). In deployed environments, secrets are injected as environment variables by the deployment platform — see the **locaweb-cloud-provision** skill.
+The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server (e.g., `set -a && source .env && set +a`). In deployed environments, secrets are injected as environment variables by the deployment platform — see the **app-deploy** skill.
 
 `mise.toml` should **not** be gitignored — it is committed to the repo so all developers use the same tool versions.
 
@@ -122,7 +122,7 @@ The Go backend listens for Postgres `NOTIFY` events and holds open a standard HT
 
 ## Deployment Constraints
 
-These match the **locaweb-cloud-provision** skill requirements:
+These match the **app-deploy** skill requirements:
 
 - Single container on **port 80** (controlled by `PORT` env var, defaulting to `8080` for local dev)
 - Health check: **`GET /up` → HTTP 200**
@@ -244,7 +244,7 @@ The core workflow is: **write code → spin up local instance → run tests → 
 └──────────────────────────────────────────────────────┘
 ```
 
-After committing and pushing, ask the user if they want to deploy to the cloud. If yes, use the **locaweb-cloud-provision** skill to run the **Deployment Feedback Loop**, which monitors the GitHub Actions workflow, verifies the health check, and handles deployment-specific failures.
+After committing and pushing, ask the user if they want to deploy to the cloud. If yes, use the **app-deploy** skill to run the **Deployment Feedback Loop**, which monitors the GitHub Actions workflow, verifies the health check, and handles deployment-specific failures.
 
 ### Backend testing (Go)
 

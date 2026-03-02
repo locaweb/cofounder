@@ -2,7 +2,7 @@
 #
 # Checks Docker Hub for newer supabase/postgres 17.x tags and opens
 # a PR when a newer version is found. Marketplace owns this tag and
-# locaweb-cloud-provision syncs from here.
+# app-deploy syncs from here.
 #
 # Runs weekly on Monday at 08:00 UTC, or on-demand via workflow_dispatch.
 
@@ -30,7 +30,7 @@ jobs:
         id: current
         run: |
           version=$(grep -oP "supabase/postgres:\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" \
-            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md)
+            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Current pinned version: **$version**" >> "$GITHUB_STEP_SUMMARY"
 
@@ -77,8 +77,8 @@ jobs:
 
           sed -i "s|supabase/postgres:${current}|supabase/postgres:${latest}|g" \
             plugins/cofounder/skills/tech-stack/SKILL.md \
-            plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md \
-            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md
+            plugins/cofounder/skills/app-deploy/SKILL.md \
+            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md
 
       - name: Bump plugin version
         if: steps.compare.outputs.update == 'true'
@@ -104,8 +104,8 @@ jobs:
           git checkout -b "$branch"
           git add \
             plugins/cofounder/skills/tech-stack/SKILL.md \
-            plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md \
-            plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md \
+            plugins/cofounder/skills/app-deploy/SKILL.md \
+            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md \
             plugins/cofounder/.claude-plugin/plugin.json
           git commit -m "Bump supabase/postgres ${current} -> ${latest}"
           git push -u origin "$branch"
@@ -122,8 +122,8 @@ jobs:
 
           Updated files:
           - \`plugins/cofounder/skills/tech-stack/SKILL.md\`
-          - \`plugins/cofounder/skills/locaweb-cloud-provision/SKILL.md\`
-          - \`plugins/cofounder/skills/locaweb-cloud-provision/references/postgres-recipe.md\`
+          - \`plugins/cofounder/skills/app-deploy/SKILL.md\`
+          - \`plugins/cofounder/skills/app-deploy/references/postgres-recipe.md\`
           - \`plugins/cofounder/.claude-plugin/plugin.json\` (patch version bump)
 
           > Staying within major version 17, so this is a safe patch/minor bump.

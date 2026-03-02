@@ -133,7 +133,7 @@ Just describe what you want in your own words — no technical knowledge require
 | `tech-stack` | Full-stack app development (Go, React, PostgreSQL) |
 | `frontend-design` | Distinctive UI/UX design guidance |
 | `webapp-testing` | Playwright-based end-to-end testing |
-| `locaweb-cloud-provision` | Deploy to Locaweb Cloud infrastructure |
+| `app-deploy` | Deploy to Locaweb Cloud infrastructure |
 
 ## Tech stack
 
