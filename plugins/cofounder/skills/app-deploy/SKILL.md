@@ -68,7 +68,7 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **Volume pattern: `/data/{subdir}`** -- both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always mount subdirectories of `/data/`, never `/data/` root directly (see [references/env-vars.md -- Web Disk Storage Path](references/env-vars.md#disk-storage-path) for web usage, [references/postgres-recipe.md -- Volume Mount](references/postgres-recipe.md#volume-mount-datapgdata-not-data) for the database example). The ext4 filesystem creates `lost+found` at the mount root, which breaks Docker images that expect a clean directory on first boot (PostgreSQL `initdb`, Redis `appendonly.aof`, etc.).
 - **No Docker build in the caller workflow**: The caller's deploy job builds, pushes, and deploys the Docker image via Kamal. The caller workflow must **not** include any separate Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
 - **No TLS without a domain**: Let's Encrypt rate limits may apply to nip.io subdomains.
-- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill.
+- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill. Accessories that serve HTTP/HTTPS traffic through kamal-proxy need ports 80 and 443 opened at the firewall — pass `"ports": "80,443"` in the accessory's JSON entry (port 22/SSH is always open). See the **kamal** skill for proxy configuration details.
 
 If the application's current design conflicts with any of these, resolve the conflict **before** proceeding with deployment setup.
 
@@ -225,7 +225,7 @@ GitHub Secrets  -->  Workflow env: block  -->  Shell environment  -->  .kamal/se
 
 The left side of each secrets file line is the **Kamal secret name** (referenced in `env.secret`). The right side is the **shell environment variable name** (which matches the GitHub Secret name). For non-preview environments, the GitHub Secret is suffixed (e.g., `POSTGRES_PASSWORD_PRODUCTION`), so the right side maps to the suffixed name while the left side stays unsuffixed.
 
-**Accessory-to-config sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `config/deploy.<env>.yml`. Each accessory needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`.
+**Accessory-to-config sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `config/deploy.<env>.yml`. Each accessory needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`. Accessories that use kamal-proxy (i.e., have a `proxy` block in the Kamal config) also need `"ports": "80,443"` to open the firewall for HTTP/HTTPS traffic.
 
 Example sync:
 
@@ -234,11 +234,19 @@ Example sync:
 accessories:
   db:
     image: supabase/postgres:17.6.1.093
-    # ... rest of accessory config
+    # ... backend service, no proxy
+
+  n8n:
+    image: n8nio/n8n:latest
+    host: <%= ENV['INFRA_N8N_IP'] %>
+    proxy:
+      host: n8n.<%= ENV['INFRA_N8N_IP'] %>.nip.io
+      app_port: 5678
+    # ... web-facing, uses kamal-proxy
 
 # In caller workflow (infra job):
 with:
-  accessories: '[{"name":"db","plan":"medium","disk_size_gb":20}]'
+  accessories: '[{"name":"db","plan":"medium","disk_size_gb":20},{"name":"n8n","plan":"small","disk_size_gb":10,"ports":"80,443"}]'
 ```
 
 ### Step 8: Create deploy and teardown workflows

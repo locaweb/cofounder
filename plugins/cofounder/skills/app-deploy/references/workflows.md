@@ -300,7 +300,7 @@ All inputs passed to the `infra` job (the reusable `provision.yml@v1` workflow):
 | `zone` | string | `"ZP01"` | CloudStack zone. Usually leave as default. Use `ZP02` for geographic redundancy. |
 | `web_plan` | string | `"small"` | Choose based on runtime footprint and environment. See [scaling.md -- VM Plans](scaling.md#vm-plans) for plan specs. |
 | `web_disk_size_gb` | number | `20` | Persistent disk attached to the web VM at `/data`. Increase if the app stores files (uploads, media). Can only grow, never shrink. |
-| `accessories` | string (JSON) | `"[]"` | JSON array defining accessories. Each entry has `name`, `plan`, and `disk_size_gb` fields. Example: `'[{"name":"db","plan":"medium","disk_size_gb":20}]'` |
+| `accessories` | string (JSON) | `"[]"` | JSON array of accessory VMs: `[{"name": "db", "plan": "medium", "disk_size_gb": 20}]`. Each object supports an optional `ports` field (comma-separated string, e.g. `"5432"` or `"80,443"`) to open additional firewall ports; port 22 (SSH) is always included. |
 | `workers_replicas` | number | `0` | Number of worker VMs. `0` means no workers. Set to 1 or more to enable background processing. |
 | `workers_plan` | string | `"small"` | VM size for workers. Choose based on worker workload intensity. See [scaling.md -- Scaling Workers](scaling.md#scaling-workers). |
 | `automatic_reboot` | boolean | `true` | Enable automatic reboot after unattended security upgrades. Usually leave as default. |
