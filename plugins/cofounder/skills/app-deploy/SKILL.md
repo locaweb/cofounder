@@ -170,7 +170,7 @@ Kamal config applicable to all environments. See [references/env-vars.md](refere
 - **SSH and registry** -- user, keys, ghcr.io registry with ERB templates
 - **Builder** -- arch and cache settings
 - **Common environment variables** -- `env.clear` for non-sensitive config, `env.secret` for secrets shared across all environments
-- **Common volumes** -- host mounts applicable to all environments
+- **Common directories** -- host mounts applicable to all environments
 - **Workers** (if any) -- `servers.workers.cmd` and `servers.workers.proxy: false`
 - **Deployment timings** -- `readiness_delay`, `deploy_timeout`, `drain_timeout` (sensible defaults: 15, 180, 30)
 
@@ -183,7 +183,7 @@ Environment-specific Kamal config. See [references/env-vars.md -- Clear Variable
 - **Server hosts** -- web and worker IPs via ERB templates (e.g., `<%= ENV['INFRA_WEB_IP'] %>`)
 - **Environment-specific variables** -- `env.clear` (e.g., `APP_ENV: preview`) and `env.secret` for secrets specific to this environment
 - **Proxy host** -- nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production
-- **Accessories** -- image, host (ERB), port, cmd, env, volumes
+- **Accessories** -- image, host (ERB), port, cmd, env, directories
 
 #### 7c: Common secrets (`.kamal/secrets-common`)
 

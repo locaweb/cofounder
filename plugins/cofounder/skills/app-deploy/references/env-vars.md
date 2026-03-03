@@ -166,9 +166,9 @@ Both the web VM and each accessory VM have a persistent disk mounted at `/data/`
 
 To use the web disk for file storage (uploads, media, etc.):
 
-1. Map a Kamal volume to a subdirectory of `/data/`:
+1. Map a Kamal directory to a subdirectory of `/data/`:
    ```yaml
-   volumes:
+   directories:
      - /data/uploads:/app/uploads
    ```
 2. Set a clear env var in `deploy.yml` so the app knows the path:
