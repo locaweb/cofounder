@@ -104,7 +104,9 @@ To add a new accessory, add an entry to the `accessories` JSON array and re-depl
 | Disk | Input | Default | Attached to |
 |------|-------|---------|-------------|
 | Web disk | `web_disk_size_gb` | 20 GB | Web VM at `/data` |
-| Accessory disks | `accessories` JSON `disk_size_gb` | 20 GB | Each accessory VM at `/data/<accessory-name>` |
+| Accessory disks | `accessories` JSON `disk_size_gb` | 20 GB | Each accessory VM at `/data` |
+
+Both web and accessory disks are mounted at `/data/` on their respective VMs. Always map Kamal volumes to a **subdirectory** of `/data/` (e.g., `/data/uploads`, `/data/pgdata`), never `/data/` root -- the ext4 filesystem creates `lost+found` at the mount root, which breaks containers that expect a clean directory. See [postgres-recipe.md -- Volume Mount](postgres-recipe.md#volume-mount-datapgdata-not-data) for the database example.
 
 Disks can be **grown** by re-deploying with a larger value. **Shrinking is not supported** -- the workflow will fail with an error if you specify a smaller size than the current disk.
 

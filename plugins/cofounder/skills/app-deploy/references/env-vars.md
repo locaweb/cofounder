@@ -6,7 +6,7 @@
 - [Secret Variables](#secret-variables)
 - [Passing Variables in Caller Workflows](#passing-variables-in-caller-workflows)
 - [Database Connection Variables](#database-connection-variables)
-- [Web Disk Storage Path](#web-disk-storage-path)
+- [Disk Storage Path](#disk-storage-path)
 
 ## Clear Variables (deploy.yml)
 
@@ -158,11 +158,15 @@ production:
 
 The port is always 5432. The hostname is always `db`.
 
-## Web Disk Storage Path
+## Disk Storage Path
 
-The web VM has a persistent disk mounted at `/data/`. To use it for file storage (uploads, media, etc.):
+Both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always map Kamal volumes to a **subdirectory** of `/data/` (never `/data/` root — `lost+found` from ext4 would interfere). See [postgres-recipe.md -- Volume Mount](postgres-recipe.md#volume-mount-datapgdata-not-data) for the database accessory example.
 
-1. Map a Kamal volume to a **subdirectory** of `/data/` (never `/data/` root — `lost+found` from ext4 would interfere):
+### Web VM example
+
+To use the web disk for file storage (uploads, media, etc.):
+
+1. Map a Kamal volume to a subdirectory of `/data/`:
    ```yaml
    volumes:
      - /data/uploads:/app/uploads
@@ -174,4 +178,18 @@ The web VM has a persistent disk mounted at `/data/`. To use it for file storage
        UPLOAD_PATH: /app/uploads
    ```
 
-The subdirectory name and env var name are up to the application — there is no platform-mandated convention.
+### Accessory VM example
+
+Each accessory VM has its own disk at `/data/`. Map the accessory's data directory to a subdirectory:
+
+```yaml
+accessories:
+  db:
+    directories:
+      - /data/pgdata:/var/lib/postgresql/data
+  redis:
+    directories:
+      - /data/redis:/data
+```
+
+The subdirectory names are up to the application — there is no platform-mandated convention.
