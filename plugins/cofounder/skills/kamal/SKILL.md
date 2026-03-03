@@ -129,7 +129,6 @@ proxy:
 
 ssh:
   user: root
-  keys: [.kamal/ssh_key]
 
 registry:
   server: ghcr.io

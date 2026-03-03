@@ -66,8 +66,7 @@ jobs:
     env:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     steps:
-      - name: Checkout application repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Load infrastructure environment
         run: echo "${{ needs.infra.outputs.infra_env }}" >> "$GITHUB_ENV"
@@ -78,45 +77,19 @@ jobs:
           echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
           echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
 
-      - name: Configure gem path
-        run: |
-          echo "GEM_HOME=$HOME/.gems" >> "$GITHUB_ENV"
-          echo "$HOME/.gems/bin" >> "$GITHUB_PATH"
-
-      - name: Cache Kamal gem
-        id: kamal-cache
-        uses: actions/cache@v4
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
-          path: ~/.gems
-          key: kamal-${{ runner.os }}-v1
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install Kamal
-        if: steps.kamal-cache.outputs.cache-hit != 'true'
-        run: gem install kamal --no-document
+      # Expose GHA cache env vars for Kamal's `docker buildx build --cache-from type=gha`.
+      # Recommended by https://docs.docker.com/build/cache/backends/gha/
+      - uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Prepare SSH key for Kamal
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p .kamal
-          install -m 600 /dev/null .kamal/ssh_key
-          printf '%s\n' "$SSH_PRIVATE_KEY" > .kamal/ssh_key
-
-      - name: Expose GitHub Actions runtime for Docker cache
-        uses: actions/github-script@v7
+      - uses: ruby/setup-ruby@v1
         with:
-          script: |
-            const vars = [
-              'ACTIONS_CACHE_URL',
-              'ACTIONS_RUNTIME_TOKEN',
-              'ACTIONS_RUNTIME_URL',
-              'ACTIONS_RESULTS_URL',
-              'ACTIONS_CACHE_SERVICE_V2',
-            ];
-            for (const v of vars) {
-              const val = process.env[v];
-              if (val) core.exportVariable(v, val);
-            }
+          ruby-version: "3.4"
+
+      - run: gem install kamal --no-document
 
       - name: Deploy with Kamal
         env:
@@ -208,8 +181,7 @@ jobs:
     env:
       POSTGRES_PASSWORD_PRODUCTION: ${{ secrets.POSTGRES_PASSWORD_PRODUCTION }}
     steps:
-      - name: Checkout application repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Load infrastructure environment
         run: echo "${{ needs.infra.outputs.infra_env }}" >> "$GITHUB_ENV"
@@ -220,45 +192,19 @@ jobs:
           echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
           echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
 
-      - name: Configure gem path
-        run: |
-          echo "GEM_HOME=$HOME/.gems" >> "$GITHUB_ENV"
-          echo "$HOME/.gems/bin" >> "$GITHUB_PATH"
-
-      - name: Cache Kamal gem
-        id: kamal-cache
-        uses: actions/cache@v4
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
-          path: ~/.gems
-          key: kamal-${{ runner.os }}-v1
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION }}
 
-      - name: Install Kamal
-        if: steps.kamal-cache.outputs.cache-hit != 'true'
-        run: gem install kamal --no-document
+      # Expose GHA cache env vars for Kamal's `docker buildx build --cache-from type=gha`.
+      # Recommended by https://docs.docker.com/build/cache/backends/gha/
+      - uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Prepare SSH key for Kamal
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION }}
-        run: |
-          mkdir -p .kamal
-          install -m 600 /dev/null .kamal/ssh_key
-          printf '%s\n' "$SSH_PRIVATE_KEY" > .kamal/ssh_key
-
-      - name: Expose GitHub Actions runtime for Docker cache
-        uses: actions/github-script@v7
+      - uses: ruby/setup-ruby@v1
         with:
-          script: |
-            const vars = [
-              'ACTIONS_CACHE_URL',
-              'ACTIONS_RUNTIME_TOKEN',
-              'ACTIONS_RUNTIME_URL',
-              'ACTIONS_RESULTS_URL',
-              'ACTIONS_CACHE_SERVICE_V2',
-            ];
-            for (const v of vars) {
-              const val = process.env[v];
-              if (val) core.exportVariable(v, val);
-            }
+          ruby-version: "3.4"
+
+      - run: gem install kamal --no-document
 
       - name: Deploy with Kamal
         env:
@@ -371,8 +317,7 @@ jobs:
       API_KEY: ${{ secrets.API_KEY }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
     steps:
-      - name: Checkout application repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Load infrastructure environment
         run: echo "${{ needs.infra.outputs.infra_env }}" >> "$GITHUB_ENV"
@@ -383,45 +328,19 @@ jobs:
           echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
           echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
 
-      - name: Configure gem path
-        run: |
-          echo "GEM_HOME=$HOME/.gems" >> "$GITHUB_ENV"
-          echo "$HOME/.gems/bin" >> "$GITHUB_PATH"
-
-      - name: Cache Kamal gem
-        id: kamal-cache
-        uses: actions/cache@v4
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
-          path: ~/.gems
-          key: kamal-${{ runner.os }}-v1
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install Kamal
-        if: steps.kamal-cache.outputs.cache-hit != 'true'
-        run: gem install kamal --no-document
+      # Expose GHA cache env vars for Kamal's `docker buildx build --cache-from type=gha`.
+      # Recommended by https://docs.docker.com/build/cache/backends/gha/
+      - uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Prepare SSH key for Kamal
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p .kamal
-          install -m 600 /dev/null .kamal/ssh_key
-          printf '%s\n' "$SSH_PRIVATE_KEY" > .kamal/ssh_key
-
-      - name: Expose GitHub Actions runtime for Docker cache
-        uses: actions/github-script@v7
+      - uses: ruby/setup-ruby@v1
         with:
-          script: |
-            const vars = [
-              'ACTIONS_CACHE_URL',
-              'ACTIONS_RUNTIME_TOKEN',
-              'ACTIONS_RUNTIME_URL',
-              'ACTIONS_RESULTS_URL',
-              'ACTIONS_CACHE_SERVICE_V2',
-            ];
-            for (const v of vars) {
-              const val = process.env[v];
-              if (val) core.exportVariable(v, val);
-            }
+          ruby-version: "3.4"
+
+      - run: gem install kamal --no-document
 
       - name: Deploy with Kamal
         env:
