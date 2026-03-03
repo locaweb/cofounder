@@ -85,7 +85,7 @@ If the user doesn't have a Locaweb Cloud account yet, recommend they go to [loca
 
 ## Database Credentials
 
-See [postgres-recipe.md](postgres-recipe.md) for the full `supabase/postgres` accessory configuration. See [env-vars.md -- Database Connection Variables](env-vars.md#database-connection-variables) for how the app uses `DATABASE_URL`.
+See the [`supabase/postgres` recipe](postgres-recipe.md) for the full accessory configuration. See [env-vars.md -- Database Connection Variables](env-vars.md#database-connection-variables) for how the app uses `DATABASE_URL`.
 
 Check if the database secrets are already set in the repo:
 

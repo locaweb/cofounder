@@ -68,7 +68,7 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **Volume pattern: `/data/{subdir}`** -- both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always mount subdirectories of `/data/`, never `/data/` root directly (see [references/env-vars.md -- Web Disk Storage Path](references/env-vars.md#disk-storage-path) for web usage, [references/postgres-recipe.md -- Volume Mount](references/postgres-recipe.md#volume-mount-datapgdata-not-data) for the database example). The ext4 filesystem creates `lost+found` at the mount root, which breaks Docker images that expect a clean directory on first boot (PostgreSQL `initdb`, Redis `appendonly.aof`, etc.).
 - **No Docker build in the caller workflow**: The caller's deploy job builds, pushes, and deploys the Docker image via Kamal. The caller workflow must **not** include any separate Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
 - **No TLS without a domain**: Let's Encrypt rate limits may apply to nip.io subdomains.
-- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. The **tech-stack** skill recommends PostgreSQL via `supabase/postgres` and covers database extension choices. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. See [references/postgres-recipe.md](references/postgres-recipe.md) for the `supabase/postgres` recipe.
+- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill.
 
 If the application's current design conflicts with any of these, resolve the conflict **before** proceeding with deployment setup.
 
@@ -76,7 +76,7 @@ If the application's current design conflicts with any of these, resolve the con
 
 ### `generate_pg_cmd.py`
 
-Outputs the complete PostgreSQL `cmd` string tuned for a VM plan, if using the `supabase/postgres` database recipe. Use this for the `accessories.db.cmd` field in `config/deploy.<environment>.yml`.
+Outputs the complete PostgreSQL `cmd` string tuned for a VM plan, if using the [`supabase/postgres` recipe](references/postgres-recipe.md). Use this for the `accessories.db.cmd` field in `config/deploy.<environment>.yml`.
 
 ```bash
 python3 generate_pg_cmd.py --plan medium
@@ -132,7 +132,7 @@ See [references/setup-and-deploy.md -- Database Credentials](references/setup-an
 
 Check which secrets already exist via `gh secret list`.
 
-If the app uses the `supabase/postgres` database recipe (see [references/postgres-recipe.md](references/postgres-recipe.md)), set up database secrets:
+If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md), set up database secrets:
 
 - Generate a random password for each environment
 - The user writes `POSTGRES_PASSWORD` as a GitHub Secret with the generated password
@@ -174,7 +174,7 @@ Kamal config applicable to all environments. See [references/env-vars.md](refere
 - **Workers** (if any) -- `servers.workers.cmd` and `servers.workers.proxy: false`
 - **Deployment timings** -- `readiness_delay`, `deploy_timeout`, `drain_timeout` (sensible defaults: 15, 180, 30)
 
-For Postgres accessories, use the recipe from [references/postgres-recipe.md](references/postgres-recipe.md). Generate the `cmd` string using `generate_pg_cmd.py --plan <chosen_plan>`.
+For Postgres accessories, follow the [`supabase/postgres` recipe](references/postgres-recipe.md). Generate the `cmd` string using `generate_pg_cmd.py --plan <chosen_plan>`.
 
 #### 7b: Environment-specific config (`config/deploy.{env}.yml`)
 
@@ -511,4 +511,4 @@ When the developer cannot run the language runtime or database locally, the Depl
 - **[references/env-vars.md](references/env-vars.md)** -- Environment variables and secrets configuration
 - **[references/scaling.md](references/scaling.md)** -- VM plans, worker scaling, disk sizes
 - **[references/teardown.md](references/teardown.md)** -- Teardown process, inferring parameters, reading outputs
-- **[references/postgres-recipe.md](references/postgres-recipe.md)** -- Complete supabase/postgres accessory recipe with hard-won knowledge
+- **[references/postgres-recipe.md](references/postgres-recipe.md)** -- Recipe for the `supabase/postgres` image, a Postgres image enriched with extensions as recommended by the **tech-stack** skill

@@ -1,6 +1,6 @@
 # supabase/postgres Accessory Recipe
 
-Hard-won knowledge about deploying the `supabase/postgres` image as a Kamal accessory. Every section documents a non-obvious behavior that was discovered through iteration. Follow this recipe exactly to avoid re-learning these lessons.
+Recipe for deploying the `supabase/postgres` image — a Postgres container image enriched with several extensions, as recommended by the **tech-stack** skill. Every section documents a non-obvious behavior discovered through iteration. Follow this recipe exactly to avoid re-learning these lessons.
 
 ## Table of Contents
 
