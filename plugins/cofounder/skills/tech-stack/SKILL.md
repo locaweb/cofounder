@@ -179,6 +179,8 @@ podman run -d \
 podman exec "$CONTAINER_NAME" pg_isready -U postgres
 ```
 
+If the app needs additional services beyond Postgres (Redis, n8n, WAHA, etc.), launch them as podman containers the same way — pull the public image, map the port, mount a local directory if persistence matters. These match the accessories that will be provisioned as dedicated VMs in deployment.
+
 ### 2. Start the Go API (terminal 1)
 
 ```bash

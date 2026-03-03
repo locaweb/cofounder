@@ -184,20 +184,32 @@ If the user gives feedback, iterate on the implementation accordingly and return
 
 When the user chooses to deploy:
 
-1. Use the Skill tool to invoke `cofounder:app-deploy` and follow the instructions.
-2. **Always start with the Preview environment only.**
-3. Explain the concept simply:
+1. **Determine accessories.** Each external service the app uses becomes an accessory — a dedicated VM with a persistent disk. Start with what the tech-stack established during development:
+   - If the app connects to PostgreSQL (the default), it needs a `db` accessory.
+   - If other services were introduced during development, each needs its own accessory.
+
+   Beyond the default stack, consider whether the app benefits from additional accessories:
+   - **Ready-to-use applications** from public Docker images — n8n, WAHA (WhatsApp gateway), WordPress, etc.
+   - **Infrastructure components** when Postgres and its bundled extensions aren't fit for the job — Redis, MySQL, Kafka, OpenSearch, Prometheus/Grafana, etc.
+
+   Adding an accessory is straightforward: add an entry to the `accessories` JSON in the provisioning workflow, matched with a corresponding block in the Kamal destination config. Use the **kamal** skill for Kamal accessory configuration details.
+
+   Carry this list into the app-deploy skill — it drives both the provisioning and the Kamal config, which must stay in sync.
+
+2. Use the Skill tool to invoke `cofounder:app-deploy` and follow the instructions.
+3. **Always start with the Preview environment only.**
+4. Explain the concept simply:
 
    > "We'll start with a Preview environment — think of it as a private version of your app on the internet. It lets us make sure everything works well in the cloud, and you can share it with your team or early testers. It's not the public version yet. When you're ready to launch it to the world, I'll help you set that up."
 
-4. Keep the user informed while monitoring workflow runs — translate GitHub Actions status into plain language.
-5. When giving the user a URL (preview or production), make it **very visible and distinguishable**:
+5. Keep the user informed while monitoring workflow runs — translate GitHub Actions status into plain language.
+6. When giving the user a URL (preview or production), make it **very visible and distinguishable**:
 
    > **Your app is live on the internet! Check it out:**
    >
    > **https://your-app-preview.example.com**
 
-6. **When the user asks for a custom domain:** Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
+7. **When the user asks for a custom domain:** Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
 
    > "Right now your app runs on the Preview environment. When you add a domain, you have two choices:
    >
