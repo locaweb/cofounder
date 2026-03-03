@@ -251,13 +251,13 @@ All inputs passed to the `infra` job (the reusable `provision.yml@v1` workflow):
 | `workers_plan` | string | `"small"` | VM size for workers. Choose based on worker workload intensity. See [scaling.md -- Scaling Workers](scaling.md#scaling-workers). |
 | `automatic_reboot` | boolean | `true` | Enable automatic reboot after unattended security upgrades. Usually leave as default. |
 | `automatic_reboot_time_utc` | string | `"05:00"` | When automatic reboots happen. Usually leave as default. |
-| `recover` | boolean | `false` | Reserved for future disaster recovery workflows. Do not use. |
+| `recover` | boolean | `false` | Enable disaster recovery from snapshots. See [recovery.md](recovery.md) for the full procedure. |
 
 ### Inputs to leave at defaults
 
 For most deployments, omit these (let defaults apply):
 - `automatic_reboot` / `automatic_reboot_time_utc` -- security auto-updates are good defaults
-- `recover` -- reserved for future use
+- `recover` -- only set to `true` for disaster recovery (see [recovery.md](recovery.md))
 - `web_disk_size_gb` -- 20 GB is sufficient for most apps unless heavy file storage
 
 ## Deploy Output Reference
@@ -303,7 +303,7 @@ jobs:
       workers_plan: "small"                  # Optional, default: "small"
       automatic_reboot: true                 # Optional, default: true
       automatic_reboot_time_utc: "05:00"     # Optional, default: "05:00"
-      recover: false                         # Optional, default: false (reserved for future DR)
+      recover: false                         # Optional, default: false (see recovery.md)
     secrets:
       CLOUDSTACK_API_KEY: ${{ secrets.CLOUDSTACK_API_KEY }}       # Required
       CLOUDSTACK_SECRET_KEY: ${{ secrets.CLOUDSTACK_SECRET_KEY }} # Required

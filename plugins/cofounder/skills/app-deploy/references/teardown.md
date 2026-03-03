@@ -124,7 +124,7 @@ The step summary (visible in the GitHub UI) also shows:
 
 The teardown script destroys resources in reverse creation order:
 
-1. **Snapshot policies** on all data volumes (the policies are deleted, but **existing snapshots are preserved** -- they remain available for potential future disaster recovery)
+1. **Snapshot policies** on all data volumes (the policies are deleted, but **existing snapshots are preserved** -- they remain available for [disaster recovery](recovery.md))
 2. **Data volumes** (web disk, accessory disks) -- detached then deleted
 3. **Static NAT mappings** on all public IPs
 4. **Firewall rules** on all public IPs
@@ -139,6 +139,6 @@ All `cmk` failures during teardown are treated as non-fatal warnings (resources 
 
 - **zone must match**: The teardown `zone` must match the zone where the environment was deployed. Resources in the wrong zone will not be found.
 - **env_name must match**: The teardown `env_name` must match the deploy `env_name` exactly. The resource naming pattern is `{repo-name}-{repository-id}-{env_name}`.
-- **Data disks are permanently deleted**: Teardown deletes data volumes (web and accessory disks). However, **snapshots taken before teardown are preserved** and remain in the CloudStack account. These snapshots may be useful for future disaster recovery workflows.
+- **Data disks are permanently deleted**: Teardown deletes data volumes (web and accessory disks). However, **snapshots taken before teardown are preserved** and remain in the CloudStack account. These snapshots can be used for [disaster recovery](recovery.md).
 - **Safe to re-run**: If some resources are already deleted (e.g., partial teardown), the script continues without failing.
 - **Shared concurrency group**: Teardown shares the `infra-{repository}-{env_name}` concurrency group with the deploy workflow, so a teardown cannot run while a deploy is in progress (and vice versa).

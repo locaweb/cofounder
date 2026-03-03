@@ -4,10 +4,11 @@ description: >
   This skill should be used when the user asks to "deploy to Locaweb Cloud", "set up GitHub Actions
   deployment workflows", "create a preview environment", "add a production environment", "tear down
   an environment", "configure a custom domain", "connect to the database", "check deployment logs",
-  "scale the VM", or asks about architecture decisions (monolith vs microservices, vertical vs
-  horizontal scaling), platform constraints (single Dockerfile, port 80, health check at /up),
-  managing secrets and environment variables, database migrations, or performing operations and troubleshooting on
-  live infrastructure (SSH access, container logs, health checks).
+  "scale the VM", "recover from snapshots", "disaster recovery", or asks about architecture decisions
+  (monolith vs microservices, vertical vs horizontal scaling), platform constraints (Postgres only,
+  single container, port 80), managing secrets and environment variables, Dockerfile requirements,
+  database migrations, or performing operations and troubleshooting on live infrastructure (SSH access,
+  container logs, health checks).
 ---
 
 # App Deploy
@@ -500,6 +501,12 @@ See [references/scaling.md](references/scaling.md) for VM plans, worker scaling,
 
 See [references/teardown.md](references/teardown.md) for tearing down environments, inferring zone/env_name from existing workflows, and reading last run outputs.
 
+## Disaster Recovery
+
+Every deployed environment has automatic daily snapshots of all data volumes. If an environment is lost (teardown, VM failure, or data corruption), it can be recovered by running the deploy workflow with `recover: true`. The provisioning script creates volumes from the most recent snapshots instead of blank disks, restoring data to the last snapshot point.
+
+See [references/recovery.md](references/recovery.md) for the full procedure, pre-flight requirements, and current limitations.
+
 ## Development Without Local Environment
 
 When the developer cannot run the language runtime or database locally, the Deployment Feedback Loop becomes the primary iteration cycle:
@@ -519,4 +526,5 @@ When the developer cannot run the language runtime or database locally, the Depl
 - **[references/env-vars.md](references/env-vars.md)** -- Environment variables and secrets configuration
 - **[references/scaling.md](references/scaling.md)** -- VM plans, worker scaling, disk sizes
 - **[references/teardown.md](references/teardown.md)** -- Teardown process, inferring parameters, reading outputs
+- **[references/recovery.md](references/recovery.md)** -- Disaster recovery from snapshots: procedure, pre-flight checks, limitations
 - **[references/postgres-recipe.md](references/postgres-recipe.md)** -- Recipe for the `supabase/postgres` image, a Postgres image enriched with extensions as recommended by the **tech-stack** skill
