@@ -109,17 +109,15 @@ If it errors about needing a Linux VM:
 podman machine init
 ```
 
-Add `--memory 1024` if the computer has less than 16 GB of RAM. Then:
+Add `--memory 1024` if the computer has less than 16 GB of RAM.
 
-> **Rosetta prompt:** During `podman machine start`, a system
-> window may appear asking to install Rosetta. Before the command is executed, tell the user to look for it on
-> their Desktop (it may be hidden behind other windows) and press **Install** to
-> proceed. Claude cannot interact with this window — the user must do it
-> themselves. Wait for the user to confirm before continuing.
+**IMPORTANT — before running `podman machine start`:** You MUST tell the user that a macOS system dialog may appear asking to install Rosetta. It can be hidden behind other windows — the user should look for it on their Desktop and press **Install** to proceed. Claude cannot interact with this dialog. Wait for the user to confirm they are ready before running the command.
 
 ```bash
 podman machine start
 ```
+
+After running, if the command appears to hang, remind the user to check for the Rosetta dialog again.
 
 Run connectivity test:
 
