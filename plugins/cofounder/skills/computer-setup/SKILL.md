@@ -6,7 +6,6 @@ description: >
   "install Scoop", "set up development environment", "install node",
   "install go", or needs to ensure all development prerequisites
   (Homebrew/Scoop, mise, podman, GH CLI) are installed and configured.
-version: 0.1.0
 ---
 
 # Computer Setup

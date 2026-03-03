@@ -5,7 +5,6 @@ description: >
   "initialize git", "create a remote repository", "push to GitHub", "log in to GitHub",
   "gh auth", "set up GitHub", or asks about initializing a local and remote repository
   and pushing it to GitHub.
-version: 0.3.0
 ---
 
 # Repository Setup
@@ -16,10 +15,18 @@ environments.
 
 ## Prerequisites
 
-A GitHub account is required before proceeding. If the user does not have one,
-refer to the **GitHub Account Creation** skill for sign-up instructions.
-
 The **computer-setup** skill must have been run first — it installs `gh` and `git`.
+
+A GitHub account is required before proceeding. If the user does not have one,
+guide them through account creation:
+
+1. Navigate to <https://github.com/>.
+2. Click **Sign up** (or **Continue with Google** for social login).
+3. Follow the prompts and verify the email address — without a verified email,
+   repository creation will fail.
+
+Recommend enabling two-factor authentication after sign-up. For more details,
+see [Creating an account on GitHub](https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github).
 
 ## Authentication
 

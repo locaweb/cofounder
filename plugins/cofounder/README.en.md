@@ -129,7 +129,6 @@ Just describe what you want in your own words — no technical knowledge require
 | `computer-setup` | Installs prerequisites (Homebrew/Scoop, mise, podman, GH CLI) |
 | `pre-flight-check` | Validates environment prerequisites |
 | `repo-setup` | Git + GitHub repository initialization |
-| `github-account` | Guides GitHub account creation |
 | `tech-stack` | Full-stack app development (Go, React, PostgreSQL) |
 | `frontend-design` | Distinctive UI/UX design guidance |
 | `webapp-testing` | Playwright-based end-to-end testing |

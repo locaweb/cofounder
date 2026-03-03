@@ -129,7 +129,6 @@ Basta descrever o que você quer com suas próprias palavras — nenhum conhecim
 | `computer-setup` | Instala pré-requisitos (Homebrew/Scoop, mise, podman, GH CLI) |
 | `pre-flight-check` | Valida pré-requisitos do ambiente |
 | `repo-setup` | Inicialização do repositório Git + GitHub |
-| `github-account` | Orienta a criação de conta no GitHub |
 | `tech-stack` | Desenvolvimento full-stack (Go, React, PostgreSQL) |
 | `frontend-design` | Orientação de design UI/UX diferenciado |
 | `webapp-testing` | Testes end-to-end com Playwright |

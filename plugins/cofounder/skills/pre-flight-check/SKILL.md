@@ -7,7 +7,6 @@ description: >
   initialization. It verifies the working directory is not the home folder
   and no pre-existing untracked content conflicts with setup. It runs after
   computer-setup and before repo-setup.
-version: 0.3.0
 ---
 
 # Pre-Flight Check
