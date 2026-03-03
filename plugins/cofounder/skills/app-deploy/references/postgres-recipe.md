@@ -8,20 +8,21 @@ Hard-won knowledge about deploying the `supabase/postgres` image as a Kamal acce
 - [The `-D /etc/postgresql` Flag](#the--d-etcpostgresql-flag)
 - [Volume Mount: `/data/pgdata`, Not `/data/`](#volume-mount-datapgdata-not-data)
 - [Container Env: Only `POSTGRES_PASSWORD`](#container-env-only-postgres_password)
-- [DATABASE\_URL as a Static GitHub Secret](#database_url-as-a-static-github-secret)
+- [DATABASE\_URL Derived from POSTGRES\_PASSWORD](#database_url-derived-from-postgres_password)
 - [Tuning with `generate_pg_cmd.py`](#tuning-with-generate_pg_cmdpy)
 - [Plan-to-RAM Mapping Table](#plan-to-ram-mapping-table)
 - [Sync with Workflow](#sync-with-workflow)
 
 ## Complete Accessory Recipe
 
-The `deploy.yml` snippet for the database accessory:
+The full accessory definition goes in the environment-specific config (`config/deploy.<env>.yml`):
 
 ```yaml
+# config/deploy.preview.yml
 accessories:
   db:
     image: supabase/postgres:17.6.1.093
-    # host goes in the destination file (e.g. deploy.preview.yml)
+    host: <%= ENV['INFRA_DB_IP'] %>
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100"
     env:
@@ -31,20 +32,11 @@ accessories:
       - /data/pgdata:/var/lib/postgresql/data
 ```
 
-The destination file sets the host IP:
-
-```yaml
-# config/deploy.preview.yml
-accessories:
-  db:
-    host: <%= ENV['INFRA_DB_IP'] %>
-```
-
-The `.kamal/secrets.<destination>` file (agent-owned, one per environment, app secrets only -- registry is handled by the workflow):
+The `.kamal/secrets.<destination>` file (agent-owned, one per environment):
 
 ```
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=$DATABASE_URL
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
 ```
 
 The `cmd` values shown above are for a `medium` plan (4 GiB RAM). Use `generate_pg_cmd.py` to compute plan-specific tuning -- see [Tuning with `generate_pg_cmd.py`](#tuning-with-generate_pg_cmdpy).
@@ -98,12 +90,13 @@ accessories:
         - POSTGRES_PASSWORD
 ```
 
-## DATABASE_URL as a Static GitHub Secret
+## DATABASE_URL Derived from POSTGRES_PASSWORD
 
-The application containers receive `DATABASE_URL` as a separate secret from the Postgres container's `POSTGRES_PASSWORD`. The user writes `DATABASE_URL` once as a GitHub Secret at setup time:
+`DATABASE_URL` is **not** a separate GitHub Secret. It is derived from `POSTGRES_PASSWORD` directly in the `.kamal/secrets` file. See [env-vars.md -- Database Connection Variables](env-vars.md#database-connection-variables) for how the app uses this variable:
 
 ```
-postgres://postgres:mypassword@db:5432/postgres
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
 ```
 
 Breakdown:
@@ -112,13 +105,17 @@ Breakdown:
 - **Host**: `db` -- matches the accessory name. CloudStack DNS resolves it to the accessory VM's internal (private) IP within the isolated network
 - **Port**: `5432`
 
-No runtime composition is needed. The hostname `db` is deterministic (it matches the accessory name and VM name), and the password is known at setup time. The workflow never sees, composes, or passes through `DATABASE_URL` -- it flows from GitHub Secret to runner environment to Kamal to container.
-
-The corresponding GitHub Secrets the user must create:
+The hostname `db` is deterministic (it matches the accessory name and VM name). The only GitHub Secret the user must create is:
 
 ```
 POSTGRES_PASSWORD=<random password>
-DATABASE_URL=postgres://postgres:<same password>@db:5432/postgres
+```
+
+For non-preview environments, use the suffixed variable:
+
+```
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD_PRODUCTION}@db:5432/postgres
 ```
 
 ## Tuning with `generate_pg_cmd.py`
@@ -137,7 +134,7 @@ Example output for `--plan medium`:
 postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100
 ```
 
-The agent runs this script with the chosen plan and uses the output as the value for `accessories.db.cmd` in `deploy.yml`.
+The agent runs this script with the chosen plan and uses the output as the value for `accessories.db.cmd` in `config/deploy.<env>.yml`.
 
 ### Tuning algorithm
 
@@ -153,7 +150,7 @@ The script computes five PostgreSQL parameters from the plan's RAM:
 
 ## Plan-to-RAM Mapping Table
 
-Each plan corresponds to a VM with a fixed amount of RAM. The plan name determines how `generate_pg_cmd.py` tunes PostgreSQL:
+Each plan corresponds to a VM with a fixed amount of RAM (see [scaling.md -- VM Plans](scaling.md#vm-plans) for the full vCPU/memory table). The plan name determines how `generate_pg_cmd.py` tunes PostgreSQL:
 
 | Plan | RAM (MiB) |
 |---|---|
@@ -173,7 +170,7 @@ The `accessories` workflow input is a JSON array. It must include an entry for t
 [{"name": "db", "plan": "<chosen-plan>", "disk_size_gb": <size>}]
 ```
 
-- **`name`**: must be `db` (matches the accessory name in `deploy.yml`)
+- **`name`**: must be `db` (matches the accessory name in `config/deploy.<env>.yml`)
 - **`plan`**: one of the plans from the table above. Determines the VM size and therefore the RAM available for PostgreSQL tuning
 - **`disk_size_gb`**: size of the data disk attached to the database VM. This is the disk mounted at `/data/` where PostgreSQL stores its data (via the `/data/pgdata` subdirectory)
 

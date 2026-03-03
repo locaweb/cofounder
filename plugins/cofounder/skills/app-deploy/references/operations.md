@@ -4,11 +4,11 @@ Reference for interacting with deployed infrastructure: finding IPs, SSH access,
 
 ## Finding Deployment IPs
 
-Every deploy workflow run produces a `provision-output` artifact containing a JSON file with all IPs. **Always clean up before downloading** to avoid reading stale data from a previous run:
+Every deploy workflow run produces a `provision-output` artifact containing a JSON file with all IPs (see [workflows.md -- Deploy Output Reference](workflows.md#deploy-output-reference) for the full output spec). **Always clean up before downloading** to avoid reading stale data from a previous run:
 
 ```bash
 # 1. Find the run ID for the environment you need
-gh run list --workflow=deploy.yml --limit=5
+gh run list --workflow=deploy-preview.yml --limit=5
 
 # 2. Clean up any previous artifact, then download
 rm -rf /tmp/provision-output
@@ -55,7 +55,7 @@ gh run view <run-id>
 
 ## SSH Access
 
-**User is always `root`.** Use the SSH key that matches the environment.
+**User is always `root`.** Use the SSH key that matches the environment. See [setup-and-deploy.md -- SSH Key Generation](setup-and-deploy.md#ssh-key-generation) for how these keys are generated.
 
 ### Key locations
 

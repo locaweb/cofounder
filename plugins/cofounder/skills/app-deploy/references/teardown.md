@@ -103,7 +103,7 @@ These IPs confirm which deployment is active and help verify the environment bef
 
 ## Reading Last Run Outputs
 
-To retrieve deployment information from a previous run:
+To retrieve deployment information from a previous run (see also [operations.md -- Finding Deployment IPs](operations.md#finding-deployment-ips)):
 
 ```bash
 # Find the latest successful deploy run

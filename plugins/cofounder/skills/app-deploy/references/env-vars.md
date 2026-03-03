@@ -10,16 +10,21 @@
 
 ## Clear Variables (deploy.yml)
 
-Non-sensitive configuration variables are written directly in `deploy.yml` under `env.clear`. The agent writes these when creating the deploy configuration.
+Non-sensitive configuration variables are written under `env.clear`. Variables common to all environments go in `config/deploy.yml`; environment-specific variables go in `config/deploy.<env>.yml`.
 
 ```yaml
-# In deploy.yml
+# config/deploy.yml -- common to all environments
+env:
+  clear:
+    LOG_LEVEL: debug
+    MAX_UPLOAD_SIZE: 50MB
+```
+
+```yaml
+# config/deploy.preview.yml -- environment-specific
 env:
   clear:
     APP_ENV: preview
-    LOG_LEVEL: debug
-    MAX_UPLOAD_SIZE: 50MB
-    FEATURE_FLAG_NEW_UI: "true"
 ```
 
 These become clear (non-secret) environment variables in the container.
@@ -43,52 +48,55 @@ deploy:
   runs-on: ubuntu-latest
   env:
     POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-    DATABASE_URL: ${{ secrets.DATABASE_URL }}
     API_KEY: ${{ secrets.API_KEY }}
 ```
 
-3. **Kamal reads from the environment** via `.kamal/secrets.<destination>` and injects them into the container.
+3. **Kamal reads from the environment** via `.kamal/secrets-common` and `.kamal/secrets.<destination>` and injects them into the container.
 
 Store each secret **individually** as a GitHub Secret. Ask the user to set these via the GitHub UI (see [setup-and-deploy.md -- Secrets the user must set via GitHub UI](setup-and-deploy.md#secrets-the-user-must-set-via-github-ui)). **Never** accept secret values through the chat.
 
+Secrets like `DATABASE_URL` that can be derived from other secrets do not need their own GitHub Secret -- they are composed in the `.kamal/secrets` file.
+
 ### deploy.yml and .kamal/secrets configuration
 
-The agent writes the secret names in `deploy.yml` and `.kamal/secrets.<destination>`:
+The agent writes secret names in `env.secret` blocks and `.kamal/secrets` files. Common secrets go in `config/deploy.yml` and `.kamal/secrets-common`; environment-specific secrets go in `config/deploy.<env>.yml` and `.kamal/secrets.<env>`:
 
 ```yaml
-# In deploy.yml
+# config/deploy.yml -- secrets common to all environments
 env:
-  clear:
-    APP_ENV: preview
-    LOG_LEVEL: debug
+  secret:
+    - MY_SECRET
+```
+
+```yaml
+# config/deploy.preview.yml -- environment-specific secrets
+env:
   secret:
     - POSTGRES_PASSWORD
     - DATABASE_URL
-    - API_KEY
-    - SMTP_PASSWORD
 ```
 
-For **preview** (default environment), the `.kamal/secrets` file uses unsuffixed env var names -- the env var name matches the GitHub Secret name:
+For **preview** (default environment), the `.kamal/secrets` file uses unsuffixed env var names. Derived secrets like `DATABASE_URL` are composed inline:
 
 ```bash
 # .kamal/secrets.preview
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=$DATABASE_URL
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
 API_KEY=$API_KEY
-SMTP_PASSWORD=$SMTP_PASSWORD
 ```
 
-For **non-preview** environments (e.g., production), the `.kamal/secrets` file maps the Kamal secret name (left side) to the suffixed env var name (right side) -- the suffixed name matches the GitHub Secret name:
+For **non-preview** environments (e.g., production), the `.kamal/secrets` file maps the Kamal secret name (left side) to the suffixed env var name (right side):
 
 ```bash
 # .kamal/secrets.production
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
-DATABASE_URL=$DATABASE_URL_PRODUCTION
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD_PRODUCTION}@db:5432/postgres
 API_KEY=$API_KEY_PRODUCTION
-SMTP_PASSWORD=$SMTP_PASSWORD_PRODUCTION
 ```
 
 ## Passing Variables in Caller Workflows
+
+See [workflows.md](workflows.md) for complete caller workflow examples showing the two-job pattern. See [setup-and-deploy.md -- Creating GitHub Secrets](setup-and-deploy.md#creating-github-secrets) for how to create the secrets referenced below.
 
 Complete example showing both clear and secret custom variables for a production environment. Note the two-job pattern: infra job handles infrastructure, deploy job handles Kamal and application secrets. Environment-scoped secrets use the `_PRODUCTION` suffix, while common secrets (`CLOUDSTACK_*`) are shared across all environments:
 
@@ -110,7 +118,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POSTGRES_PASSWORD_PRODUCTION: ${{ secrets.POSTGRES_PASSWORD_PRODUCTION }}
-      DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
       API_KEY_PRODUCTION: ${{ secrets.API_KEY_PRODUCTION }}
       JWT_SECRET_PRODUCTION: ${{ secrets.JWT_SECRET_PRODUCTION }}
     steps:
@@ -121,7 +128,7 @@ Clear variables are written directly in `deploy.yml` by the agent -- they are no
 
 ## Database Connection Variables
 
-The application uses `DATABASE_URL` to connect to the database. This is a **static GitHub Secret** set once at setup time.
+The application uses `DATABASE_URL` to connect to the database. This is **derived from `POSTGRES_PASSWORD`** in the `.kamal/secrets` file -- it is not a separate GitHub Secret. See [postgres-recipe.md -- DATABASE_URL Derived from POSTGRES_PASSWORD](postgres-recipe.md#database_url-derived-from-postgres_password) for the full recipe.
 
 The hostname in `DATABASE_URL` is `db`, which resolves via CloudStack internal DNS to the database VM's private IP. The format is:
 

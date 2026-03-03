@@ -2,29 +2,37 @@
 
 ## Table of Contents
 
-- [Two-Job Pattern](#two-job-pattern)
-- [Preview Workflow (Default)](#preview-workflow-default)
-- [Additional Environments](#additional-environments)
-- [Deploy Input Reference](#deploy-input-reference)
-- [Deploy Output Reference](#deploy-output-reference)
-- [Complete Example (All Inputs)](#complete-example-all-inputs)
-- [Workflow Permissions](#workflow-permissions)
-- [Passing Outputs to Downstream Jobs](#passing-outputs-to-downstream-jobs)
+- [Caller Workflow Reference](#caller-workflow-reference)
+  - [Table of Contents](#table-of-contents)
+  - [Two-Job Pattern](#two-job-pattern)
+  - [Preview Environment (Default)](#preview-environment-default)
+    - [Preview Workflow Example](#preview-workflow-example)
+  - [Additional Environments](#additional-environments)
+    - [Secret naming convention](#secret-naming-convention)
+  - [Production environment example](#production-environment-example)
+  - [Deploy Input Reference](#deploy-input-reference)
+    - [Inputs to leave at defaults](#inputs-to-leave-at-defaults)
+  - [Deploy Output Reference](#deploy-output-reference)
+  - [Complete Example (All Inputs)](#complete-example-all-inputs)
+  - [Workflow Permissions](#workflow-permissions)
+  - [No Docker Build Steps in Caller Workflows](#no-docker-build-steps-in-caller-workflows)
+  - [No `secrets: inherit`](#no-secrets-inherit)
+  - [Passing Outputs to Downstream Jobs](#passing-outputs-to-downstream-jobs)
 
 ## Two-Job Pattern
 
-Caller workflows use two jobs: **infra** (infrastructure provisioning) and **deploy** (application deployment with Kamal). The infra job calls the reusable `provision.yml@v1` workflow, which provisions VMs, networks, disks, and firewall rules. The deploy job runs Kamal to build, push, and deploy the Docker image.
+Caller workflows use two jobs: **provision** (infrastructure provisioning) and **deploy** (application deployment with Kamal). The provision job calls the reusable `provision.yml@v1` workflow, which provisions VMs, networks, disks, and firewall rules. The deploy job runs Kamal to build, push, and deploy the Docker image.
 
 This separation means:
-- The reusable workflow handles only infrastructure and outputs everything the deploy job needs
-- The caller's deploy job owns the Kamal lifecycle (install, SSH key, Docker cache, `kamal setup`/`kamal deploy`)
-- Application secrets flow directly from GitHub Secrets to the deploy job's `env:` block, not through the reusable workflow
+- The provision job handles only infrastructure and outputs everything the deploy job needs
+- The deploy job owns the Kamal lifecycle (install, SSH key, Docker cache, `kamal setup`/`kamal deploy`)
+- Application secrets flow directly from GitHub Secrets to the deploy job's `env:` block
 
-Use `generate_deploy_workflow.py` to generate these workflows deterministically. See [Generating Scripts](../SKILL.md#generating-scripts) for usage.
+## Preview Environment (Default)
 
-## Preview Workflow (Default)
+The default preview environment is triggered on push, immediately reflecting changes to the main branch -- matching a typical developer workflow. If no domain is provided, it uses nip.io for immediate access with TLS. Since `"preview"` is the default `env_name`, secrets use unsuffixed names.
 
-The default preview environment is triggered on push, immediately reflecting changes to the main branch -- matching a typical developer workflow. No domain needed, uses nip.io for immediate access with TLS. Since `"preview"` is the default `env_name`, secrets use unsuffixed names.
+### Preview Workflow Example
 
 ```yaml
 # .github/workflows/deploy-preview.yml
@@ -45,6 +53,8 @@ jobs:
       env_name: "preview"
       zone: "ZP01"
       accessories: '[{"name":"db","plan":"medium","disk_size_gb":20}]'
+      # workers_replicas: 2                  # Optional, default: 0 (0 = no workers)
+      # workers_plan: "small"                # Optional, default: "small"
     secrets:
       CLOUDSTACK_API_KEY: ${{ secrets.CLOUDSTACK_API_KEY }}
       CLOUDSTACK_SECRET_KEY: ${{ secrets.CLOUDSTACK_SECRET_KEY }}
@@ -55,7 +65,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout application repository
         uses: actions/checkout@v4
@@ -145,7 +154,7 @@ Other environments can be created depending on your processes, changing the trig
 
 ### Secret naming convention
 
-Secrets flow directly from GitHub Secrets to the deploy job's `env:` block. The naming convention determines the GitHub Secret name and the environment variable name on the runner:
+Secrets flow directly from GitHub Secrets to the deploy job's `env:` block (see [env-vars.md -- Secret Variables](env-vars.md#secret-variables) for the full secrets configuration reference). The naming convention determines the GitHub Secret name and the environment variable name on the runner:
 
 **Preview** (default environment) -- unsuffixed names:
 - GitHub Secret: `POSTGRES_PASSWORD` → env var: `POSTGRES_PASSWORD`
@@ -162,7 +171,7 @@ Infrastructure secrets scoped to a specific environment also use the suffix:
 
 Secrets **common to all environments** (e.g., `CLOUDSTACK_API_KEY`, `CLOUDSTACK_SECRET_KEY`) don't need suffixes -- just pass them in every caller workflow.
 
-### Production workflow example
+## Production environment example
 
 A recommended additional environment is **"production"**, triggered on version tags (`v*`). A tag signals that the pointed commit is ready for production.
 
@@ -186,6 +195,8 @@ jobs:
       web_plan: "medium"
       web_disk_size_gb: 50
       accessories: '[{"name":"db","plan":"medium","disk_size_gb":50}]'
+      # workers_replicas: 2                  # Optional, default: 0 (0 = no workers)
+      # workers_plan: "small"                # Optional, default: "small"
     secrets:
       CLOUDSTACK_API_KEY: ${{ secrets.CLOUDSTACK_API_KEY }}
       CLOUDSTACK_SECRET_KEY: ${{ secrets.CLOUDSTACK_SECRET_KEY }}
@@ -196,7 +207,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POSTGRES_PASSWORD_PRODUCTION: ${{ secrets.POSTGRES_PASSWORD_PRODUCTION }}
-      DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
     steps:
       - name: Checkout application repository
         uses: actions/checkout@v4
@@ -288,11 +298,11 @@ All inputs passed to the `infra` job (the reusable `provision.yml@v1` workflow):
 |-------|------|---------|-------------|
 | `env_name` | string | `"preview"` | Name of the environment. Each env_name creates fully isolated infrastructure. Defaults to `"preview"` if omitted. |
 | `zone` | string | `"ZP01"` | CloudStack zone. Usually leave as default. Use `ZP02` for geographic redundancy. |
-| `web_plan` | string | `"small"` | Choose based on runtime footprint and environment. See [scaling.md](scaling.md) for plan specs. |
+| `web_plan` | string | `"small"` | Choose based on runtime footprint and environment. See [scaling.md -- VM Plans](scaling.md#vm-plans) for plan specs. |
 | `web_disk_size_gb` | number | `20` | Persistent disk attached to the web VM at `/data`. Increase if the app stores files (uploads, media). Can only grow, never shrink. |
 | `accessories` | string (JSON) | `"[]"` | JSON array defining accessories. Each entry has `name`, `plan`, and `disk_size_gb` fields. Example: `'[{"name":"db","plan":"medium","disk_size_gb":20}]'` |
 | `workers_replicas` | number | `0` | Number of worker VMs. `0` means no workers. Set to 1 or more to enable background processing. |
-| `workers_plan` | string | `"small"` | VM size for workers. Choose based on worker workload intensity. See [scaling.md](scaling.md). |
+| `workers_plan` | string | `"small"` | VM size for workers. Choose based on worker workload intensity. See [scaling.md -- Scaling Workers](scaling.md#scaling-workers). |
 | `automatic_reboot` | boolean | `true` | Enable automatic reboot after unattended security upgrades. Usually leave as default. |
 | `automatic_reboot_time_utc` | string | `"05:00"` | When automatic reboots happen. Usually leave as default. |
 | `recover` | boolean | `false` | Reserved for future disaster recovery workflows. Do not use. |
@@ -358,7 +368,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       API_KEY: ${{ secrets.API_KEY }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
     steps:

@@ -1,0 +1,46 @@
+service: <%= ENV['REPO_NAME'] %> # do not change
+image: <%= ENV['REPO_FULL'] %> # do not change
+
+proxy:
+  app_port: 80 # if changed, update your application's port
+  forward_headers: false # do not change
+  healthcheck:
+    path: /up # if changed, update your application's healthcheck path
+    interval: 3 # recommended, tune for your application
+    timeout: 5 # recommended, tune for your application
+
+ssh:
+  user: root # do not change
+  keys: [.kamal/ssh_key]
+
+registry:
+  server: ghcr.io
+  username: <%= ENV['REPO_OWNER'] %> # do not change
+  password:
+    - KAMAL_REGISTRY_PASSWORD # do not change
+
+builder: # do not change
+  arch: amd64
+  cache:
+    type: gha
+    options: mode=max
+
+env: # environment variables from secrets and clear variables, applicable to all environments
+  clear:
+    BLOB_STORAGE_PATH: /data/blobs
+    MY_VAR: hello-from-e2e
+  secret:
+    - MY_SECRET # secrets common to all environments, obtained from .kamal/secrets-common
+
+volumes: # volumes from the web VM, applicable to all environments
+  - /data/blobs:/data/blobs
+
+servers: # only needed if using workers
+  workers:
+    cmd: "celery -A tasks worker --loglevel=info" # your worker command
+    proxy: false
+
+readiness_delay: 15 # recommended, tune for your application
+deploy_timeout: 180 # recommended, tune for your application
+drain_timeout: 30 # recommended, tune for your application
+

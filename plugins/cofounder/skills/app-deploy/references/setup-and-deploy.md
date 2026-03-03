@@ -27,6 +27,7 @@ If `origin` is not set, use the **repo-setup** skill to initialize the repositor
 
 ## SSH Key Generation
 
+See also [operations.md -- SSH Access](operations.md#ssh-access) for using these keys to connect to VMs after deployment.
 
 ### Preview environment key
 
@@ -84,13 +85,15 @@ If the user doesn't have a Locaweb Cloud account yet, recommend they go to [loca
 
 ## Database Credentials
 
+See [postgres-recipe.md](postgres-recipe.md) for the full `supabase/postgres` accessory configuration. See [env-vars.md -- Database Connection Variables](env-vars.md#database-connection-variables) for how the app uses `DATABASE_URL`.
+
 Check if the database secrets are already set in the repo:
 
 ```bash
 gh secret list
 ```
 
-If `POSTGRES_PASSWORD` and `DATABASE_URL` already appear, skip this step.
+If `POSTGRES_PASSWORD` already appears, skip this step.
 
 ### Generate the Postgres password
 
@@ -104,23 +107,21 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-### Create the DATABASE_URL
+### DATABASE_URL
 
-`DATABASE_URL` is a **static GitHub Secret** created once at setup time. The hostname is `db`, which resolves via CloudStack internal DNS to the database VM's private IP.
+`DATABASE_URL` is **not** a separate GitHub Secret. It is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file:
 
-Format: `postgres://postgres:<password>@db:5432/postgres`
-
-For example, if the generated password is `abc123`:
 ```
-postgres://postgres:abc123@db:5432/postgres
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
 ```
 
-The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`, `DATABASE_URL`.
+The hostname `db` resolves via CloudStack internal DNS to the database VM's private IP. User is always `postgres`, database is always `postgres`.
+
+The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`.
 
 Additional environments use suffixed names matching the environment name:
-- `POSTGRES_PASSWORD_PRODUCTION`, `DATABASE_URL_PRODUCTION` for the "production" environment
-
-The caller workflow maps the suffixed secrets to the reusable workflow's standard secret names.
+- `POSTGRES_PASSWORD_PRODUCTION` for the "production" environment
+- The `.kamal/secrets.production` file derives `DATABASE_URL` from the suffixed variable: `DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD_PRODUCTION}@db:5432/postgres`
 
 ## Creating GitHub Secrets
 
@@ -132,11 +133,11 @@ gh secret list
 
 Only create secrets that are **not already present**.
 
-**Security rule:** Never accept secret values through the chat -- they would be stored in conversation history. For secrets the agent knows (generated passwords, locally computed DATABASE_URL, local SSH keys), the agent can set them directly. For secrets only the user knows (CloudStack keys, app API keys), ask the user to set them via the GitHub UI (see [Secrets the user must set via GitHub UI](#secrets-the-user-must-set-via-github-ui)).
+**Security rule:** Never accept secret values through the chat -- they would be stored in conversation history. For secrets the agent knows (generated passwords, local SSH keys), the agent can set them directly. For secrets only the user knows (CloudStack keys, app API keys), ask the user to set them via the GitHub UI (see [Secrets the user must set via GitHub UI](#secrets-the-user-must-set-via-github-ui)).
 
 ### Secrets the agent can set directly
 
-Three infrastructure secrets per environment, plus the DATABASE_URL:
+Infrastructure and database secrets per environment:
 
 ```bash
 # SSH private key for preview (skip if already set)
@@ -150,13 +151,9 @@ gh secret set POSTGRES_PASSWORD --body "<generated password>"
 
 # Postgres password for additional environments, e.g. production (skip if already set)
 gh secret set POSTGRES_PASSWORD_PRODUCTION --body "<generated password>"
-
-# DATABASE_URL for preview (skip if already set)
-gh secret set DATABASE_URL --body "postgres://postgres:<generated password>@db:5432/postgres"
-
-# DATABASE_URL for additional environments, e.g. production (skip if already set)
-gh secret set DATABASE_URL_PRODUCTION --body "postgres://postgres:<generated password>@db:5432/postgres"
 ```
+
+Note: `DATABASE_URL` does not need a GitHub Secret -- it is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file.
 
 ### Secrets the user must set via GitHub UI
 
@@ -186,13 +183,12 @@ App-specific secrets -- store each one **individually**:
 | `API_KEY` | *(describe where the user can find this value)* |
 | `SMTP_PASSWORD` | *(describe where the user can find this value)* |
 
-After adding secrets, map them in the caller workflow's deploy job `env:` block (or regenerate the workflow with `generate_deploy_workflow.py --secrets`):
+After adding secrets, map them in the caller workflow's deploy job `env:` block:
 
 ```yaml
 # In deploy job
 env:
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
   API_KEY: ${{ secrets.API_KEY }}
   SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
 ```
@@ -207,7 +203,7 @@ gh secret list
 
 ## Deploy Configuration Files
 
-The agent creates the following files as part of setup:
+The agent creates the following files as part of setup. See [env-vars.md](env-vars.md) for the full environment variables and secrets configuration reference.
 
 ### deploy.yml
 
@@ -220,14 +216,14 @@ One secrets file per destination. Each maps secret environment variable names so
 ```bash
 # .kamal/secrets.preview (unsuffixed — env var names match GitHub Secret names)
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=$DATABASE_URL
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
 API_KEY=$API_KEY
 ```
 
 ```bash
 # .kamal/secrets.production (suffixed — right side matches suffixed GitHub Secret names)
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
-DATABASE_URL=$DATABASE_URL_PRODUCTION
+DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD_PRODUCTION}@db:5432/postgres
 API_KEY=$API_KEY_PRODUCTION
 STRIPE_LIVE_KEY=$STRIPE_LIVE_KEY_PRODUCTION
 ```

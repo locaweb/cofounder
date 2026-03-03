@@ -42,7 +42,7 @@ Different language runtimes (e.g., Go, Python, Node.js, Java) have varying basel
 
 Each accessory (database, redis, etc.) has its own `plan` inside the `accessories` JSON input. Consider the expected workload for each:
 
-- **Database (db)**:
+- **Database (db)** (see [postgres-recipe.md -- Tuning with generate_pg_cmd.py](postgres-recipe.md#tuning-with-generate_pg_cmdpy) for plan-specific PostgreSQL tuning):
   - Small datasets (<1 GB), simple queries: `small` or `medium`
   - Medium datasets (1-10 GB), moderate queries: `medium` or `large`
   - Large datasets (>10 GB), complex queries or many connections: `large` or above
@@ -127,7 +127,7 @@ Workers are stateless and do not have data disks.
 
 ## How Scaling Works
 
-Scaling happens through the normal deploy workflow -- there is no separate "scale" action. Re-run the deploy workflow with updated inputs:
+Scaling happens through the normal deploy workflow -- there is no separate "scale" action. Re-run the deploy workflow with updated inputs (see [workflows.md -- Deploy Input Reference](workflows.md#deploy-input-reference) for all available inputs):
 
 1. The provisioning script detects existing resources by name
 2. For VMs: compares current service offering to desired; if different, stops the VM, scales it, and starts it again (expect brief downtime)
