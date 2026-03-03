@@ -164,16 +164,39 @@ gh version
 wsl --status
 ```
 
-Interpret the output: look for "Default Version: 2". If WSL2 is not installed
-or the default version is not 2, tell the user to:
+Interpret the **entire** output, not just the version line. "Default Version: 2"
+may appear even when WSL2 is not yet functional — the output can still contain
+errors indicating that required Windows features are missing. Read all lines
+carefully and watch for any message about unsupported configurations, missing
+optional components, or virtualization not being enabled.
+
+For example, the output may show "Default Version: 2" alongside errors like:
+
+```
+WSL2 is not supported with your current machine configuration.
+Please enable the "Virtual Machine Platform" optional component and ensure
+virtualization is enabled in the BIOS.
+Enable "Virtual Machine Platform" by running: wsl.exe --install --no-distribution
+```
+
+If any such error appears, tell the user to:
+
+1. Open **PowerShell as Administrator**
+2. Run the command indicated in the error output (in the example above,
+   `wsl.exe --install --no-distribution`) and wait for it to complete
+3. Reboot the computer
+4. Return to Claude Code after reboot
+
+If WSL2 is not installed at all or the default version is not 2, tell the user
+to:
 
 1. Open **PowerShell as Administrator**
 2. Run `wsl --install`
 3. Reboot the computer
 4. Return to Claude Code after reboot
 
-After reboot, re-run `wsl --status` to confirm. A second `wsl --install` run
-may be needed in some cases.
+After reboot, re-run `wsl --status` to confirm. A second install run may be
+needed in some cases.
 
 ### 2. Check Podman
 
@@ -334,7 +357,7 @@ Add `"autoUpdate": true` as the last field in that object:
 
 - **Homebrew/mise/podman not found after install**: Restart Claude so the new PATH takes effect
 - **Podman machine fails to start**: Check that virtualization is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting hypervisor (e.g., Docker Desktop) holds the VM socket.
-- **WSL issues on Windows**: Ask the user to run `wsl --install` in PowerShell as Administrator, confirm success and reboot the computer.
+- **WSL issues on Windows**: "Default Version: 2" does not guarantee WSL2 is working — errors about missing components may follow. If the output mentions "Virtual Machine Platform" or similar, ask the user to run `wsl.exe --install --no-distribution` in PowerShell as Administrator, then reboot. Otherwise, use `wsl --install`.
 - **Connectivity test fails**: The nginx container may need an extra second. Re-run the curl check. If it persists, check firewall rules and that port 18080 is free.
 
 ## Bundled Resources
