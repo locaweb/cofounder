@@ -88,8 +88,8 @@ accessories:
 Key characteristics:
 - Accessories use public Docker images — they are **not** built from the repo's Dockerfile
 - Each accessory is deployed to specific hosts independently from the app
-- Accessories are **not** updated on `kamal deploy` — update with `kamal accessory reboot <name>`
-- Accessories have downtime on reboot (no rolling deploy)
+- Accessories are **not** updated on `kamal deploy` — any configuration change (image tag bump, env var change, volume/port/cmd adjustment, etc.) requires `kamal accessory reboot <name>` to take effect
+- Accessories have downtime on reboot (no rolling deploy) — always warn the user before rebooting
 - The proxy is disabled by default on accessories. Enable with `proxy: {...}` to route traffic through kamal-proxy — the accessory's port must be open at the infrastructure firewall level for traffic to reach the host
 - Use `directories` for persistent data mounts — Kamal automatically creates them on the host before starting the container, unlike `volumes` which require the directory to already exist. Directories also support ownership customization:
 
@@ -700,7 +700,8 @@ Deploy options: `--skip-push`, `--primary`, `--hosts=HOST1,HOST2`, `--roles=ROLE
 |---------|-------------|
 | `kamal accessory boot <NAME>` | Start an accessory |
 | `kamal accessory boot all` | Start all accessories |
-| `kamal accessory reboot <NAME>` | Restart an accessory (for updates) |
+| `kamal accessory reboot <NAME>` | Restart an accessory — **required** after any config change (image tag, env, volumes, ports, cmd). Causes downtime. |
+| `kamal accessory reboot all` | Restart all accessories |
 | `kamal accessory logs <NAME>` | View accessory logs |
 | `kamal accessory exec <NAME> <CMD>` | Run command in accessory container |
 | `kamal accessory remove <NAME>` | Remove an accessory |

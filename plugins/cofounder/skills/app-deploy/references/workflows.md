@@ -95,28 +95,8 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ needs.infra.outputs.infrastructure_changed }}" = "true" ]; then
-            echo "Fresh infrastructure — running kamal setup"
-            kamal setup -d preview
-          else
-            echo "Infrastructure cached — running kamal deploy"
-            kamal deploy -d preview
-          fi
-
-      - name: Reboot scaled accessories
-        env:
-          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 << 'PYEOF'
-          import json, subprocess, sys
-          scaled = json.loads('${{ needs.infra.outputs.scaled_accessories }}')
-          for name in scaled:
-              print(f"Accessory '{name}' VM was rescaled, rebooting...")
-              subprocess.run(
-                  ["kamal", "accessory", "reboot", name, "-d", "preview"],
-                  check=True
-              )
-          PYEOF
+          kamal setup -d preview
+          kamal accessory reboot all -d preview
 ```
 
 After this runs successfully, the app is accessible at `https://<web_ip>.nip.io`. The `web_ip` is visible in the workflow run summary.
@@ -210,28 +190,8 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ needs.infra.outputs.infrastructure_changed }}" = "true" ]; then
-            echo "Fresh infrastructure — running kamal setup"
-            kamal setup -d production
-          else
-            echo "Infrastructure cached — running kamal deploy"
-            kamal deploy -d production
-          fi
-
-      - name: Reboot scaled accessories
-        env:
-          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 << 'PYEOF'
-          import json, subprocess, sys
-          scaled = json.loads('${{ needs.infra.outputs.scaled_accessories }}')
-          for name in scaled:
-              print(f"Accessory '{name}' VM was rescaled, rebooting...")
-              subprocess.run(
-                  ["kamal", "accessory", "reboot", name, "-d", "production"],
-                  check=True
-              )
-          PYEOF
+          kamal setup -d production
+          kamal accessory reboot all -d production
 ```
 
 To deploy to production: `git tag v1.0.0 && git push --tags`. The workflow checks out the tagged commit, so the Dockerfile and source code match the tag exactly.
@@ -269,8 +229,8 @@ The infra job exposes outputs consumed by the deploy job and optionally by downs
 | `web_ip` | string | Public IP of the web VM |
 | `worker_ips` | string (JSON array) | Public IPs of worker VMs (e.g., `["1.2.3.4","5.6.7.8"]`) |
 | `accessory_ips` | string (JSON object) | Accessory public IPs keyed by name (e.g., `{"db":"200.234.x.x","redis":"200.234.y.y"}`) |
-| `infrastructure_changed` | string | `"true"` when fresh provision (cache miss), `"false"` when cached. Used to decide `kamal setup` vs `kamal deploy`. |
-| `scaled_accessories` | string (JSON array) | Names of accessories whose VMs were rescaled (e.g., `["db"]`). Used to reboot affected accessories. |
+| `infrastructure_changed` | string | `"true"` when fresh provision (cache miss), `"false"` when cached. Informational — the deploy job always runs `kamal setup` (idempotent). |
+| `scaled_accessories` | string (JSON array) | Names of accessories whose VMs were rescaled (e.g., `["db"]`). Informational — the deploy job always reboots all accessories. |
 | `infra_env` | string (multiline) | `KEY=VALUE` pairs for `GITHUB_ENV` (e.g., `INFRA_WEB_IP`, `INFRA_DB_IP`, `INFRA_WORKER_IP_0`). The deploy job loads these to make IPs available for Kamal ERB templates. |
 
 ## Complete Example (All Inputs)
@@ -346,28 +306,8 @@ jobs:
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ needs.infra.outputs.infrastructure_changed }}" = "true" ]; then
-            echo "Fresh infrastructure — running kamal setup"
-            kamal setup -d preview
-          else
-            echo "Infrastructure cached — running kamal deploy"
-            kamal deploy -d preview
-          fi
-
-      - name: Reboot scaled accessories
-        env:
-          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 << 'PYEOF'
-          import json, subprocess, sys
-          scaled = json.loads('${{ needs.infra.outputs.scaled_accessories }}')
-          for name in scaled:
-              print(f"Accessory '{name}' VM was rescaled, rebooting...")
-              subprocess.run(
-                  ["kamal", "accessory", "reboot", name, "-d", "preview"],
-                  check=True
-              )
-          PYEOF
+          kamal setup -d preview
+          kamal accessory reboot all -d preview
 ```
 
 ## Workflow Permissions
