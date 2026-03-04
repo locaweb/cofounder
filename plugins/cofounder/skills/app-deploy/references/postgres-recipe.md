@@ -172,7 +172,7 @@ The `accessories` workflow input is a JSON array. It must include an entry for t
 
 - **`name`**: must be `db` (matches the accessory name in `config/deploy.<env>.yml`)
 - **`plan`**: one of the plans from the table above. Determines the VM size and therefore the RAM available for PostgreSQL tuning
-- **`disk_size_gb`**: size of the data disk attached to the database VM. This is the disk mounted at `/data/` where PostgreSQL stores its data (via the `/data/pgdata` subdirectory)
+- **`disk_size_gb`**: size of the data disk attached to the database VM (range: 10–4000 GB). This is the disk mounted at `/data/` where PostgreSQL stores its data (via the `/data/pgdata` subdirectory)
 
 Example for a medium plan with a 50 GB data disk:
 

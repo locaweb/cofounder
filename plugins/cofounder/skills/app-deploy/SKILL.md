@@ -71,6 +71,7 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **No TLS without a domain**: Let's Encrypt rate limits may apply to nip.io subdomains.
 - **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill. Accessories that serve HTTP/HTTPS traffic through kamal-proxy need ports 80 and 443 opened at the firewall — pass `"ports": "80,443"` in the accessory's JSON entry (port 22/SSH is always open). See the **kamal** skill for proxy configuration details.
 - **Accessory reboot on every deploy** -- `kamal deploy` does not update accessories, but the deploy workflow runs `kamal accessory reboot all` after `kamal setup` on every deploy. This ensures accessory config changes (image tag, env vars, volumes, ports, cmd) are always applied. Accessories have downtime during reboot (no rolling deploy). See the **kamal** skill for details.
+- **Naming rules** -- `env_name` and accessory `name` values must use only lowercase letters, digits, and underscores (`[a-z0-9_]`). No hyphens, uppercase, or special characters.
 
 If the application's current design conflicts with any of these, resolve the conflict **before** proceeding with deployment setup.
 
@@ -228,6 +229,10 @@ GitHub Secrets  -->  Workflow env: block  -->  Shell environment  -->  .kamal/se
 The left side of each secrets file line is the **Kamal secret name** (referenced in `env.secret`). The right side is the **shell environment variable name** (which matches the GitHub Secret name). For non-preview environments, the GitHub Secret is suffixed (e.g., `POSTGRES_PASSWORD_PRODUCTION`), so the right side maps to the suffixed name while the left side stays unsuffixed.
 
 **Accessory-to-config sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `config/deploy.<env>.yml`. Each accessory needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`. Accessories that use kamal-proxy (i.e., have a `proxy` block in the Kamal config) also need `"ports": "80,443"` to open the firewall for HTTP/HTTPS traffic.
+
+**WARNING: `disk_size_gb` is MANDATORY for every accessory.** Even if the accessory does not need persistent storage, you must include `disk_size_gb` with a value in the range 10–4000 GB. Example: `{"name":"nginx","plan":"small","disk_size_gb":10,"ports":"80,443"}`.
+
+**Naming: accessory `name` must use only lowercase letters, digits, and underscores (`[a-z0-9_]`).** No hyphens, uppercase, or special characters.
 
 Example sync:
 

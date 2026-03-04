@@ -91,6 +91,16 @@ Key characteristics:
 - Accessories are **not** updated on `kamal deploy` — any configuration change (image tag bump, env var change, volume/port/cmd adjustment, etc.) requires `kamal accessory reboot <name>` to take effect
 - Accessories have downtime on reboot (no rolling deploy) — always warn the user before rebooting
 - The proxy is disabled by default on accessories. Enable with `proxy: {...}` to route traffic through kamal-proxy — the accessory's port must be open at the infrastructure firewall level for traffic to reach the host
+- **Accessory health checks**: When enabling the proxy on an accessory, always configure a health check path that the accessory actually exposes. The default `/up` is designed for the main app and most third-party images do not serve it. If the health check fails, kamal-proxy will never route traffic to the accessory. For example, WordPress does not expose `/up`, so use a known endpoint:
+
+```yaml
+accessories:
+  wordpress:
+    proxy:
+      healthcheck:
+        path: /wp-login.php
+```
+
 - Use `directories` for persistent data mounts — Kamal automatically creates them on the host before starting the container, unlike `volumes` which require the directory to already exist. Directories also support ownership customization:
 
 ```yaml
@@ -108,6 +118,7 @@ directories:
 
 - Use `files` for config file mounts, optionally with permissions: `files: [{local: config/my.cnf, remote: /etc/mysql/my.cnf, mode: "0600", owner: "mysql:mysql"}]`
 - Use `volumes` for raw Docker volume mounts when neither `directories` nor `files` applies — volumes are passed directly to `docker run` and the host path must already exist
+- **Internal networking**: When accessories or the app need to communicate with each other on the same host, reference them by their Kamal service name — **never** by their public IP address. Kamal places containers on a shared Docker network (`kamal`), so service discovery works by container name. Using the public IP would route traffic out through the host's external interface and back in, which may fail due to firewall rules, NAT hairpinning issues, or simply be unreliable. For example, if a `wordpress` accessory needs to reach a `wordpress_db` accessory, use `WORDPRESS_DB_HOST: wordpress_db` — not `WORDPRESS_DB_HOST: <%= ENV['INFRA_WORDPRESS_DB_IP'] %>`
 
 ## Configuration
 

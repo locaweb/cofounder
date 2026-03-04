@@ -32,6 +32,8 @@ This separation means:
 
 The default preview environment is triggered on push, immediately reflecting changes to the main branch -- matching a typical developer workflow. If no domain is provided, it uses nip.io for immediate access with TLS. Since `"preview"` is the default `env_name`, secrets use unsuffixed names.
 
+> **Note:** Empty commits (`git commit --allow-empty`) do not trigger `on: push` workflows. A push must include at least one file change for GitHub Actions to run.
+
 ### Preview Workflow Example
 
 ```yaml
@@ -202,11 +204,11 @@ All inputs passed to the `infra` job (the reusable `provision.yml@v1` workflow):
 
 | Input | Type | Default | When to set |
 |-------|------|---------|-------------|
-| `env_name` | string | `"preview"` | Name of the environment. Each env_name creates fully isolated infrastructure. Defaults to `"preview"` if omitted. |
+| `env_name` | string | `"preview"` | Name of the environment. Each env_name creates fully isolated infrastructure. Defaults to `"preview"` if omitted. **Must use only lowercase letters, digits, and underscores (`[a-z0-9_]`).** |
 | `zone` | string | `"ZP01"` | CloudStack zone. Usually leave as default. Use `ZP02` for geographic redundancy. |
 | `web_plan` | string | `"small"` | Choose based on runtime footprint and environment. See [scaling.md -- VM Plans](scaling.md#vm-plans) for plan specs. |
-| `web_disk_size_gb` | number | `20` | Persistent disk attached to the web VM at `/data`. Increase if the app stores files (uploads, media). Can only grow, never shrink. |
-| `accessories` | string (JSON) | `"[]"` | JSON array of accessory VMs: `[{"name": "db", "plan": "medium", "disk_size_gb": 20}]`. Each object supports an optional `ports` field (comma-separated string, e.g. `"5432"` or `"80,443"`) to open additional firewall ports; port 22 (SSH) is always included. |
+| `web_disk_size_gb` | number | `20` | Persistent disk attached to the web VM at `/data`. Range: 10–4000 GB. Increase if the app stores files (uploads, media). Can only grow, never shrink. |
+| `accessories` | string (JSON) | `"[]"` | JSON array of accessory VMs: `[{"name": "db", "plan": "medium", "disk_size_gb": 20}]`. **`disk_size_gb` is mandatory** for every accessory (range: 10–4000 GB), even if the accessory does not need persistent storage. **Accessory `name` must use only lowercase letters, digits, and underscores (`[a-z0-9_]`).** Each object supports an optional `ports` field (comma-separated string, e.g. `"5432"` or `"80,443"`) to open additional firewall ports; port 22 (SSH) is always included. |
 | `workers_replicas` | number | `0` | Number of worker VMs. `0` means no workers. Set to 1 or more to enable background processing. |
 | `workers_plan` | string | `"small"` | VM size for workers. Choose based on worker workload intensity. See [scaling.md -- Scaling Workers](scaling.md#scaling-workers). |
 | `automatic_reboot` | boolean | `true` | Enable automatic reboot after unattended security upgrades. Usually leave as default. |
