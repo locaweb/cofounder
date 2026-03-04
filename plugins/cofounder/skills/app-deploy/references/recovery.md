@@ -52,7 +52,7 @@ The provisioning script runs mandatory pre-flight checks before proceeding with 
 
 If any check fails, the workflow exits with an error message explaining what's wrong.
 
-**Practical implication:** If the original deployment still exists in the target zone, you must [tear it down](teardown.md) before running recovery. Teardown deletes volumes but preserves snapshots, so recovery can proceed afterward.
+**Practical implication:** If the original deployment still exists in the target zone, either [tear it down](teardown.md) first or change the `zone` input to recover in a different zone. Teardown deletes volumes but preserves snapshots; snapshot policies replicate across all available zones, so recovery works in either zone.
 
 ## Recovery Procedure
 

@@ -539,10 +539,9 @@ Every deployed environment has automatic daily snapshots of all data volumes. If
 
 **Recovery procedure:**
 
-1. If the original deployment still exists in the target zone, [tear it down](references/teardown.md) first (pre-flight checks will reject recovery over a live deployment)
+1. If the original deployment still exists in the target zone, either [tear it down](references/teardown.md) first or change the `zone` input to recover in a different zone (snapshots are replicated across zones, so recovery works in either zone)
 2. Add `recover: true` to the infra job's `with:` block in the deploy workflow (e.g., `.github/workflows/deploy-preview.yml`)
-3. Optionally change the `zone` input if recovering to a different zone (snapshots are replicated across zones)
-4. Commit, push, and monitor the workflow run
+3. Commit, push, and monitor the workflow run
 5. After recovery succeeds, verify data is intact (health check, SSH into VMs, check database rows and files)
 6. **Remove `recover: true`** from the workflow file — if left in place, subsequent runs will fail because the network and volumes already exist
 
