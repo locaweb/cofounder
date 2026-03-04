@@ -160,7 +160,7 @@ The port is always 5432. The hostname is always `db`.
 
 ## Disk Storage Path
 
-Both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always map Kamal volumes to a **subdirectory** of `/data/` (never `/data/` root — `lost+found` from ext4 would interfere). See [postgres-recipe.md -- Volume Mount](postgres-recipe.md#volume-mount-datapgdata-not-data) for the database accessory example.
+Both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always use Kamal `directories` (never `volumes` or named Docker volumes) mapped to a **subdirectory** of `/data/` (never `/data/` root). `/data/` is an attached disk with scheduled snapshot policies for disaster recovery — data outside `/data/` is not backed up. Additionally, `lost+found` from the ext4 filesystem at the mount root would interfere with containers expecting a clean directory. See [postgres-recipe.md -- Volume Mount](postgres-recipe.md#volume-mount-datapgdata-not-data) for the database accessory example.
 
 ### Web VM example
 

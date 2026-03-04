@@ -55,7 +55,7 @@ Without this flag, postgres will look for configuration in the wrong path and fa
 
 ## Volume Mount: `/data/pgdata`, Not `/data/`
 
-The host disk is mounted at `/data/` by the workflow. The ext4 filesystem creates a `lost+found` directory at the mount root. PostgreSQL's `initdb` fails if the data directory is not empty.
+The host disk is mounted at `/data/` by the workflow. Always use Kamal `directories` (never `volumes` or named Docker volumes) — `/data/` is an attached disk with scheduled snapshot policies for disaster recovery, and only data under `/data/` is backed up. The ext4 filesystem also creates a `lost+found` directory at the mount root, so PostgreSQL's `initdb` fails if the data directory is not empty.
 
 Always bind-mount a **subdirectory**:
 

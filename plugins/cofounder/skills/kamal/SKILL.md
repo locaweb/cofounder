@@ -101,7 +101,7 @@ accessories:
         path: /wp-login.php
 ```
 
-- Use `directories` for persistent data mounts — Kamal automatically creates them on the host before starting the container, unlike `volumes` which require the directory to already exist. Directories also support ownership customization:
+- **Always use `directories` for persistent data mounts** — never use `volumes` or named Docker volumes. `directories` are auto-created on the host by Kamal, support `mode` and `owner` options, and map to visible host paths under `/data/` where snapshot-based backups run. Named Docker volumes bypass the persistent disk entirely — data stored in them is **not backed up** and will be lost on VM replacement:
 
 ```yaml
 # String format — host:container
@@ -117,7 +117,7 @@ directories:
 ```
 
 - Use `files` for config file mounts, optionally with permissions: `files: [{local: config/my.cnf, remote: /etc/mysql/my.cnf, mode: "0600", owner: "mysql:mysql"}]`
-- Use `volumes` for raw Docker volume mounts when neither `directories` nor `files` applies — volumes are passed directly to `docker run` and the host path must already exist
+- Avoid `volumes` — they are raw Docker volume mounts passed directly to `docker run`, require the host path to already exist, and are not auto-created by Kamal. Named Docker volumes (e.g., `myapp_data:/path`) store data outside `/data/` and are **not covered by snapshot backups**. If you think you need `volumes`, use `directories` instead
 - **Internal networking**: When accessories or the app need to communicate with each other on the same host, reference them by their Kamal service name — **never** by their public IP address. Kamal places containers on a shared Docker network (`kamal`), so service discovery works by container name. Using the public IP would route traffic out through the host's external interface and back in, which may fail due to firewall rules, NAT hairpinning issues, or simply be unreliable. For example, if a `wordpress` accessory needs to reach a `wordpress_db` accessory, use `WORDPRESS_DB_HOST: wordpress_db` — not `WORDPRESS_DB_HOST: <%= ENV['INFRA_WORDPRESS_DB_IP'] %>`
 
 ## Configuration
