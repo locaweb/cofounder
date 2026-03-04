@@ -32,6 +32,18 @@ Focus on:
 - **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
 - **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
 
+### Light/Dark Mode System
+
+Two observations to keep in mind:
+
+1. **Design both modes intentionally.** Dark mode is not "invert the colors." Each mode must have its own curated palette — background tones, text contrast, accent vibrancy, shadow depth, and border opacity all shift independently. A dark theme that simply swaps white for black looks washed out and lifeless. Design each mode as a first-class experience with its own personality.
+2. **Use CSS custom properties as the single source of truth.** Define all color tokens as `--color-*` variables on `:root` (light) and `[data-theme="dark"]` (or `.dark`). Components should never reference raw color values — only variables. This makes theming a one-place change and keeps both modes perfectly in sync. Offer three toggle states — **Light**, **Dark**, and **System** — where System (the default) follows the OS-wide preference via `prefers-color-scheme: dark`. Persist the user's choice to `localStorage` so it survives reloads, but always start with System so the app respects the platform setting out of the box.
+
+### Interaction Feedback
+
+- **Always provide visual feedback for operations.** Every user action that triggers processing must have a visible response — a button that saves without closing the dialog should show a brief success state (checkmark, color flash, toast notification, or subtle pulse). Silent success is indistinguishable from a broken button. Match the feedback weight to the action weight: a destructive delete deserves a more emphatic confirmation than a routine save.
+- **Use cursor styles to signal interactivity.** Set `cursor: pointer` on all clickable elements (buttons, links, cards, toggles, tabs). Use `cursor: not-allowed` on disabled elements and `cursor: grab`/`cursor: grabbing` on draggable items. The cursor is the user's first hint that an element is actionable — if it stays as the default arrow, the affordance is invisible.
+
 NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
 
 Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
