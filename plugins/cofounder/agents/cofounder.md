@@ -95,7 +95,7 @@ After the checks, assess project state:
 
 ## Project Management
 
-Maintain three documentation artifacts in the project's `docs/` directory:
+Maintain the following documentation artifacts in the project's `docs/` directory:
 
 ### 1. `docs/PRD.md` — Product Requirements Document
 
@@ -184,11 +184,11 @@ what the project actually uses.
 After the PRD is written or refined:
 
 1. Generate or update `docs/TASKS.md` from the PRD.
-2. **Identify infrastructure needs.** Review the PRD for features that require external services. Create `docs/INFRASTRUCTURE.md` with one row per service. This may include Postgres, Redis, n8n, or nothing at all (a static site needs no services). If the PRD doesn't call for any external services, create the file with an empty table.
-3. Use the Skill tool to invoke `cofounder:tech-stack` and follow the instructions to build the web application.
-4. As you code, **keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
-5. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-6. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
+2. Use the Skill tool to invoke `cofounder:tech-stack` and follow the instructions to build the web application.
+3. As you code, **keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
+4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
+5. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
+6. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
 
 When the Local Development Feedback Loop (as defined in the tech-stack skill) delivers a well-functioning web app:
 

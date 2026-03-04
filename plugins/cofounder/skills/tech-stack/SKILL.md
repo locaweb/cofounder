@@ -180,7 +180,7 @@ mise use go@1 sqlc@1 python@3.14 node@24 jq@1
 
 This creates a `mise.toml` that is committed to the repo, ensuring all developers use the same versions. If a version upgrade is needed later, re-run `mise use` with the new version.
 
-### 1. Start the database
+### 1. Start the database and local services
 
 Before starting the container, check if any podman container is already using
 port 5432. If a container from **another project** is occupying the port, do
@@ -206,7 +206,7 @@ podman run -d \
 podman exec "$CONTAINER_NAME" pg_isready -U postgres
 ```
 
-### Local Services
+#### Local Services
 
 When the application needs services beyond Postgres, run them as podman containers locally. Each service maps to an accessory that will be provisioned as a dedicated VM in deployment.
 
@@ -342,10 +342,6 @@ set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server
 ```
 
 This ensures Preview and CLI modes use the same env var source, and adding a new accessory only requires updating `.env` — not rewriting launch.json.
-
-### Windows: do NOT use Preview
-
-**Preview is not supported on Windows.** Do not generate `.claude/launch.json` or attempt to use `preview_*` tools on Windows. Instead, start the servers manually in the session chat (podman, `go run`, `npm run dev`) and give the user the `http://localhost:5173` link. This works perfectly and is also compatible with Playwright-based testing via the **webapp-testing** skill.
 
 ## Local Development Feedback Loop
 
