@@ -69,7 +69,7 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **Always `directories`, never `volumes`** -- Use Kamal's `directories` keyword for all persistent data mounts. Never use `volumes` or named Docker volumes (`myapp_data:/path`). `directories` are auto-created on the host, support `mode` and `owner` options, and map directly to host paths — making data visible, portable, and backed up. See the **kamal** skill for syntax details.
 - **Host path must be `/data/{subdir}`** -- both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always mount subdirectories of `/data/`, never `/data/` root directly (see [references/env-vars.md -- Disk Storage Path](references/env-vars.md#disk-storage-path) for web usage, [references/postgres-recipe.md -- Volume Mount](references/postgres-recipe.md#volume-mount-datapgdata-not-data) for the database example). Two reasons: (1) `/data/` is an attached disk with scheduled snapshot policies that ensure disaster recovery — data outside `/data/` is not backed up; (2) the ext4 filesystem creates `lost+found` at the mount root, which breaks Docker images that expect a clean directory on first boot (PostgreSQL `initdb`, Redis `appendonly.aof`, etc.).
 - **No Docker build in the caller workflow**: The caller's deploy job builds, pushes, and deploys the Docker image via Kamal. The caller workflow must **not** include any separate Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
-- **No TLS without a domain**: Let's Encrypt rate limits may apply to nip.io subdomains.
+- **Always enable TLS**: Set `proxy.ssl: true` in every environment config — both nip.io and custom domains get automatic Let's Encrypt certificates via HTTP-01 challenge. Let's Encrypt has never failed to increase rate limits for nip.io when asked, so nip.io subdomains are safe to use with TLS.
 - **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill. Accessories that serve HTTP/HTTPS traffic through kamal-proxy need ports 80 and 443 opened at the firewall — pass `"ports": "80,443"` in the accessory's JSON entry (port 22/SSH is always open). See the **kamal** skill for proxy configuration details.
 - **Accessory reboot on every deploy** -- `kamal deploy` does not update accessories, but the deploy workflow runs `kamal accessory reboot all` after `kamal setup` on every deploy. This ensures accessory config changes (image tag, env vars, volumes, ports, cmd) are always applied. Accessories have downtime during reboot (no rolling deploy). See the **kamal** skill for details.
 - **Naming rules** -- `env_name` and accessory `name` values must use only lowercase letters, digits, and underscores (`[a-z0-9_]`). No hyphens, uppercase, or special characters.
@@ -186,7 +186,7 @@ Environment-specific Kamal config. See [references/env-vars.md -- Clear Variable
 
 - **Server hosts** -- web and worker IPs via ERB templates (e.g., `<%= ENV['INFRA_WEB_IP'] %>`)
 - **Environment-specific variables** -- `env.clear` (e.g., `APP_ENV: preview`) and `env.secret` for secrets specific to this environment
-- **Proxy host** -- nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production
+- **Proxy host and TLS** -- nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production. Always `ssl: true`.
 - **Accessories** -- image, host (ERB), port, cmd, env, directories
 
 #### 7c: Common secrets (`.kamal/secrets-common`)
@@ -249,6 +249,7 @@ accessories:
     host: <%= ENV['INFRA_N8N_IP'] %>
     proxy:
       host: n8n.<%= ENV['INFRA_N8N_IP'] %>.nip.io
+      ssl: true
       app_port: 5678
     # ... web-facing, uses kamal-proxy
 
@@ -454,7 +455,7 @@ The web VM's public IP is not known until the first deployment completes. To set
    Value: <web_ip from step 2>
    TTL: 300
    ```
-4. **Update the destination config** (`config/deploy.<env>.yml`) to set `proxy.host` to the domain and `proxy.ssl: true`.
+4. **Update the destination config** (`config/deploy.<env>.yml`) to set `proxy.host` to the domain (SSL is already `true`).
 5. **Commit, push, and re-deploy.** kamal-proxy will provision a Let's Encrypt certificate automatically.
 
 Let's Encrypt HTTP-01 challenge requires the domain to resolve to the server before the certificate can be issued. The IP is stable across re-deployments to the same environment -- it only changes if the environment is torn down and recreated.

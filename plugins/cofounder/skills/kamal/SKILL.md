@@ -78,10 +78,8 @@ accessories:
     directories:
       - /data/nginx/html:/usr/share/nginx/html
     proxy:
-      host: docs.example.com
+      host: docs.example.com # or docs.<%= ENV['INFRA_NGINX_IP'] %>.nip.io
       ssl: true
-      # host: docs.<%= ENV['INFRA_NGINX_IP'] %>.nip.io
-      # ssl: false
       app_port: 80
 ```
 
@@ -192,7 +190,7 @@ env:
 
 proxy:
   host: <%= ENV['INFRA_WEB_IP'] %>.nip.io
-  ssl: false
+  ssl: true
 
 accessories:
   db:

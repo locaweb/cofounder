@@ -15,7 +15,7 @@ env:
 
 proxy:
   host: <%= ENV['INFRA_WEB_IP'] %>.nip.io
-  ssl: false
+  ssl: true
 
 accessories:
   db:
