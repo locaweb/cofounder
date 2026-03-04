@@ -167,6 +167,10 @@ ls -la /data/uploads/    # or whatever subdirectory the app uses
 
 New snapshot policies are created automatically on recovered volumes. No manual action needed -- the recovered deployment has the same daily snapshot protection as a fresh one.
 
+### 4. Remove the `recover: true` flag
+
+Once verification is complete, **remove `recover: true`** from the workflow file (or uncheck the checkbox for `workflow_dispatch` triggers). If `recover: true` is left in place and the workflow runs again, the pre-flight checks will **fail hard** because the network and volumes created by the recovery already exist in the target zone. Removing the flag ensures subsequent workflow runs follow the normal deploy path (which skips provisioning when infrastructure is already cached).
+
 ## Current Limitations
 
 - **No existing deployment in target zone**: If the deployment still exists in the target zone, you must tear it down first. The pre-flight checks enforce this to prevent data loss. Recovery can target either zone -- snapshot policies replicate across all available zones.
