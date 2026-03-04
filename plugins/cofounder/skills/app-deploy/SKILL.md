@@ -533,7 +533,18 @@ See [references/teardown.md](references/teardown.md) for tearing down environmen
 
 ## Disaster Recovery
 
-Every deployed environment has automatic daily snapshots of all data volumes. If an environment is lost (teardown, VM failure, or data corruption), it can be recovered by running the deploy workflow with `recover: true`. The provisioning script creates volumes from the most recent snapshots instead of blank disks, restoring data to the last snapshot point.
+Every deployed environment has automatic daily snapshots of all data volumes. If an environment is lost (teardown, VM failure, or data corruption), it can be recovered by running the deploy workflow with `recover: true`.
+
+**When the user asks to "recover", "recuperar", "restore", "do DR", or "disaster recovery":** the critical action is adding `recover: true` to the infra job inputs in the deploy workflow. Without this flag, the workflow creates blank disks and the data is lost. Simply changing the zone is **not** recovery — recovery means restoring from snapshots via the `recover: true` flag.
+
+**Recovery procedure:**
+
+1. If the original deployment still exists in the target zone, [tear it down](references/teardown.md) first (pre-flight checks will reject recovery over a live deployment)
+2. Add `recover: true` to the infra job's `with:` block in the deploy workflow (e.g., `.github/workflows/deploy-preview.yml`)
+3. Optionally change the `zone` input if recovering to a different zone (snapshots are replicated across zones)
+4. Commit, push, and monitor the workflow run
+5. After recovery succeeds, verify data is intact (health check, SSH into VMs, check database rows and files)
+6. **Remove `recover: true`** from the workflow file — if left in place, subsequent runs will fail because the network and volumes already exist
 
 See [references/recovery.md](references/recovery.md) for the full procedure, pre-flight requirements, and current limitations.
 
