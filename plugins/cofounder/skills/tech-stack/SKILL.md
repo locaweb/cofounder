@@ -49,13 +49,38 @@ frontend/node_modules/
 
 `.claude/launch.json` is generated locally by Claude Code Desktop's Preview feature and contains platform-specific commands — it must not be committed.
 
-`.env` holds custom secrets needed to run the application (third-party API keys, OAuth client secrets, etc.). It must **never** be committed. After creating or updating it, restrict permissions:
+`.env` holds **all** service connection strings and application secrets needed to run locally. It must **never** be committed. After creating or updating it, restrict permissions:
 
 ```bash
 chmod 0600 .env
 ```
 
-The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server (e.g., `set -a && source .env && set +a`). In deployed environments, secrets are injected as environment variables by the deployment platform — see the **app-deploy** skill.
+Example contents:
+
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+REDIS_URL=redis://localhost:6379
+N8N_WEBHOOK_URL=http://localhost:5678/webhook
+```
+
+The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server using `. .env` (POSIX dot syntax — not `source`, which is a bash builtin and may not work in all shells, particularly when commands run through `subprocess` or `with_server.py`):
+
+```bash
+set -a && . .env && set +a
+```
+
+This bridges the gap between local and deployed: locally `.env` provides the values; deployed, Kamal config provides them. The Go code stays the same (`os.Getenv("REDIS_URL")`).
+
+#### Clear vs secret env vars in deployment
+
+When translating `.env` entries to Kamal config for deployment, the agent must decide whether each env var is **clear** or **secret**:
+
+- **Secret** — the URL contains a credential (password, API key, token). Goes in `env.secret` + `.kamal/secrets.<env>`. The credential is stored as a GitHub Secret, and the URL is derived in the secrets file. Example: `DATABASE_URL` contains `POSTGRES_PASSWORD`.
+- **Clear** — the URL has no credentials. Goes in `env.clear` in the Kamal config. No GitHub Secret needed. Example: Redis without auth (`REDIS_URL: redis://redis:6379`).
+
+The rule: **if the URL embeds a credential, it's a secret; otherwise it's clear.** When in doubt, make it a secret — it's safer and the only cost is a GitHub Secret entry.
+
+In deployed environments, secrets are injected as environment variables by the deployment platform — see the **app-deploy** skill.
 
 `mise.toml` should **not** be gitignored — it is committed to the repo so all developers use the same tool versions.
 
@@ -65,9 +90,9 @@ The Go backend reads these values via `os.Getenv()`. During local development, l
 
 The Go server handles everything: API routes under `/api/`, static assets under `/assets/`, and a catch-all that returns `index.html` for SPA routing. In development, Vite's dev server proxies API calls to the Go backend.
 
-### Database only — no Redis, no external caches, no message queues
+### Postgres first
 
-PostgreSQL is the only external service. Use Postgres-backed alternatives for everything:
+PostgreSQL is the primary external service. Use Postgres-backed alternatives whenever possible:
 - **Queues:** `pgmq` — lightweight message queue with visibility timeout, archive, and batch operations. See [references/pgmq.md](references/pgmq.md)
 - **Pub/Sub:** `LISTEN`/`NOTIFY` — no extension needed; combine with a persistence layer for durability. See [references/notify-patterns.md](references/notify-patterns.md)
 - **Caching:** unlogged tables
@@ -80,6 +105,8 @@ PostgreSQL is the only external service. Use Postgres-backed alternatives for ev
 - Other notable extensions: `pgjwt`, `pg_stat_statements`, `pgaudit`, `pg_hashids`
 
 All 60+ bundled extensions from `supabase/postgres` are available.
+
+When the application needs a capability that Postgres and its extensions cannot provide — a pre-built tool like n8n, a specialized system like Kafka, or a use case where a dedicated service is clearly superior — add it as an accessory. See [Local Services](#local-services) for running it locally and `docs/INFRASTRUCTURE.md` for recording it. At deployment time, each accessory gets its own VM (see the **app-deploy** skill).
 
 ### sqlc for all queries
 
@@ -179,12 +206,95 @@ podman run -d \
 podman exec "$CONTAINER_NAME" pg_isready -U postgres
 ```
 
-If the app needs additional services beyond Postgres (Redis, n8n, WAHA, etc.), launch them as podman containers the same way — pull the public image, map the port, mount a local directory if persistence matters. These match the accessories that will be provisioned as dedicated VMs in deployment.
+### Local Services
+
+When the application needs services beyond Postgres, run them as podman containers locally. Each service maps to an accessory that will be provisioned as a dedicated VM in deployment.
+
+#### Naming convention
+
+Every project container is named `<repo_name>-<accessory_name>`:
+
+```
+myapp-db
+myapp-redis
+myapp-n8n
+```
+
+The `-db` convention already exists for Postgres. Extend it to all accessories. This enables the cleanup pattern (see [Stopping all project containers](#stopping-all-project-containers)).
+
+#### Start-or-create pattern
+
+Containers persist across sessions. On a fresh session the containers from the previous session may already exist (stopped). Always use the start-or-create pattern instead of a bare `podman run`:
+
+```bash
+podman start myapp-redis 2>/dev/null || \
+  podman run -d --name myapp-redis -p 6379:6379 redis:7-alpine
+```
+
+`podman start` succeeds silently if the container exists (running or stopped). If it doesn't exist, the fallback `podman run` creates it. This prevents "name already in use" errors on session resume.
+
+#### Two accessory types
+
+Distinguish backend-connected and standalone accessories with different procedures:
+
+**Backend-connected** (Redis, Kafka, Meilisearch, etc.):
+
+1. Start-or-create the container with naming convention and port mapping
+2. Readiness check (e.g., `podman exec <name> redis-cli ping`)
+3. Add env var to `.env` (e.g., `REDIS_URL=redis://localhost:6379`)
+4. Add Go client library, read env var via `os.Getenv()`
+5. Record in `docs/INFRASTRUCTURE.md`
+
+**Standalone** (n8n, WordPress, Metabase, etc.):
+
+1. Start-or-create the container with naming convention, port mapping, and local directory mount if persistence matters
+2. Readiness check (e.g., `curl -s http://localhost:5678/healthz`)
+3. Give the user a clickable `http://localhost:<port>` link
+4. Record in `docs/INFRASTRUCTURE.md`
+5. No Go code changes unless the backend also calls the tool's API — see "Hybrid accessories" below
+
+#### Hybrid accessories
+
+Some accessories are both user-facing AND called by the backend. For example, n8n where the user manages workflows in the n8n UI, but the Go backend triggers workflows via webhook.
+
+For hybrid accessories:
+- Treat as standalone for the user-facing aspect (give the browser link)
+- ALSO add a backend env var for the API endpoint (e.g., `N8N_WEBHOOK_URL=http://localhost:5678/webhook`)
+- Record the env var in `docs/INFRASTRUCTURE.md`
+- The Type column can remain `standalone` — the env var in the Env Var column signals the backend dependency
+
+#### Port conflict detection
+
+Same pattern as the existing Postgres port check: before starting a container, check if another podman container is already occupying the port. If it belongs to another project, ask the user to stop it.
+
+#### Common recipes
+
+| Accessory | Image | Port | Readiness check |
+|-----------|-------|------|-----------------|
+| Redis | `redis:7-alpine` | 6379 | `podman exec <name> redis-cli ping` |
+| n8n | `n8nio/n8n:latest` | 5678 | `curl -s http://localhost:5678/healthz` |
+| Meilisearch | `getmeili/meilisearch:latest` | 7700 | `curl -s http://localhost:7700/health` |
+| WordPress | `wordpress:latest` | 8080 | `curl -s http://localhost:8080` |
+| WAHA | `devlikeapro/waha:latest` | 3000 | `curl -s http://localhost:3000/api/health` |
+
+These are starting points. The agent should check the image's documentation for the correct ports and readiness endpoints.
+
+#### Local vs. deployed hostnames
+
+| Service | Local (`.env`) | Deployed hostname |
+|---------|---------------|-------------------|
+| Postgres | `localhost:5432` | `db:5432` |
+| Redis | `localhost:6379` | `redis:6379` |
+| n8n | `localhost:5678` | `n8n:5678` |
+
+Locally, all services are on `localhost` with mapped ports. In deployment, each accessory gets its own VM. The deployed hostname matches the **accessory name** — CloudStack internal DNS resolves it to the VM's private IP within the isolated network (see [env-vars.md — Database Connection Variables](references/env-vars.md#database-connection-variables) for the documented pattern). Never use public IPs for inter-service communication.
+
+The `.env` file (local) and Kamal config (deployed) each provide the correct values; the Go code reads them identically via `os.Getenv()`. For clear env vars (no credentials), the deployed value goes in `env.clear`. For secret env vars (with credentials), the deployed value goes in `.kamal/secrets` — see the `.env` section above.
 
 ### 2. Start the Go API (terminal 1)
 
 ```bash
-bash -c 'cd backend && DEV_MODE=1 DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" go run ./cmd/server'
+bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server'
 ```
 
 ### 3. Start the Vite dev server (terminal 2)
@@ -195,16 +305,43 @@ bash -c 'cd frontend && npm install && npm run dev'
 
 Access the app at `http://localhost:5173` during development. Vite proxies `/api/*` and `/auth/*` to the Go backend.
 
-### Stopping the database
+### Stopping all project containers
 
 ```bash
-CONTAINER_NAME="$(basename "$(pwd)")-db"
-podman stop "$CONTAINER_NAME" && podman rm "$CONTAINER_NAME"
+REPO_NAME="$(basename "$(pwd)")"
+
+# Stop and remove all containers for this project
+podman ps -a --filter "name=^${REPO_NAME}-" --format '{{.Names}}' | xargs -r podman stop
+podman ps -a --filter "name=^${REPO_NAME}-" --format '{{.Names}}' | xargs -r podman rm
 ```
+
+This relies on the naming convention (`<repo_name>-<accessory_name>`) and removes all project containers at once.
 
 ## Preview (Claude Code Desktop)
 
 When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. Reserve Playwright (via the **webapp-testing** skill) for comprehensive E2E test suites.
+
+#### Accessories in Preview mode
+
+Preview manages the Go backend and Vite dev server automatically, but does **not** manage podman containers. Before using Preview, ensure all accessory containers are running:
+
+```bash
+REPO_NAME="$(basename "$(pwd)")"
+podman start "${REPO_NAME}-db" || true
+podman start "${REPO_NAME}-redis" || true  # if applicable
+```
+
+Check `docs/INFRASTRUCTURE.md` for the full list of accessories. If a container doesn't exist yet, create it first following the Local Services recipes above.
+
+#### Environment variables in Preview
+
+The Go backend command in `.claude/launch.json` must load `.env` so that all service URLs (DATABASE_URL, REDIS_URL, etc.) are available. When generating or updating launch.json, use the same `. .env` pattern as the CLI command:
+
+```
+set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server
+```
+
+This ensures Preview and CLI modes use the same env var source, and adding a new accessory only requires updating `.env` — not rewriting launch.json.
 
 ### Windows: do NOT use Preview
 
@@ -253,7 +390,7 @@ After committing and pushing, ask the user if they want to deploy to the cloud. 
 Run unit tests against the local database:
 
 ```bash
-bash -c 'cd backend && DEV_MODE=1 DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" go test ./...'
+bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 go test ./...'
 ```
 
 - Test files live next to the code they test (`handler/todo_test.go` tests `handler/todo.go`).
@@ -268,12 +405,14 @@ Use the **webapp-testing** skill for Playwright-based end-to-end testing. The `w
 ```bash
 python skills/webapp-testing/scripts/with_server.py \
   --server "podman start $(basename $(pwd))-db || true" --port 5432 \
-  --server "cd backend && DEV_MODE=1 DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' go run ./cmd/server" --port 8080 \
+  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server" --port 8080 \
   --server "cd frontend && npm run dev" --port 5173 \
   -- python test_script.py
 ```
 
-Or, if services are already running, write a standalone Playwright script:
+Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
+
+Or, if services are already running (with env vars already loaded), write a standalone Playwright script:
 
 ```python
 from playwright.sync_api import sync_playwright

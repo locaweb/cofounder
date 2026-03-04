@@ -66,12 +66,12 @@ These constraints apply to **every** application deployed to this platform. Comm
 - **`forward_headers: false` is non-negotiable** -- VMs are directly exposed to the internet with no upstream proxy. The agent must never set this to `true`.
 - **Single web VM**: No horizontal web scaling. Scale vertically with larger `web_plan` (see [references/scaling.md -- VM Plans](references/scaling.md#vm-plans) for available sizes). Prefer runtimes and frameworks that scale well vertically.
 - **Workers use the same Docker image** with a different command (`servers.workers.cmd` in `deploy.yml`).
-- **`volumes` for app roles, `directories` for accessories** -- For main app roles (web, workers), use Kamal's `volumes` keyword for persistent data mounts. For accessories, use `directories` (which support `mode` and `owner` options). Both are auto-created on the host by Kamal and map directly to host paths — making data visible, portable, and backed up. Never use named Docker volumes (`myapp_data:/path`). See the **kamal** skill for syntax details.
+- **`volumes` for app roles, `directories` for accessories** -- For main app roles (web, workers), use Kamal's `volumes` keyword for persistent data mounts. For accessories, use `directories` (which support `mode` and `owner` options). Both are auto-created on the host by Kamal and map directly to host paths — making data visible, portable, and backed up. Never use named Docker volumes (`myapp_data:/path`). For `directories` syntax (string and hash formats), mode/owner options, and the distinction between `volumes` and `directories`, see [references/kamal.md — Accessories](references/kamal.md#accessories).
 - **Host path must be `/data/{subdir}`** -- both the web VM and each accessory VM have a persistent disk mounted at `/data/`. Always mount subdirectories of `/data/`, never `/data/` root directly (see [references/env-vars.md -- Disk Storage Path](references/env-vars.md#disk-storage-path) for web usage, [references/postgres-recipe.md -- Volume Mount](references/postgres-recipe.md#volume-mount-datapgdata-not-data) for the database example). Two reasons: (1) `/data/` is an attached disk with scheduled snapshot policies that ensure disaster recovery — data outside `/data/` is not backed up; (2) the ext4 filesystem creates `lost+found` at the mount root, which breaks Docker images that expect a clean directory on first boot (PostgreSQL `initdb`, Redis `appendonly.aof`, etc.).
 - **No Docker build in the caller workflow**: The caller's deploy job builds, pushes, and deploys the Docker image via Kamal. The caller workflow must **not** include any separate Docker build or push steps (no `docker/build-push-action`, no `docker build`, no `docker push`, no login to ghcr.io). Kamal handles the entire build-push-deploy lifecycle using the Dockerfile at the repo root.
 - **Always enable TLS**: Set `proxy.ssl: true` in every environment config — both nip.io and custom domains get automatic Let's Encrypt certificates via HTTP-01 challenge. Let's Encrypt has never failed to increase rate limits for nip.io when asked, so nip.io subdomains are safe to use with TLS.
-- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill. Accessories that serve HTTP/HTTPS traffic through kamal-proxy need ports 80 and 443 opened at the firewall — pass `"ports": "80,443"` in the accessory's JSON entry (port 22/SSH is always open). See the **kamal** skill for proxy configuration details.
-- **Accessory reboot on every deploy** -- `kamal deploy` does not update accessories, but the deploy workflow runs `kamal accessory reboot all` after `kamal setup` on every deploy. This ensures accessory config changes (image tag, env vars, volumes, ports, cmd) are always applied. Accessories have downtime during reboot (no rolling deploy). See the **kamal** skill for details.
+- **Accessories are flexible** -- Each accessory gets its own VM with a data disk. Additional accessories (Redis, WAHA, Meilisearch, etc.) can be added via the Kamal layer when appropriate. For PostgreSQL, see the [`supabase/postgres` recipe](references/postgres-recipe.md) — a Postgres image enriched with several extensions, as recommended by the **tech-stack** skill. Accessories that serve HTTP/HTTPS traffic through kamal-proxy need ports 80 and 443 opened at the firewall — pass `"ports": "80,443"` in the accessory's JSON entry (port 22/SSH is always open). See [references/kamal.md — Accessories](references/kamal.md#accessories) for proxy configuration details.
+- **Accessory reboot on every deploy** -- `kamal deploy` does not update accessories, but the deploy workflow runs `kamal accessory reboot all` after `kamal setup` on every deploy. This ensures accessory config changes (image tag, env vars, volumes, ports, cmd) are always applied. Accessories have downtime during reboot (no rolling deploy). See [references/kamal.md — Accessories](references/kamal.md#accessories) for details.
 - **Naming rules** -- `env_name` and accessory `name` values must use only lowercase letters, digits, and underscores (`[a-z0-9_]`). No hyphens, uppercase, or special characters.
 
 If the application's current design conflicts with any of these, resolve the conflict **before** proceeding with deployment setup.
@@ -232,6 +232,10 @@ The left side of each secrets file line is the **Kamal secret name** (referenced
 
 **Accessory-to-config sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `config/deploy.<env>.yml`. Each accessory needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`. Accessories that use kamal-proxy (i.e., have a `proxy` block in the Kamal config) also need `"ports": "80,443"` to open the firewall for HTTP/HTTPS traffic.
 
+**Forward sync (development → deployment):** When generating the `accessories` JSON for the workflow and the accessory blocks in the Kamal destination config, use `docs/INFRASTRUCTURE.md` as the source of truth for which accessories exist, their images, and their environment variables.
+
+**Reverse sync (deployment → development):** When adding, removing, or changing accessories in the Kamal config or workflow (e.g., the user asks to add Redis during deployment setup, or to remove an accessory that is no longer needed), update `docs/INFRASTRUCTURE.md` to match before the task is complete. The infrastructure manifest and Kamal accessory config must always describe the same set of services.
+
 **WARNING: `disk_size_gb` is MANDATORY for every accessory.** Even if the accessory does not need persistent storage, you must include `disk_size_gb` with a value in the range 10–4000 GB. Example: `{"name":"nginx","plan":"small","disk_size_gb":10,"ports":"80,443"}`.
 
 **Naming: accessory `name` must use only lowercase letters, digits, and underscores (`[a-z0-9_]`).** No hyphens, uppercase, or special characters.
@@ -357,6 +361,23 @@ After setup is complete, use this loop to deploy and verify the application. See
 - For custom domains: `curl -s -o /dev/null -w "%{http_code}" https://<domain>/up`
 - If the health check returns HTTP 200, the deployment is verified and complete
 - If the health check fails or the app doesn't respond: SSH into the VMs to check logs (see [references/operations.md -- Container Debugging](references/operations.md#container-debugging) for commands), then return to the **tech-stack** skill's Local Development Feedback Loop to diagnose and fix the issue
+
+## Modifying Accessories in an Existing Deployment
+
+When adding, removing, or changing an accessory after the initial deployment:
+
+1. **Update `docs/INFRASTRUCTURE.md`** — add or remove the row.
+2. **Update the Kamal destination config** (`config/deploy.<env>.yml`) — add or remove the accessory block. For new accessories, include image, host (ERB), port, cmd, env, and directories. For web-facing accessories, add the `proxy` block with a health check path the image actually exposes (not `/up`).
+3. **Update the workflow** (`.github/workflows/deploy-<env>.yml`) — add or remove the entry in the `accessories` JSON. Remember:
+   - `disk_size_gb` is mandatory for every accessory
+   - Web-facing accessories need `"ports": "80,443"`
+   - The `name` must match the Kamal config
+4. **Update env vars** — if the new accessory introduces an env var:
+   - Clear (no credential): add to `env.clear` in the Kamal config
+   - Secret (has credential): add to `env.secret`, create the GitHub Secret, add to `.kamal/secrets.<env>`, and add to the workflow's `env:` block
+5. **Commit, push, re-deploy.** The workflow provisions the new accessory VM (or deprovisions the removed one) and Kamal applies the config change.
+
+When removing an accessory, also check whether any application code still references its env var and remove the dependency.
 
 ## Operations (Post-Deployment)
 
@@ -537,3 +558,4 @@ When the developer cannot run the language runtime or database locally, the Depl
 - **[references/teardown.md](references/teardown.md)** -- Teardown process, inferring parameters, reading outputs
 - **[references/recovery.md](references/recovery.md)** -- Disaster recovery from snapshots: procedure, pre-flight checks, limitations
 - **[references/postgres-recipe.md](references/postgres-recipe.md)** -- Recipe for the `supabase/postgres` image, a Postgres image enriched with extensions as recommended by the **tech-stack** skill
+- **[references/kamal.md](references/kamal.md)** -- Kamal deployment concepts: service/worker/accessory architecture, configuration syntax, proxy, environment variables, secrets, builder, commands

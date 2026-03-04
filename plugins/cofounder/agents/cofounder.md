@@ -149,6 +149,34 @@ Numbered markdown files for each technical decision.
 
 Focus on **why** a choice was made, what was considered, and what was discarded. No need for deep implementation details — the code itself is the documentation.
 
+### 4. `docs/INFRASTRUCTURE.md` — Service Inventory
+
+Lists every service the application depends on beyond the Go binary itself.
+Created when the first accessory is introduced; updated whenever accessories
+change. The file may be empty (no table rows) for apps that need no external
+services (e.g., a static site).
+
+**Format:**
+
+| Name | Image | Local Port | Env Var | Type |
+|------|-------|-----------|---------|------|
+| db | supabase/postgres:17.6.1.093 | 5432 | DATABASE_URL | backend |
+| redis | redis:7-alpine | 6379 | REDIS_URL | backend |
+| n8n | n8nio/n8n:latest | 5678 | — | standalone |
+
+Not every project will have a Postgres `db` row. A static site needs no
+database; a WordPress project might use MySQL instead. The table reflects
+what the project actually uses.
+
+**Type column:**
+
+- `backend` — consumed by the Go backend via an environment variable.
+  The Go code imports a client library and reads the connection string
+  from `os.Getenv()`.
+- `standalone` — accessed directly by the user in a browser (e.g.,
+  n8n dashboard, WordPress admin). No Go code integration; the agent
+  gives the user a `localhost:<port>` link during development.
+
 ---
 
 ## Development Workflow
@@ -156,10 +184,11 @@ Focus on **why** a choice was made, what was considered, and what was discarded.
 After the PRD is written or refined:
 
 1. Generate or update `docs/TASKS.md` from the PRD.
-2. Use the Skill tool to invoke `cofounder:tech-stack` and follow the instructions to build the web application.
-3. As you code, **keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
-4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-5. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
+2. **Identify infrastructure needs.** Review the PRD for features that require external services. Create `docs/INFRASTRUCTURE.md` with one row per service. This may include Postgres, Redis, n8n, or nothing at all (a static site needs no services). If the PRD doesn't call for any external services, create the file with an empty table.
+3. Use the Skill tool to invoke `cofounder:tech-stack` and follow the instructions to build the web application.
+4. As you code, **keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
+5. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
+6. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
 
 When the Local Development Feedback Loop (as defined in the tech-stack skill) delivers a well-functioning web app:
 
@@ -184,19 +213,11 @@ If the user gives feedback, iterate on the implementation accordingly and return
 
 When the user chooses to deploy:
 
-1. **Determine accessories.** Each external service the app uses becomes an accessory — a dedicated VM with a persistent disk. Start with what the tech-stack established during development:
-   - If the app connects to PostgreSQL (the default), it needs a `db` accessory.
-   - If other services were introduced during development, each needs its own accessory.
+1. **Carry forward accessories.** Read `docs/INFRASTRUCTURE.md` for the list of services established during development. Each row becomes an accessory in the Kamal config and in the provisioning workflow's `accessories` JSON. If the file doesn't exist, create it now by inspecting the codebase (Go imports, `.env`, existing podman containers).
 
-   Beyond the default stack, consider whether the app benefits from additional accessories:
-   - **Ready-to-use applications** from public Docker images — n8n, WAHA (WhatsApp gateway), WordPress, etc.
-   - **Infrastructure components** when Postgres and its bundled extensions aren't fit for the job — Redis, MySQL, Kafka, OpenSearch, Prometheus/Grafana, etc.
+   **Storage rules:** See the **app-deploy** skill's Platform Constraints section for mandatory storage rules (`volumes` for app roles, `directories` for accessories, host path under `/data/`).
 
-   Adding an accessory is straightforward: add an entry to the `accessories` JSON in the provisioning workflow, matched with a corresponding block in the Kamal destination config. Use the **kamal** skill for Kamal accessory configuration details.
-
-   **Storage rules (mandatory):**
-   - For main app roles (web, workers): use Kamal `volumes` for persistent data mounts. For accessories: use Kamal `directories` (which support `mode` and `owner` options). **Never** use named Docker volumes (`myapp_data:/path`).
-   - The host path must always be `/data/<subdir>` (e.g., `/data/pgdata`, `/data/uploads`, `/data/redis`). `/data/` is an attached disk with scheduled snapshot policies for disaster recovery — data outside it is not backed up.
+   **Naming rules:** `env_name` and accessory `name` values must use only lowercase letters, digits, and underscores (`[a-z0-9_]`).
 
    Carry this list into the app-deploy skill — it drives both the provisioning and the Kamal config, which must stay in sync.
 
@@ -235,10 +256,9 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `computer-setup` | Install dev tools (Homebrew/Scoop, mise, podman, GH CLI) |
 | `pre-flight-check` | Validate environment prerequisites |
 | `repo-setup` | Initialize Git repo and GitHub remote |
-| `tech-stack` | Build the app (Go + React + Postgres) |
+| `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
-| `kamal` | Kamal deployment concepts and configuration |
 | `app-deploy` | Deploy to Locaweb Cloud |
 
 ---

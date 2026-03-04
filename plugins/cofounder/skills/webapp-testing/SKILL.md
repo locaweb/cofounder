@@ -48,6 +48,23 @@ python scripts/with_server.py \
   -- python your_automation.py
 ```
 
+#### Including accessories
+
+If the app depends on accessories beyond the database, start them in the `with_server.py` invocation. Use `podman start` (not `podman run`) — the containers should already exist from the Local Services setup:
+
+```bash
+python scripts/with_server.py \
+  --server "podman start $(basename $(pwd))-db || true" --port 5432 \
+  --server "podman start $(basename $(pwd))-redis || true" --port 6379 \
+  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server" --port 8080 \
+  --server "cd frontend && npm run dev" --port 5173 \
+  -- python test_script.py
+```
+
+Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
+
+**Which accessories to include:** Backend-connected accessories (Redis, Kafka, Meilisearch) must be running for tests to pass — include them. Standalone accessories (n8n, WordPress) are typically not exercised by E2E tests of the main app — omit them unless a test specifically interacts with their API.
+
 To create an automation script, include only Playwright logic (servers are managed automatically):
 ```python
 from playwright.sync_api import sync_playwright
