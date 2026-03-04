@@ -139,7 +139,7 @@ Check which secrets already exist via `gh secret list`.
 If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md), set up database secrets:
 
 - Generate a random password for each environment
-- The user writes `POSTGRES_PASSWORD` as a GitHub Secret with the generated password
+- Set `POSTGRES_PASSWORD` as a GitHub Secret using `gh secret set --body` with the generated password (the agent does this directly -- never ask the user to set generated passwords)
 - `DATABASE_URL` is **not** a separate GitHub Secret -- it is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file (see [examples/](examples/) for the pattern)
 - The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`
 - Additional environments use suffixed names matching the environment name: e.g., `POSTGRES_PASSWORD_PRODUCTION`
@@ -159,8 +159,9 @@ See [references/setup-and-deploy.md -- Creating GitHub Secrets](references/setup
   - `SSH_PRIVATE_KEY` (from the generated key)
   - `POSTGRES_PASSWORD` (if using Postgres)
   - Any app-specific secrets
-- The agent can set `SSH_PRIVATE_KEY` directly from the local key file
-- All other secrets: ask the user to set via the GitHub UI (see [references/setup-and-deploy.md](references/setup-and-deploy.md#secrets-the-user-must-set-via-github-ui))
+- The agent sets `SSH_PRIVATE_KEY` directly from the local key file
+- The agent sets `POSTGRES_PASSWORD` directly using `gh secret set --body` with the generated password
+- Secrets only the user knows (CloudStack keys, app API keys, SMTP credentials, etc.): ask the user to set via the GitHub UI (see [references/setup-and-deploy.md](references/setup-and-deploy.md#secrets-the-user-must-set-via-github-ui))
 
 ### Step 7: Create Kamal configuration and secrets files
 
