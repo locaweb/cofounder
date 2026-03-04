@@ -154,8 +154,7 @@ builder:
 env:
   clear:
     MY_VAR: hello
-  secret:
-    - MY_SECRET              # from .kamal/secrets-common
+  # Do NOT put env.secret in the base config — see "Deep merge rules" below
 
 servers:                      # only needed if using workers
   workers:
@@ -186,6 +185,7 @@ env:
   clear:
     APP_ENV: preview
   secret:
+    - MY_SECRET              # common secrets, from .kamal/secrets-common
     - DATABASE_URL           # from .kamal/secrets.preview
 
 proxy:
@@ -209,6 +209,8 @@ Deep merge rules:
 - Scalar values are replaced
 - Arrays are replaced (not appended)
 - Hashes are recursively merged
+
+**IMPORTANT: Because arrays are replaced, `env.secret` must NOT be split between the base `deploy.yml` and destination files.** If the destination file defines `env.secret`, it completely overwrites the base list — any secrets declared only in the base config will be silently lost. Put ALL secrets (common + environment-specific) in each `config/deploy.<env>.yml`. Note: this does not affect `.kamal/secrets-common` and `.kamal/secrets.<env>` — those are separate files that Kamal reads independently.
 
 Enforce explicit destination with `require_destination: true` in the base config.
 
@@ -329,20 +331,14 @@ env:
 
 ### Secrets
 
-Secret names are listed in `env.secret`; values are resolved from `.kamal/secrets-common` and `.kamal/secrets.<destination>` at deploy time:
+Secret names are listed in `env.secret` in each destination file; values are resolved from `.kamal/secrets-common` and `.kamal/secrets.<destination>` at deploy time. Because arrays are replaced (not merged) during deep merge, **all secrets — both common and environment-specific — must be listed in each `config/deploy.<env>.yml`**. Do NOT put `env.secret` in the base `deploy.yml`.
 
 ```yaml
-# config/deploy.yml — secrets common to all environments
+# config/deploy.preview.yml — ALL secrets for this environment
 env:
   secret:
-    - MY_SECRET              # resolved from .kamal/secrets-common
-```
-
-```yaml
-# config/deploy.preview.yml — environment-specific secrets
-env:
-  secret:
-    - DATABASE_URL           # resolved from .kamal/secrets.preview
+    - MY_SECRET              # common secret, resolved from .kamal/secrets-common
+    - DATABASE_URL           # env-specific, resolved from .kamal/secrets.preview
 ```
 
 `.kamal/secrets-common` and `.kamal/secrets.<destination>` are dotenv files evaluated in the shell context:

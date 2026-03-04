@@ -24,12 +24,13 @@ builder: # do not change
     type: gha
     options: mode=max
 
-env: # environment variables from secrets and clear variables, applicable to all environments
+env: # environment variables from clear variables, applicable to all environments
   clear:
     BLOB_STORAGE_PATH: /data/blobs
     MY_VAR: hello-from-e2e
-  secret:
-    - MY_SECRET # secrets common to all environments, obtained from .kamal/secrets-common
+  # IMPORTANT: do NOT put env.secret here -- arrays are replaced (not merged) by destination files,
+  # so any secrets listed here would be lost when the destination file defines its own env.secret.
+  # Put ALL secrets (common + environment-specific) in each config/deploy.<env>.yml instead.
 
 volumes: # volumes on the web VM, applicable to all environments
   - /data/blobs:/data/blobs

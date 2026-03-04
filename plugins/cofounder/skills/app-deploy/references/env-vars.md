@@ -36,8 +36,8 @@ Sensitive configuration flows directly from GitHub Secrets through the caller wo
 ### How it works
 
 1. **Agent writes secret names** in two places:
-   - `deploy.yml` under `env.secret` -- tells Kamal which env vars are secrets
-   - `.kamal/secrets.<destination>` -- tells Kamal to read them from the runner environment
+   - `deploy.<env>.yml` under `env.secret` -- tells Kamal which env vars are secrets (list ALL secrets here, both common and env-specific)
+   - `.kamal/secrets-common` and `.kamal/secrets.<destination>` -- tells Kamal to read values from the runner environment
 
 2. **Caller workflow maps GitHub Secrets as env vars** on the deploy job:
 
@@ -59,21 +59,17 @@ Secrets like `DATABASE_URL` that can be derived from other secrets do not need t
 
 ### deploy.yml and .kamal/secrets configuration
 
-The agent writes secret names in `env.secret` blocks and `.kamal/secrets` files. Common secrets go in `config/deploy.yml` and `.kamal/secrets-common`; environment-specific secrets go in `config/deploy.<env>.yml` and `.kamal/secrets.<env>`:
+The agent writes secret names in `env.secret` blocks and `.kamal/secrets` files. **All secrets must be listed in each `config/deploy.<env>.yml`** — do NOT put `env.secret` in the base `config/deploy.yml`. This is because Kamal deep-merges destination files on top of the base config, and arrays are replaced (not appended). If the base config has `env.secret: [MY_SECRET]` and the destination has `env.secret: [DATABASE_URL]`, the result is only `[DATABASE_URL]` — `MY_SECRET` is silently lost.
+
+Secret *values* still use separate `.kamal/secrets-common` (for common secrets) and `.kamal/secrets.<env>` (for env-specific secrets) files — the merge issue only affects the `env.secret` array in YAML deploy configs.
 
 ```yaml
-# config/deploy.yml -- secrets common to all environments
+# config/deploy.<env>.yml -- ALL secrets for this environment
 env:
   secret:
-    - MY_SECRET
-```
-
-```yaml
-# config/deploy.preview.yml -- environment-specific secrets
-env:
-  secret:
-    - POSTGRES_PASSWORD
-    - DATABASE_URL
+    - MY_SECRET        # common secret, value from .kamal/secrets-common
+    - POSTGRES_PASSWORD # env-specific, value from .kamal/secrets.<env>
+    - DATABASE_URL      # env-specific, value from .kamal/secrets.<env>
 ```
 
 For **preview** (default environment), the `.kamal/secrets` file uses unsuffixed env var names. Derived secrets like `DATABASE_URL` are composed inline:

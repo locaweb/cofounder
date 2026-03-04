@@ -11,6 +11,7 @@ env:
   clear:
     APP_ENV: preview
   secret:
+    - MY_SECRET # common secrets, obtained from .kamal/secrets-common
     - DATABASE_URL # obtained from .kamal/secrets.<environment> eg .kamal/secrets.preview
 
 proxy:
