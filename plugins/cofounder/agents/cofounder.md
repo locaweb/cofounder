@@ -195,7 +195,7 @@ When the user chooses to deploy:
    Adding an accessory is straightforward: add an entry to the `accessories` JSON in the provisioning workflow, matched with a corresponding block in the Kamal destination config. Use the **kamal** skill for Kamal accessory configuration details.
 
    **Storage rules (mandatory):**
-   - Always use Kamal `directories` for persistent data — **never** use `volumes` or named Docker volumes.
+   - For main app roles (web, workers): use Kamal `volumes` for persistent data mounts. For accessories: use Kamal `directories` (which support `mode` and `owner` options). **Never** use named Docker volumes (`myapp_data:/path`).
    - The host path must always be `/data/<subdir>` (e.g., `/data/pgdata`, `/data/uploads`, `/data/redis`). `/data/` is an attached disk with scheduled snapshot policies for disaster recovery — data outside it is not backed up.
 
    Carry this list into the app-deploy skill — it drives both the provisioning and the Kamal config, which must stay in sync.

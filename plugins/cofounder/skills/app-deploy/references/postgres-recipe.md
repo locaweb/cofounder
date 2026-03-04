@@ -4,14 +4,17 @@ Recipe for deploying the `supabase/postgres` image — a Postgres container imag
 
 ## Table of Contents
 
-- [Complete Accessory Recipe](#complete-accessory-recipe)
-- [The `-D /etc/postgresql` Flag](#the--d-etcpostgresql-flag)
-- [Volume Mount: `/data/pgdata`, Not `/data/`](#volume-mount-datapgdata-not-data)
-- [Container Env: Only `POSTGRES_PASSWORD`](#container-env-only-postgres_password)
-- [DATABASE\_URL Derived from POSTGRES\_PASSWORD](#database_url-derived-from-postgres_password)
-- [Tuning with `generate_pg_cmd.py`](#tuning-with-generate_pg_cmdpy)
-- [Plan-to-RAM Mapping Table](#plan-to-ram-mapping-table)
-- [Sync with Workflow](#sync-with-workflow)
+- [supabase/postgres Accessory Recipe](#supabasepostgres-accessory-recipe)
+  - [Table of Contents](#table-of-contents)
+  - [Complete Accessory Recipe](#complete-accessory-recipe)
+  - [The `-D /etc/postgresql` Flag](#the--d-etcpostgresql-flag)
+  - [Volume Mount: `/data/pgdata`, Not `/data/`](#volume-mount-datapgdata-not-data)
+  - [Container Env: Only `POSTGRES_PASSWORD`](#container-env-only-postgres_password)
+  - [DATABASE\_URL Derived from POSTGRES\_PASSWORD](#database_url-derived-from-postgres_password)
+  - [Tuning with `generate_pg_cmd.py`](#tuning-with-generate_pg_cmdpy)
+    - [Tuning algorithm](#tuning-algorithm)
+  - [Plan-to-RAM Mapping Table](#plan-to-ram-mapping-table)
+  - [Sync with Workflow](#sync-with-workflow)
 
 ## Complete Accessory Recipe
 
@@ -55,9 +58,7 @@ Without this flag, postgres will look for configuration in the wrong path and fa
 
 ## Volume Mount: `/data/pgdata`, Not `/data/`
 
-The host disk is mounted at `/data/` by the workflow. Always use Kamal `directories` (never `volumes` or named Docker volumes) — `/data/` is an attached disk with scheduled snapshot policies for disaster recovery, and only data under `/data/` is backed up. The ext4 filesystem also creates a `lost+found` directory at the mount root, so PostgreSQL's `initdb` fails if the data directory is not empty.
-
-Always bind-mount a **subdirectory**:
+The host disk is mounted at `/data/` by the workflow. For accessories, always use Kamal `directories` (never named Docker volumes) — `/data/` is an attached disk with scheduled snapshot policies for disaster recovery, and only data under `/data/` is backed up. The ext4 filesystem also creates a `lost+found` directory at the mount root, so PostgreSQL's `initdb` fails if the data directory is not empty. For that reason, always bind-mount a **subdirectory**:
 
 ```yaml
 accessories:

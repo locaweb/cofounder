@@ -31,7 +31,7 @@ env: # environment variables from secrets and clear variables, applicable to all
   secret:
     - MY_SECRET # secrets common to all environments, obtained from .kamal/secrets-common
 
-directories: # directories on the web VM, applicable to all environments
+volumes: # volumes on the web VM, applicable to all environments
   - /data/blobs:/data/blobs
 
 servers: # only needed if using workers
