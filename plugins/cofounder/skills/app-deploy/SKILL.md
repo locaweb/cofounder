@@ -199,6 +199,8 @@ KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD
 MY_SECRET=$MY_SECRET
 ```
 
+**`KAMAL_REGISTRY_PASSWORD` is NOT a GitHub Secret and the user does NOT need to create a PAT.** It is set automatically in the deploy workflow step as `KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}` — the built-in GitHub Actions token that has `packages: write` permission (declared in the workflow's `permissions` block). See the workflow examples in [references/workflows.md](references/workflows.md).
+
 #### 7d: Environment-specific secrets (`.kamal/secrets.{env}`)
 
 Secrets for a specific environment. Each line maps a Kamal secret name to either a shell env var or a derived value. See the [examples/](examples/) folder for the full pattern:
