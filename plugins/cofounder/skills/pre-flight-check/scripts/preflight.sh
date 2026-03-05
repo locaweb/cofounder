@@ -39,7 +39,67 @@ if [[ ${#errors[@]} -gt 0 ]]; then
         echo "  - $err"
     done
     exit 1
-else
-    echo "PREFLIGHT_PASSED"
-    exit 0
 fi
+
+# 3. Git sync — commit/push local changes and pull remote commits
+#    Only runs when a git repo with at least one remote exists.
+if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
+    current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+    if [[ -z "$current_branch" ]]; then
+        echo "PREFLIGHT_FAILED"
+        echo "  - GIT_SYNC_ERROR: HEAD is detached — cannot sync."
+        exit 1
+    fi
+
+    # Resolve the upstream tracking ref (e.g. "origin/main") if configured
+    upstream=$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null || true)
+
+    # Commit any outstanding local changes
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+        echo "SYNC: Committing local changes..."
+        git add -A
+        git commit -m "Auto-sync: commit outstanding changes before session" --no-gpg-sign || {
+            echo "PREFLIGHT_FAILED"
+            echo "  - GIT_SYNC_ERROR: Failed to commit local changes."
+            exit 1
+        }
+    fi
+
+    if [[ -n "$upstream" ]]; then
+        # Upstream is configured — use it for pull/push (handles name mismatches)
+        echo "SYNC: Pulling remote changes (upstream: $upstream)..."
+        git pull --rebase || {
+            echo "PREFLIGHT_FAILED"
+            echo "  - GIT_SYNC_ERROR: Pull failed — possible merge conflict. Resolve manually and re-run."
+            exit 1
+        }
+
+        echo "SYNC: Pushing local commits..."
+        git push || {
+            echo "PREFLIGHT_FAILED"
+            echo "  - GIT_SYNC_ERROR: Push failed — check remote access and try again."
+            exit 1
+        }
+    else
+        # No upstream — try origin/<branch> as a best-effort fallback
+        echo "SYNC: No upstream configured, trying origin/$current_branch..."
+        if git rev-parse --verify "origin/$current_branch" >/dev/null 2>&1; then
+            git pull --rebase origin "$current_branch" || {
+                echo "PREFLIGHT_FAILED"
+                echo "  - GIT_SYNC_ERROR: Pull failed — possible merge conflict. Resolve manually and re-run."
+                exit 1
+            }
+        fi
+
+        git push --set-upstream origin "$current_branch" || {
+            echo "PREFLIGHT_FAILED"
+            echo "  - GIT_SYNC_ERROR: Push failed — check remote access and try again."
+            exit 1
+        }
+    fi
+
+    echo "SYNC: Repository is up to date."
+fi
+
+echo "PREFLIGHT_PASSED"
+exit 0

@@ -51,6 +51,21 @@ content.
 **On failure:** Suggest using an empty directory, or initializing a git
 repository first to acknowledge the existing content.
 
+### 3. Git Sync
+
+When the directory has a git repository **and** at least one remote is configured,
+the script automatically synchronizes:
+
+1. **Commit** any uncommitted local changes (staged or unstaged)
+2. **Pull** remote commits using rebase to keep history linear
+3. **Push** local commits to the remote
+
+This ensures every session starts from a fully synchronized state.
+
+**On failure:** The script reports a `GIT_SYNC_ERROR` with details (commit
+failed, merge conflict on pull, or push rejected). The user must resolve the
+issue manually and re-run the check.
+
 ## Handling Failures
 
 When the pre-flight check fails:
