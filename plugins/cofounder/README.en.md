@@ -66,7 +66,14 @@ Add the marketplace and install the plugin:
 
 ```
 /plugin marketplace add gmautner/marketplace
+```
+
+```
 /plugin install cofounder
+```
+
+```
+/reload-plugins
 ```
 
 ## Usage
