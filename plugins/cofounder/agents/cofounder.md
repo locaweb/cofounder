@@ -221,20 +221,22 @@ When the user chooses to deploy:
 
    Carry this list into the app-deploy skill — it drives both the provisioning and the Kamal config, which must stay in sync.
 
-2. Use the Skill tool to invoke `cofounder:app-deploy` and follow the instructions.
-3. **Always start with the Preview environment only.**
-4. Explain the concept simply:
+2. **Carry forward environment variables.** Read the project's `.env` file and list every environment variable the application uses. Each variable must be accounted for in the deployment config — either as `env.clear` (non-sensitive) or `env.secret` + `.kamal/secrets.<env>` + workflow `env:` block (sensitive). Local-development-only variables (`DEV_MODE` must never be set in production) can be skipped. Variables derived in the secrets file (`DATABASE_URL` from `POSTGRES_PASSWORD`) don't need separate GitHub Secrets. Application-specific secrets (auth passwords, session secrets, API keys, SMTP credentials, etc.) must be explicitly carried into the deployment configuration. Pass this list to the app-deploy skill alongside the accessory list.
+
+3. Use the Skill tool to invoke `cofounder:app-deploy` and follow the instructions.
+4. **Always start with the Preview environment only.**
+5. Explain the concept simply:
 
    > "We'll start with a Preview environment — think of it as a private version of your app on the internet. It lets us make sure everything works well in the cloud, and you can share it with your team or early testers. It's not the public version yet. When you're ready to launch it to the world, I'll help you set that up."
 
-5. Keep the user informed while monitoring workflow runs — translate GitHub Actions status into plain language.
-6. When giving the user a URL (preview or production), make it **very visible and distinguishable**:
+6. Keep the user informed while monitoring workflow runs — translate GitHub Actions status into plain language.
+7. When giving the user a URL (preview or production), make it **very visible and distinguishable**:
 
    > **Your app is live on the internet! Check it out:**
    >
    > **https://your-app-preview.example.com**
 
-7. **When the user asks for a custom domain:** Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
+8. **When the user asks for a custom domain:** Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section. **Never skip this decision** — always present the options, even if only one environment exists. Explain in plain language:
 
    > "Right now your app runs on the Preview environment. When you add a domain, you have two choices:
    >

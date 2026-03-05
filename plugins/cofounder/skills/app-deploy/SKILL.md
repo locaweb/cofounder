@@ -134,6 +134,15 @@ Tell the user where to find their API keys:
 
 See [references/setup-and-deploy.md -- Database Credentials](references/setup-and-deploy.md#database-credentials) for detailed commands. For the full secrets and environment variables reference, see [references/env-vars.md](references/env-vars.md).
 
+**Discover all app env vars:** Read the project's `.env` file to get the full list of environment variables the application uses. Cross-reference with the application's config loading code (e.g., `backend/internal/config/config.go`) to confirm which variables are expected. For each variable, decide:
+
+- **Skip** — local-development-only (`DEV_MODE` must never be set in production) or already set directly in the Kamal config's `env.clear` (`PORT`)
+- **Derived** — composed from other secrets in `.kamal/secrets` (`DATABASE_URL` from `POSTGRES_PASSWORD`)
+- **Clear** — non-sensitive, goes in `env.clear` in the Kamal config (no GitHub Secret needed)
+- **Secret** — sensitive, needs a GitHub Secret + entry in `.kamal/secrets.<env>` + entry in `env.secret` + entry in the workflow `env:` block
+
+Keep this classified list — it drives Steps 6 and 7.
+
 Check which secrets already exist via `gh secret list`.
 
 If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md), set up database secrets:
@@ -144,7 +153,7 @@ If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md),
 - The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`
 - Additional environments use suffixed names matching the environment name: e.g., `POSTGRES_PASSWORD_PRODUCTION`
 
-For any other app secrets (API keys, SMTP credentials, etc.), ask the user to store each one **individually** as a GitHub Secret via the GitHub UI.
+For any other app secrets identified in the discovery step above, ask the user to store each one **individually** as a GitHub Secret via the GitHub UI.
 
 - **Never** accept secret values through the chat
 
