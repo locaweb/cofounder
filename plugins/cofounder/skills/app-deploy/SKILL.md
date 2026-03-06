@@ -536,7 +536,22 @@ with:
 
 ## Scaling
 
-See [references/scaling.md](references/scaling.md) for VM plans, worker scaling, and disk size configuration.
+Scaling happens by updating workflow inputs and/or Kamal config, then redeploying. See [references/scaling.md](references/scaling.md) for VM plans, disk sizes, and detailed instructions.
+
+### Web (vertical only)
+
+Change `web_plan` in the workflow and redeploy. No config file changes needed. Causes brief downtime.
+
+### Workers
+
+- **Vertical**: Change `workers_plan` in the workflow and redeploy. No config file changes needed. Causes brief downtime.
+- **Horizontal**: Change `workers_replicas` in the workflow. **Also update the host list** in `config/deploy.<env>.yml` to match the new replica count — see [references/scaling.md -- Scaling Workers](references/scaling.md#scaling-workers) for details. Commit, push, and redeploy.
+
+### Accessories (database, redis, etc.)
+
+Change the `plan` in the `accessories` JSON in the workflow. **For database accessories using `supabase/postgres`**, also regenerate the `cmd` — see [references/scaling.md -- Scaling the Database](references/scaling.md#scaling-the-database) for the full procedure.
+
+**Other accessories may also have memory-dependent configuration** (e.g., `maxmemory` for Redis, JVM heap for Elasticsearch). When scaling any accessory, review its `cmd`, `env`, or container configuration in `config/deploy.<env>.yml` and adjust parameters to match the new plan's resources.
 
 ## Teardown
 

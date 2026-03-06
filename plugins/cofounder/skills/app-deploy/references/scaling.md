@@ -11,7 +11,10 @@
     - [3. Environment purpose](#3-environment-purpose)
   - [Scaling the Web Tier](#scaling-the-web-tier)
   - [Scaling Workers](#scaling-workers)
+    - [Updating the host list when changing replicas](#updating-the-host-list-when-changing-replicas)
   - [Scaling Accessories](#scaling-accessories)
+    - [Scaling the Database](#scaling-the-database)
+    - [Other accessories with memory-dependent configuration](#other-accessories-with-memory-dependent-configuration)
   - [Disk Sizes](#disk-sizes)
     - [Choosing disk sizes](#choosing-disk-sizes)
   - [How Scaling Works](#how-scaling-works)
@@ -86,6 +89,22 @@ Scale down: re-deploy with a lower `workers_replicas`. Excess worker VMs are des
 
 Workers can also scale vertically via `workers_plan`. **Vertical scaling of workers causes a restart with brief downtime** on the affected VMs.
 
+### Updating the host list when changing replicas
+
+When changing `workers_replicas`, the host list in `config/deploy.<env>.yml` must match the new count. The provision job exports `INFRA_WORKER_IP_0`, `INFRA_WORKER_IP_1`, etc. — one per replica. Add or remove ERB entries accordingly:
+
+```yaml
+# config/deploy.preview.yml — example for 3 replicas
+servers:
+  workers:
+    hosts:
+      - <%= ENV['INFRA_WORKER_IP_0'] %>
+      - <%= ENV['INFRA_WORKER_IP_1'] %>
+      - <%= ENV['INFRA_WORKER_IP_2'] %>
+```
+
+If the host list has fewer entries than `workers_replicas`, the extra worker VMs will be provisioned but Kamal will not deploy containers to them. If the host list has more entries than `workers_replicas`, the extra entries will resolve to empty strings and Kamal will fail.
+
 ## Scaling Accessories
 
 Each accessory scales **vertically only** (single VM per accessory). Change the `plan` inside the `accessories` JSON:
@@ -98,6 +117,48 @@ with:
 **Vertical scaling causes a restart with brief downtime.** The accessory container will restart after the VM is resized. Ensure the application handles transient disconnections gracefully (e.g., database reconnection logic).
 
 To add a new accessory, add an entry to the `accessories` JSON array and re-deploy. To remove an accessory, remove its entry from the JSON array -- the teardown of the removed accessory's resources happens automatically.
+
+### Scaling the Database
+
+When scaling a `supabase/postgres` database accessory, the VM plan change must be accompanied by updated PostgreSQL tuning parameters. The `cmd` in `config/deploy.<env>.yml` encodes memory-dependent settings (`shared_buffers`, `effective_cache_size`, etc.) that must match the new plan's RAM.
+
+**Procedure:**
+
+1. **Regenerate the `cmd` string** using `generate_pg_cmd.py` with the new plan:
+
+   ```bash
+   python3 plugins/cofounder/skills/app-deploy/scripts/generate_pg_cmd.py --plan <new_plan>
+   ```
+
+   Example output for `--plan large`:
+
+   ```
+   postgres -D /etc/postgresql -c shared_buffers=2GB -c effective_cache_size=6GB -c work_mem=10MB -c maintenance_work_mem=512MB -c max_connections=200
+   ```
+
+2. **Update `accessories.db.cmd`** in `config/deploy.<env>.yml` with the output from step 1.
+
+3. **Update the `plan`** in the `accessories` JSON in the deploy workflow (`.github/workflows/deploy-<env>.yml`):
+
+   ```yaml
+   accessories: '[{"name": "db", "plan": "large", "disk_size_gb": 50}]'
+   ```
+
+4. **Commit, push, and redeploy.** The provision job resizes the VM; Kamal reboots the accessory with the new `cmd`.
+
+If the `cmd` is not updated to match the new plan, PostgreSQL will run with tuning parameters sized for the old VM — either wasting memory (scaled up) or risking OOM (scaled down).
+
+See [postgres-recipe.md -- Tuning with generate_pg_cmd.py](postgres-recipe.md#tuning-with-generate_pg_cmdpy) for the tuning algorithm and plan-to-RAM mapping.
+
+### Other accessories with memory-dependent configuration
+
+The database procedure above is a specific instance of a general rule: **when scaling any accessory, review whether its container configuration has parameters tied to available memory or CPU**. Examples:
+
+- **Redis**: `maxmemory` (typically 50-75% of RAM)
+- **Elasticsearch / OpenSearch**: JVM heap (`-Xms`, `-Xmx`, typically 50% of RAM, max 32GB)
+- **Any service with a `cmd` or `env` containing memory/CPU limits**
+
+Update these values in `config/deploy.<env>.yml` (in the accessory's `cmd` or `env.clear` block) to match the new plan before redeploying.
 
 ## Disk Sizes
 

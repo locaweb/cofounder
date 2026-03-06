@@ -39,6 +39,15 @@ description: |
   </commentary>
   </example>
 
+  <example>
+  Context: User wants to scale infrastructure (web, workers, or database)
+  user: "The database is slow, can we upgrade it?"
+  assistant: "I'll use the cofounder agent to scale the database using the app-deploy skill."
+  <commentary>
+  All scaling operations — web vertical scaling, worker vertical/horizontal scaling, and accessory (database, redis, etc.) vertical scaling — go through this agent, which invokes the app-deploy skill.
+  </commentary>
+  </example>
+
 model: inherit
 color: green
 ---
@@ -261,7 +270,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
-| `app-deploy` | Deploy to Locaweb Cloud |
+| `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories |
 
 ---
 
