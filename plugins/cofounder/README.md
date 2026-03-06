@@ -4,6 +4,18 @@ Um plugin para o [Claude Code](https://docs.anthropic.com/en/docs/claude-code) q
 
 [Click here for the English version](README.en.md)
 
+## Índice
+
+- [Antes de começar](#antes-de-começar)
+- [O que ele faz](#o-que-ele-faz)
+- [Instalação](#instalação)
+- [Como usar](#como-usar)
+- [Demo](#demo)
+- [Comandos](#comandos)
+- [Skills incluídas](#skills-incluídas)
+- [Stack](#stack)
+- [Licença](#licença)
+
 ## Antes de começar
 
 ### macOS
@@ -32,6 +44,10 @@ Um plugin para o [Claude Code](https://docs.anthropic.com/en/docs/claude-code) q
    3. Reinicie o computador
 
    Após reiniciar, execute `wsl --status` e verifique se aparece "Default Version: 2". Em alguns casos pode ser necessário repetir o comando `wsl --install` e reiniciar o computador mais de uma vez.
+
+### Linux
+
+1. Instale o [Claude Code](https://code.claude.com/docs/pt/overview) (linha de comando).
 
 ## O que ele faz
 

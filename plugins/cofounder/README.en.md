@@ -4,6 +4,18 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that acts
 
 [Clique aqui para a versão em Português](README.md)
 
+## Table of Contents
+
+- [Before you start](#before-you-start)
+- [What it does](#what-it-does)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Demo](#demo)
+- [Commands](#commands)
+- [Skills included](#skills-included)
+- [Tech stack](#tech-stack)
+- [License](#license)
+
 ## Before you start
 
 ### macOS
@@ -32,6 +44,10 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that acts
    3. Reboot the computer
 
    After rebooting, run `wsl --status` and verify it shows "Default Version: 2". A second `wsl --install` run may be needed in some cases.
+
+### Linux
+
+1. Install [Claude Code](https://code.claude.com/docs/en/overview) (command line).
 
 ## What it does
 

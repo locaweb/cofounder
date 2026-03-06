@@ -6,6 +6,7 @@ description: >
   "install Scoop", "set up development environment", "install node",
   "install go", or needs to ensure all development prerequisites
   (Homebrew/Scoop, mise, podman, GH CLI) are installed and configured.
+  Supports macOS, Linux, and Windows.
 ---
 
 # Computer Setup
@@ -16,9 +17,9 @@ idempotent — safe to re-run across sessions.
 
 ## Overview
 
-This skill detects the current platform (macOS or Windows via git bash) and
-walks through the installation of all required tools. Each step checks whether
-the tool is already present before attempting installation.
+This skill detects the current platform (macOS, Linux, or Windows via git bash)
+and walks through the installation of all required tools. Each step checks
+whether the tool is already present before attempting installation.
 
 ## Detect Platform
 
@@ -27,6 +28,7 @@ uname -s 2>/dev/null || echo Windows
 ```
 
 - `Darwin` → follow the **macOS** section
+- `Linux` → follow the **Linux** section
 - `MINGW64_NT*` / `MSYS_NT*` or similar → follow the **Windows** section
 
 ---
@@ -143,6 +145,111 @@ mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~
 ```
 
 #### 9. Verify GH CLI
+
+```bash
+gh version
+```
+
+---
+
+## Linux
+
+### Phase 1 — Install tools
+
+#### 1. Install Podman
+
+```bash
+command -v podman
+```
+
+If `podman` is found, skip to the next step.
+
+If not found, refer to https://podman.io/docs/installation#installing-on-linux
+using the WebFetch tool and follow the specific instructions for the user's
+Linux distribution. Detect the distro:
+
+```bash
+. /etc/os-release 2>/dev/null && echo "$ID"
+```
+
+Use the matching section from the Podman docs (e.g., Alpine, Arch, CentOS,
+Debian, Fedora, Ubuntu, etc.).
+
+#### 2. Install and activate mise
+
+```bash
+command -v mise
+```
+
+If `mise` is found, skip to activation below.
+
+If not found, refer to https://mise.jdx.dev/installing-mise.html using the
+WebFetch tool and follow the specific instructions for the user's Linux
+distribution (detected above via `$ID`).
+
+Then ensure mise is activated in the user's shell profile:
+
+```bash
+grep -q 'mise activate' ~/.profile || echo 'eval "$(mise activate bash --shims)"' >> ~/.profile
+```
+
+#### 3. Install GH CLI
+
+```bash
+command -v gh
+```
+
+If `gh` is found, skip to the next step.
+
+If not found, refer to https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+using the WebFetch tool (or clone `https://github.com/cli/cli.git` to
+`/tmp/gh-cli-docs` and read `docs/install_linux.md` if WebFetch fails) and
+follow the specific instructions for the user's Linux distribution.
+
+#### 4. Restart Claude
+
+**If any of steps 1-3 performed an install**, ask the user to **exit Claude**
+and **log out from their Linux session** (then log back in). This is needed to
+reload `.profile` so the new PATH takes effect. Tell them to come back to this
+same project directory and start a new Claude session. Otherwise skip to
+Phase 2.
+
+### Phase 2 — Verify and set up (after restart)
+
+#### 5. Set up Podman
+
+```bash
+podman version
+```
+
+Verify that podman is working. On Linux, podman runs natively — no machine
+init/start is needed.
+
+Run connectivity test:
+
+```bash
+podman run -d --name podman-setup-test-nginx -p 18080:80 docker.io/library/nginx:alpine
+```
+
+Wait a few seconds, then:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/
+```
+
+Expect `200`. Clean up:
+
+```bash
+podman rm -f podman-setup-test-nginx
+```
+
+#### 6. Verify mise works
+
+```bash
+mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+```
+
+#### 7. Verify GH CLI
 
 ```bash
 gh version
@@ -352,8 +459,8 @@ Add `"autoUpdate": true` as the last field in that object:
 
 ## Troubleshooting
 
-- **Homebrew/mise/podman not found after install**: Restart Claude so the new PATH takes effect
-- **Podman machine fails to start**: Check that virtualization is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting hypervisor (e.g., Docker Desktop) holds the VM socket.
+- **Homebrew/mise/podman not found after install**: Restart Claude so the new PATH takes effect. On Linux, also log out and back in to reload `.profile`.
+- **Podman machine fails to start (macOS/Windows)**: Check that virtualization is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting hypervisor (e.g., Docker Desktop) holds the VM socket.
 - **WSL issues on Windows**: "Default Version: 2" does not guarantee WSL2 is working — errors about missing components may follow. If the output mentions "Virtual Machine Platform" or similar, ask the user to run `wsl.exe --install --no-distribution` in PowerShell as Administrator, then reboot. Otherwise, use `wsl --install`.
 - **Connectivity test fails**: The nginx container may need an extra second. Re-run the curl check. If it persists, check firewall rules and that port 18080 is free.
 
