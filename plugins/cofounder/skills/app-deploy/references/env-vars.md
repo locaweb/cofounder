@@ -5,6 +5,7 @@
 - [Clear Variables (deploy.yml)](#clear-variables-deployyml)
 - [Secret Variables](#secret-variables)
 - [Passing Variables in Caller Workflows](#passing-variables-in-caller-workflows)
+- [Inter-Component Connectivity](#inter-component-connectivity)
 - [Database Connection Variables](#database-connection-variables)
 - [Disk Storage Path](#disk-storage-path)
 
@@ -121,6 +122,36 @@ jobs:
 ```
 
 Clear variables are written directly in `deploy.yml` by the agent -- they are not passed through the workflow.
+
+## Inter-Component Connectivity
+
+When the app, workers, or accessories need to communicate with each other, use the **CloudStack internal DNS hostname** — the accessory name (e.g., `db`, `redis`, `waha`) — **never** use `INFRA_*_IP` env vars.
+
+The `INFRA_*_IP` variables exported by the provision workflow contain **public** IPs. They are meant only for:
+- Kamal `host:` fields (SSH deployment to VMs)
+- `servers.web.hosts` / `servers.workers.hosts` (Kamal server lists)
+- `proxy.host` (external-facing URLs like `<%= ENV['INFRA_WEB_IP'] %>.nip.io`)
+
+Using public IPs for inter-component communication (database hosts, cache endpoints, message brokers, etc.) routes traffic through the external interface, which may fail due to firewall rules or the service port not being open publicly. CloudStack internal DNS resolves the accessory name to its private IP on the internal network, which is fast, reliable, and always available.
+
+### Examples
+
+```yaml
+# CORRECT — use the accessory name as the hostname
+env:
+  clear:
+    WORDPRESS_DB_HOST: db
+    REDIS_URL: redis://redis:6379
+    WAHA_API_URL: http://waha:3000
+
+# WRONG — never use INFRA_*_IP for inter-component communication
+env:
+  clear:
+    WORDPRESS_DB_HOST: <%= ENV['INFRA_DB_IP'] %>           # public IP, will fail
+    REDIS_URL: redis://<%= ENV['INFRA_REDIS_IP'] %>:6379   # public IP, will fail
+```
+
+This rule applies to all inter-component references regardless of whether the components are on the same VM or different VMs.
 
 ## Database Connection Variables
 

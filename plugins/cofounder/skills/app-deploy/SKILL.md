@@ -199,6 +199,8 @@ Environment-specific Kamal config. See [references/env-vars.md -- Clear Variable
 - **Proxy host and TLS** -- nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production. Always `ssl: true`.
 - **Accessories** -- image, host (ERB), port, cmd, env, directories
 
+**IMPORTANT — `INFRA_*_IP` is for Kamal and external URLs only:** The `INFRA_*_IP` env vars contain **public** IPs. Use them only in Kamal's `host:` fields (SSH deployment), `servers.web.hosts` / `servers.workers.hosts`, and `proxy.host` (external-facing URLs). **Never** use `INFRA_*_IP` in `env.clear` or `env.secret` for inter-component communication (database hosts, cache endpoints, message brokers, etc.). Instead, use the CloudStack internal DNS hostname — the accessory name (e.g., `db`, `redis`). See [references/kamal.md — Accessories](references/kamal.md#accessories) for details.
+
 #### 7c: Common secrets (`.kamal/secrets-common`)
 
 Secrets shared across all environments. Each line maps a Kamal secret name (left) to a shell environment variable name (right):

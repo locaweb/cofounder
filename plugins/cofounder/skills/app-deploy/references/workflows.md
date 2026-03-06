@@ -233,7 +233,7 @@ The infra job exposes outputs consumed by the deploy job and optionally by downs
 | `accessory_ips` | string (JSON object) | Accessory public IPs keyed by name (e.g., `{"db":"200.234.x.x","redis":"200.234.y.y"}`) |
 | `infrastructure_changed` | string | `"true"` when fresh provision (cache miss), `"false"` when cached. Informational — the deploy job always runs `kamal setup` (idempotent). |
 | `scaled_accessories` | string (JSON array) | Names of accessories whose VMs were rescaled (e.g., `["db"]`). Informational — the deploy job always reboots all accessories. |
-| `infra_env` | string (multiline) | `KEY=VALUE` pairs for `GITHUB_ENV` (e.g., `INFRA_WEB_IP`, `INFRA_DB_IP`, `INFRA_WORKER_IP_0`). The deploy job loads these to make IPs available for Kamal ERB templates. |
+| `infra_env` | string (multiline) | `KEY=VALUE` pairs for `GITHUB_ENV` (e.g., `INFRA_WEB_IP`, `INFRA_DB_IP`, `INFRA_WORKER_IP_0`). These are **public** IPs. The deploy job loads them to make IPs available for Kamal ERB templates — use them only in Kamal `host:` fields (SSH deployment), `servers.*.hosts`, and `proxy.host` (external URLs). **Never** use `INFRA_*_IP` in `env.clear`/`env.secret` for inter-component communication; use the CloudStack internal DNS hostname (the accessory name, e.g., `db`) instead. |
 
 ## Complete Example (All Inputs)
 
