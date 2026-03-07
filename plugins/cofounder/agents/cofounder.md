@@ -48,6 +48,15 @@ description: |
   </commentary>
   </example>
 
+  <example>
+  Context: User wants to check server logs, SSH into a VM, or debug a deployed app
+  user: "Can you check the logs on the server?"
+  assistant: "I'll use the cofounder agent to SSH into the server and check the logs using the app-deploy skill."
+  <commentary>
+  All post-deployment operations — SSH access, container logs, database connections, health checks, and server debugging — go through this agent, which invokes the app-deploy skill.
+  </commentary>
+  </example>
+
 model: inherit
 color: green
 ---
@@ -270,7 +279,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
-| `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories |
+| `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
 
 ---
 

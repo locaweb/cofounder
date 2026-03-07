@@ -399,7 +399,7 @@ Quick reference for interacting with deployed infrastructure. See [references/op
 | Task | Command pattern |
 |---|---|
 | Get deployment IPs | `rm -rf /tmp/provision-output && gh run download <run-id> --name provision-output --dir /tmp/provision-output` |
-| SSH into a VM | `ssh -i ~/.ssh/<repo-name>[-<env_name>] root@<ip>` |
+| SSH into a VM | Resolve key first: `REPO_NAME=$(gh repo view --json name -q .name)`, then `ssh -i ~/.ssh/$REPO_NAME[-<env_name>] root@<ip>` — **always use `-i`**, never rely on the default SSH key |
 | Connect to accessory (e.g. Postgres) | SSH into accessory VM -> `docker exec -it <repo-name>-db psql -U postgres` |
 | View app logs | SSH into web VM -> `docker logs $(docker ps -q --filter "label=service=<repo-name>") --tail 100` |
 | Check app health | `curl -s https://<web_ip>.nip.io/up` |

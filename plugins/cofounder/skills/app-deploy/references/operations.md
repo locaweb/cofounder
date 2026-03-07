@@ -57,6 +57,21 @@ gh run view <run-id>
 
 **User is always `root`.** Use the SSH key that matches the environment. See [setup-and-deploy.md -- SSH Key Generation](setup-and-deploy.md#ssh-key-generation) for how these keys are generated.
 
+### Resolve the key path first
+
+Before any SSH command, determine the repo name and construct the key path. **Always use `-i` to specify the key** — never rely on the SSH client's default key selection:
+
+```bash
+# Get the repo name (without the owner prefix)
+REPO_NAME=$(gh repo view --json name -q .name)
+
+# Preview environment key
+SSH_KEY=~/.ssh/$REPO_NAME
+
+# Other environments (e.g., production)
+SSH_KEY=~/.ssh/$REPO_NAME-production
+```
+
 ### Key locations
 
 | Environment | Key path |
