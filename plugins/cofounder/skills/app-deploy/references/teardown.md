@@ -79,9 +79,9 @@ gh run list --workflow=deploy-preview.yml --limit=5
 gh run view <run-id>
 
 # Download the provision-output artifact to see IPs (clean first to avoid stale data)
-rm -rf /tmp/provision-output
-gh run download <run-id> --name provision-output --dir /tmp/provision-output
-cat /tmp/provision-output/provision-output.json
+rm -rf ~/provision-output
+gh run download <run-id> --name provision-output --dir ~/provision-output
+cat ~/provision-output/provision-output.json
 ```
 
 3. **Decode provision-output.json** -- the artifact contains:

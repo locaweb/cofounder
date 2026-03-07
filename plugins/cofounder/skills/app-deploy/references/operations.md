@@ -11,11 +11,11 @@ Every deploy workflow run produces a `provision-output` artifact containing a JS
 gh run list --workflow=deploy-preview.yml --limit=5
 
 # 2. Clean up any previous artifact, then download
-rm -rf /tmp/provision-output
-gh run download <run-id> --name provision-output --dir /tmp/provision-output
+rm -rf ~/provision-output
+gh run download <run-id> --name provision-output --dir ~/provision-output
 
 # 3. Read the IPs
-cat /tmp/provision-output/provision-output.json
+cat ~/provision-output/provision-output.json
 ```
 
 The JSON contains:
@@ -166,7 +166,7 @@ docker exec -it $(docker ps -q --filter "label=service=<repo-name>") sh
 
 ### Stale artifact files
 
-`gh run download` **does not** clean the target directory -- it merges files, and existing files cause a collision error or are silently kept. **Always** `rm -rf /tmp/provision-output` before downloading.
+`gh run download` **does not** clean the target directory -- it merges files, and existing files cause a collision error or are silently kept. **Always** `rm -rf ~/provision-output` before downloading.
 
 ### Wrong SSH key for the environment
 
