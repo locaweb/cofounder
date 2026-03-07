@@ -143,7 +143,6 @@ Just describe what you want in your own words — no technical knowledge require
 | Command | Description |
 |---------|-------------|
 | `/cofounder:install` | Install the cofounder as the main thread for this project (recommended) |
-| `/cofounder:run` | Run the cofounder agent once without installing (advanced) |
 
 ## Skills included
 

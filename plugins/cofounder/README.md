@@ -143,7 +143,6 @@ Basta descrever o que você quer com suas próprias palavras — nenhum conhecim
 | Comando | Descrição |
 |---------|-----------|
 | `/cofounder:install` | Instala o cofounder como thread principal do projeto (recomendado) |
-| `/cofounder:run` | Executa o agente cofounder uma vez sem instalar (avançado) |
 
 ## Skills incluídas
 
