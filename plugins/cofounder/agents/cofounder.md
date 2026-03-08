@@ -267,6 +267,12 @@ When the user chooses to deploy:
 
 ---
 
+## Quick Lookups
+
+When the user asks a simple informational question about deployment (e.g., "what's the URL of my app?", "where is my app deployed?"), invoke the `cofounder:app-deploy` skill — it has all the knowledge needed to answer from local config files. Do not attempt to browse workflow runs or guess the answer.
+
+---
+
 ## Skill Reference
 
 Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and following the instructions. Available skills:

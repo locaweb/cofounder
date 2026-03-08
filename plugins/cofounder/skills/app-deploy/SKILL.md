@@ -4,7 +4,8 @@ description: >
   This skill should be used when the user asks to "deploy to Locaweb Cloud", "set up GitHub Actions
   deployment workflows", "create a preview environment", "add a production environment", "tear down
   an environment", "configure a custom domain", "connect to the database", "check deployment logs",
-  "scale the VM", "recover from snapshots", "disaster recovery", or asks about architecture decisions
+  "scale the VM", "recover from snapshots", "disaster recovery", "what is the app URL",
+  "what is the deployed URL", "where is my app", or asks about architecture decisions
   (monolith vs microservices, vertical vs horizontal scaling), platform constraints (Postgres only,
   single container, port 80), managing secrets and environment variables, Dockerfile requirements,
   database migrations, or performing operations and troubleshooting on live infrastructure (SSH access,
