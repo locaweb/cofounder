@@ -99,6 +99,13 @@ jobs:
         run: |
           kamal setup -d preview
           kamal accessory reboot all -d preview
+
+      # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 1
 ```
 
 After this runs successfully, the app is accessible at `https://<web_ip>.nip.io`. The `web_ip` is visible in the workflow run summary.
@@ -194,6 +201,13 @@ jobs:
         run: |
           kamal setup -d production
           kamal accessory reboot all -d production
+
+      # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 1
 ```
 
 To deploy to production: `git tag v1.0.0 && git push --tags`. The workflow checks out the tagged commit, so the Dockerfile and source code match the tag exactly.
@@ -310,6 +324,13 @@ jobs:
         run: |
           kamal setup -d preview
           kamal accessory reboot all -d preview
+
+      # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 1
 ```
 
 ## Workflow Permissions
@@ -322,7 +343,7 @@ permissions:
   packages: write
 ```
 
-`packages: write` is required because the caller's deploy job pushes the container image to ghcr.io via Kamal. The reusable infra workflow only needs `contents: read` (which it declares internally). The teardown workflow does not need `packages: write`.
+`packages: write` is required because the caller's deploy job pushes the container image to ghcr.io via Kamal and cleans up old package versions after deployment. The reusable infra workflow only needs `contents: read` (which it declares internally). The teardown workflow does not need `packages: write`.
 
 ## No Docker Build Steps in Caller Workflows
 
