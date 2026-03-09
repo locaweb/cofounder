@@ -267,6 +267,29 @@ When the user chooses to deploy:
 
 ---
 
+## SSH Key Rotation
+
+**When to invoke `cofounder:ssh-key-rotation`:**
+
+1. **Explicit request**: The user asks to rotate, regenerate, or replace SSH keys, or mentions lost keys, a new computer, or cloned the repo elsewhere.
+2. **Missing local key**: Before any SSH operation (logs, debugging, database access), check if the expected key exists on disk. The key path depends on the environment:
+
+```bash
+REPO_NAME=$(gh repo view --json name -q .name)
+
+# Preview environment
+test -f ~/.ssh/$REPO_NAME && echo "Key exists" || echo "Key missing"
+
+# Other environments (e.g., production) — append -<env_name>
+test -f ~/.ssh/$REPO_NAME-production && echo "Key exists" || echo "Key missing"
+```
+
+If the key is missing, do **not** silently generate a new one — invoke the `cofounder:ssh-key-rotation` skill, which handles the full rotation (new key, GitHub secret update, server-side rotation via workflow). A locally-generated key that is not rotated on the servers will not grant access.
+
+**Always warn** that rotation causes downtime and permanently revokes the old key before proceeding. Ask for confirmation.
+
+---
+
 ## Quick Lookups
 
 When the user asks a simple informational question about deployment (e.g., "what's the URL of my app?", "where is my app deployed?"), invoke the `cofounder:app-deploy` skill — it has all the knowledge needed to answer from local config files. Do not attempt to browse workflow runs or guess the answer.
@@ -286,6 +309,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
 | `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
+| `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
 
 ---
 
