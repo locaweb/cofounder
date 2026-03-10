@@ -44,6 +44,10 @@ Two observations to keep in mind:
 - **Always provide visual feedback for operations.** Every user action that triggers processing must have a visible response — a button that saves without closing the dialog should show a brief success state (checkmark, color flash, toast notification, or subtle pulse). Silent success is indistinguishable from a broken button. Match the feedback weight to the action weight: a destructive delete deserves a more emphatic confirmation than a routine save.
 - **Use cursor styles to signal interactivity.** Set `cursor: pointer` on all clickable elements (buttons, links, cards, toggles, tabs). Use `cursor: not-allowed` on disabled elements and `cursor: grab`/`cursor: grabbing` on draggable items. The cursor is the user's first hint that an element is actionable — if it stays as the default arrow, the affordance is invisible.
 
+### Favicon
+
+Always generate a favicon for the app. Design it as part of the brand identity — it should echo the chosen aesthetic direction (color palette, visual motifs, overall tone). Deliver it as an SVG `<link rel="icon">` in `index.html` so it works across all sizes without extra files. Keep the shape simple and recognizable at 16×16px.
+
 NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
 
 Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
