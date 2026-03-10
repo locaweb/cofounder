@@ -6,11 +6,7 @@
 name: Generate Plugin Docs
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "plugins/cofounder/**"
-      - "!plugins/cofounder/docs/cofounder-plugin.pdf"
+  workflow_dispatch:
 
 permissions:
   contents: write
