@@ -71,7 +71,7 @@ This is a no-op if mise is already installed. Then ensure mise is activated in
 the user's shell profile:
 
 ```bash
-grep -q 'mise activate' ~/.zprofile || echo 'eval "$(mise activate zsh --shims)"' >> ~/.zprofile
+grep -q 'mise activate' ~/.zshrc || echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
 ```
 
 #### 4. Install GH CLI
@@ -191,7 +191,7 @@ distribution (detected above via `$ID`).
 Then ensure mise is activated in the user's shell profile:
 
 ```bash
-grep -q 'mise activate' ~/.profile || echo 'eval "$(mise activate bash --shims)"' >> ~/.profile
+grep -q 'mise activate' ~/.bashrc || echo 'eval "$(mise activate bash)"' >> ~/.bashrc
 ```
 
 #### 3. Install GH CLI
@@ -211,7 +211,7 @@ follow the specific instructions for the user's Linux distribution.
 
 **If any of steps 1-3 performed an install**, ask the user to **exit Claude**
 and **log out from their Linux session** (then log back in). This is needed to
-reload `.profile` so the new PATH takes effect. Tell them to come back to this
+reload `.bashrc` so the new PATH takes effect. Tell them to come back to this
 same project directory and start a new Claude session. Otherwise skip to
 Phase 2.
 
@@ -260,7 +260,7 @@ gh version
 
 ## Windows
 
-> **Note:** It may seem odd to use bash and `.bash_profile` on Windows —
+> **Note:** It may seem odd to use bash and `.bashrc` on Windows —
 > Claude Code Desktop uses git bash as its shell environment.
 
 ### 1. Verify WSL2
@@ -330,20 +330,8 @@ winget install --exact --id jdx.mise --accept-source-agreements --accept-package
 Then ensure mise is activated in the user's shell profile:
 
 ```bash
-grep -q 'mise activate' ~/.bash_profile || echo 'eval "$(mise activate bash --shims)"' >> ~/.bash_profile
+grep -q 'mise activate' ~/.bashrc || echo 'eval "$(mise activate bash)"' >> ~/.bashrc
 ```
-
-Then add the mise shims directory to the **Windows** PATH so that tools
-installed by mise are visible to Claude Code (which launches from Windows, not
-from bash):
-
-```bash
-powershell.exe -Command "[Environment]::SetEnvironmentVariable('Path', '$(cygpath -w "$LOCALAPPDATA/mise/shims")' + ';' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')"
-```
-
-> `LOCALAPPDATA` is the default location mise uses on Windows when
-> `XDG_DATA_HOME` is not set. If in doubt, run `mise doctor` and look for the
-> `shims` entry to confirm the path.
 
 ### 4. Check GH CLI
 
