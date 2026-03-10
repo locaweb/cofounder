@@ -113,7 +113,7 @@ When the application needs a capability that Postgres and its extensions cannot 
 
 ### sqlc for all queries
 
-All SQL lives in `backend/internal/database/queries/*.sql`. Run `cd backend && sqlc generate` after changes. **Never write raw SQL strings in Go handler code.**
+All SQL lives in `backend/internal/database/queries/*.sql`. Run `cd backend && mise x -- sqlc generate` after changes. **Never write raw SQL strings in Go handler code.**
 
 Always include `emit_json_tags: true` in `sqlc.yaml` so that generated Go structs include lowercase JSON tags (e.g., `json:"id"` instead of exporting `ID` as-is). Without this, the API returns PascalCase field names that don't match frontend expectations.
 
@@ -163,25 +163,39 @@ These match the **app-deploy** skill requirements:
 
 ## Dockerfile
 
-Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions installed locally — run `go version` and `node --version` to check current versions before writing or updating the Dockerfile.
+Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions in `mise.toml` — check `mise.toml` before writing or updating the Dockerfile.
 
 ## Local Development
 
-All tools are on PATH via **mise** (set up by **computer-setup**). The database runs as a `supabase/postgres` container via **podman** (also set up by **computer-setup**), matching the production image.
+All tools are invoked via **mise** (set up by **computer-setup**) using the `mise x` command, which reads `mise.toml` and runs the tool at the pinned version without requiring shell activation. The database runs as a `supabase/postgres` container via **podman** (also set up by **computer-setup**), matching the production image.
 
 > **Container naming convention:** Each project's database container is named `<repo_name>-db` (e.g., `myapp-db`), where `<repo_name>` is the basename of the project's root directory. This prevents collisions when multiple cofounder projects coexist on the same machine. Derive the name once at the start of the session and use it consistently for all `podman` commands.
 
-> **Critical: `go.mod` lives in `backend/`, not in the project root.** All Go and sqlc commands (`go run`, `go build`, `go test`, `go mod tidy`, `sqlc generate`) **must** execute from the `backend/` directory. Always include `cd backend &&` inside the `bash -c` string. When a command chain involves multiple layers of shell invocation (bash → go), prefer writing a small helper script instead of nesting everything in a single `bash -c` string — this avoids the most common source of repeated build failures.
+> **Critical: `go.mod` lives in `backend/`, not in the project root.** All Go and sqlc commands (`mise x -- go run`, `mise x -- go build`, `mise x -- go test`, `mise x -- go mod tidy`, `mise x -- sqlc generate`) **must** execute from the `backend/` directory. Always include `cd backend &&` inside the `bash -c` string. When a command chain involves multiple layers of shell invocation (bash → go), prefer writing a small helper script instead of nesting everything in a single `bash -c` string — this avoids the most common source of repeated build failures.
 
 ### Project tool versions
 
-On first setup (when `mise.toml` does not yet exist in the project root), lock the tool versions:
+On first setup (when `mise.toml` does not yet exist in the project root), create it manually:
 
-```bash
-mise use go@1 sqlc@1 python@3.14 node@24 jq@1
+```toml
+[tools]
+go = "1"
+sqlc = "1"
+python = "3.14"
+node = "24"
+jq = "1"
 ```
 
-This creates a `mise.toml` that is committed to the repo, ensuring all developers use the same versions. If a version upgrade is needed later, re-run `mise use` with the new version.
+Then trust and install the tools:
+
+```bash
+mise trust
+mise install
+```
+
+This `mise.toml` is committed to the repo, ensuring all developers use the same versions. To upgrade a version later, edit `mise.toml` and re-run `mise install`.
+
+All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go run ./cmd/server`). This runs the tool at the version specified in `mise.toml` without requiring shell activation hooks — it works reliably in Claude Code's non-interactive shell, in Preview's `launch.json`, and in any script context.
 
 ### 1. Start the database and local services
 
@@ -297,13 +311,13 @@ The `.env` file (local) and Kamal config (deployed) each provide the correct val
 ### 2. Start the Go API (terminal 1)
 
 ```bash
-bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server'
+bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server'
 ```
 
 ### 3. Start the Vite dev server (terminal 2)
 
 ```bash
-bash -c 'cd frontend && npm install && npm run dev'
+bash -c 'cd frontend && mise x -- npm install && mise x -- npm run dev'
 ```
 
 Access the app at `http://localhost:5173` during development. Vite proxies `/api/*` and `/auth/*` to the Go backend.
@@ -338,13 +352,19 @@ Check `docs/INFRASTRUCTURE.md` for the full list of accessories. If a container 
 
 #### Environment variables in Preview
 
-The Go backend command in `.claude/launch.json` must load `.env` so that all service URLs (DATABASE_URL, REDIS_URL, etc.) are available. When generating or updating launch.json, use the same `. .env` pattern as the CLI command:
+The Go backend command in `.claude/launch.json` must load `.env` so that all service URLs (DATABASE_URL, REDIS_URL, etc.) are available. When generating or updating launch.json, use the same `. .env` pattern as the CLI command, and **always prefix tool commands with `mise x --`**. Preview spawns processes directly without a shell profile, so tools installed by mise are only reachable through `mise x` (which reads `mise.toml` from the project root):
 
 ```
-set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server
+set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server
 ```
 
-This ensures Preview and CLI modes use the same env var source, and adding a new accessory only requires updating `.env` — not rewriting launch.json.
+For the frontend entry in launch.json:
+
+```
+cd frontend && mise x -- npm run dev
+```
+
+This ensures Preview and CLI modes use the same env var source and the same tool resolution, and adding a new accessory only requires updating `.env` — not rewriting launch.json.
 
 ## Local Development Feedback Loop
 
@@ -389,7 +409,7 @@ After committing and pushing, ask the user if they want to deploy to the cloud. 
 Run unit tests against the local database:
 
 ```bash
-bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 go test ./...'
+bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go test ./...'
 ```
 
 - Test files live next to the code they test (`handler/todo_test.go` tests `handler/todo.go`).
@@ -402,11 +422,11 @@ bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 go test ./...'
 Use the **webapp-testing** skill for Playwright-based end-to-end testing. The `with_server.py` helper manages the full stack:
 
 ```bash
-python skills/webapp-testing/scripts/with_server.py \
+mise x -- python skills/webapp-testing/scripts/with_server.py \
   --server "podman start $(basename $(pwd))-db || true" --port 5432 \
-  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server" --port 8080 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python test_script.py
+  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server" --port 8080 \
+  --server "cd frontend && mise x -- npm run dev" --port 5173 \
+  -- mise x -- python test_script.py
 ```
 
 Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
@@ -432,7 +452,7 @@ Follow the reconnaissance-then-action pattern: screenshot → identify selectors
 Whenever SQL queries change:
 
 ```bash
-bash -c 'cd backend && sqlc generate'
+bash -c 'cd backend && mise x -- sqlc generate'
 ```
 
 Then update the Go code that calls the generated functions. Never hand-write SQL in Go files.
@@ -443,7 +463,7 @@ Then update the Go code that calls the generated functions. Never hand-write SQL
 - **Logging:** `slog` exclusively. Never `fmt.Println` or `log.Println`.
 - **Validation:** Server-side validation for all inputs. Never trust client-side validation alone.
 - **Authorization:** Checks in every handler, not just middleware.
-- **Frontend components:** `bash -c 'cd frontend && npx shadcn@latest add <component>'`
+- **Frontend components:** `bash -c 'cd frontend && mise x -- npx shadcn@latest add <component>'`
 - **No ORMs.** SQL through sqlc only.
 - **No CSS preprocessors.** Tailwind CSS only.
 - **No additional JavaScript frameworks.** React + React Router only.

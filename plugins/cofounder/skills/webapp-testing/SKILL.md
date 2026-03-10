@@ -37,15 +37,15 @@ To start a server, run `--help` first, then use the helper:
 
 **Single server:**
 ```bash
-python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py
+mise x -- python scripts/with_server.py --server "mise x -- npm run dev" --port 5173 -- mise x -- python your_automation.py
 ```
 
 **Multiple servers (e.g., backend + frontend):**
 ```bash
-python scripts/with_server.py \
-  --server "cd backend && python server.py" --port 3000 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python your_automation.py
+mise x -- python scripts/with_server.py \
+  --server "cd backend && mise x -- python server.py" --port 3000 \
+  --server "cd frontend && mise x -- npm run dev" --port 5173 \
+  -- mise x -- python your_automation.py
 ```
 
 #### Including accessories
@@ -53,12 +53,12 @@ python scripts/with_server.py \
 If the app depends on accessories beyond the database, start them in the `with_server.py` invocation. Use `podman start` (not `podman run`) — the containers should already exist from the Local Services setup:
 
 ```bash
-python scripts/with_server.py \
+mise x -- python scripts/with_server.py \
   --server "podman start $(basename $(pwd))-db || true" --port 5432 \
   --server "podman start $(basename $(pwd))-redis || true" --port 6379 \
-  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 go run ./cmd/server" --port 8080 \
-  --server "cd frontend && npm run dev" --port 5173 \
-  -- python test_script.py
+  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server" --port 8080 \
+  --server "cd frontend && mise x -- npm run dev" --port 5173 \
+  -- mise x -- python test_script.py
 ```
 
 Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
@@ -103,7 +103,7 @@ Create a virtualenv first, then install Playwright inside it:
 
 ```bash
 # macOS/Linux:
-python -m venv .venv
+mise x -- python -m venv .venv
 bash -c 'source .venv/bin/activate && pip install playwright && python -m playwright install chromium'
 ```
 
@@ -117,7 +117,7 @@ bash -c 'source .venv/bin/activate && python your_test.py'
 **Windows note:** Use `.venv\Scripts\activate` instead of `source .venv/bin/activate`, or call `.venv\Scripts\python.exe` directly:
 
 ```powershell
-python -m venv .venv
+mise x -- python -m venv .venv
 .venv\Scripts\python.exe -m pip install playwright
 .venv\Scripts\python.exe -m playwright install chromium
 .venv\Scripts\python.exe your_test.py

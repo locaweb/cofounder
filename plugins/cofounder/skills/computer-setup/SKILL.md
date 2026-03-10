@@ -142,7 +142,7 @@ podman rm -f podman-setup-test-nginx
 #### 8. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 #### 9. Verify GH CLI
@@ -247,7 +247,7 @@ podman rm -f podman-setup-test-nginx
 #### 6. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 #### 7. Verify GH CLI
@@ -395,7 +395,7 @@ podman rm -f podman-setup-test-nginx
 ### 7. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 ### 8. Verify GH CLI

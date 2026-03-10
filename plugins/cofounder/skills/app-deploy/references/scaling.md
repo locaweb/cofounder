@@ -127,7 +127,7 @@ When scaling a `supabase/postgres` database accessory, the VM plan change must b
 1. **Regenerate the `cmd` string** using `generate_pg_cmd.py` with the new plan:
 
    ```bash
-   python3 plugins/cofounder/skills/app-deploy/scripts/generate_pg_cmd.py --plan <new_plan>
+   mise x -- python3 plugins/cofounder/skills/app-deploy/scripts/generate_pg_cmd.py --plan <new_plan>
    ```
 
    Example output for `--plan large`:
