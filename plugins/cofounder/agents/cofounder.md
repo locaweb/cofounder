@@ -1,7 +1,7 @@
 ---
 name: cofounder
 description: |
-  Use this agent proactively at the start of every session and for all interactions in projects that use the cofounder plugin. This agent is the primary interface — it orchestrates environment setup, requirement gathering, development, and deployment. It should be triggered for any user message related to their web application project.
+  Use this agent proactively at the start of every session and for all interactions in projects that use the cofounder plugin. This agent is the primary interface — it orchestrates environment setup, requirement gathering, development, deployment, infrastructure operations, and troubleshooting. It should be triggered for any user message related to their web application project, including: building features, fixing bugs, designing UI, testing, deploying, scaling, managing domains, SSH access, lost SSH keys, checking logs, connecting to databases, disaster recovery, environment teardown, dev tool installation, repository setup, and project status questions.
 
   <example>
   Context: User starts a new Claude Code session in a cofounder-enabled project
@@ -54,6 +54,87 @@ description: |
   assistant: "I'll use the cofounder agent to SSH into the server and check the logs using the app-deploy skill."
   <commentary>
   All post-deployment operations — SSH access, container logs, database connections, health checks, and server debugging — go through this agent, which invokes the app-deploy skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User lost their SSH key, moved to a new computer, or can't SSH into the server
+  user: "I lost my SSH key"
+  assistant: "I'll use the cofounder agent to rotate the SSH keys using the ssh-key-rotation skill."
+  <commentary>
+  SSH key issues — lost keys, permission denied, new computer, cloned repo on another machine — are handled by this agent, which invokes the ssh-key-rotation skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User needs to set up their development environment or install tools
+  user: "I need to set up my computer for development"
+  assistant: "I'll use the cofounder agent to install and configure the development tools."
+  <commentary>
+  Dev environment setup — Homebrew, mise, podman, Node, Go, GH CLI — goes through this agent, which invokes the computer-setup skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to create a GitHub repo or set up version control
+  user: "Let's create a GitHub repo for this project"
+  assistant: "I'll use the cofounder agent to set up the repository and push to GitHub."
+  <commentary>
+  Repository initialization, GitHub auth, and remote setup go through this agent, which invokes the repo-setup skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to add a custom domain to their deployed app
+  user: "I bought a domain, can we use it for the app?"
+  assistant: "I'll use the cofounder agent to configure the custom domain using the app-deploy skill."
+  <commentary>
+  Custom domain configuration, including choosing which environment to point to, goes through this agent.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User asks about deployment status, app URL, or project state
+  user: "What's the URL of my app?"
+  assistant: "I'll use the cofounder agent to look up the deployment information."
+  <commentary>
+  Quick lookups about app URLs, deployment status, and project state go through this agent.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to tear down an environment or recover from a disaster
+  user: "Delete the preview environment"
+  assistant: "I'll use the cofounder agent to tear down the environment using the app-deploy skill."
+  <commentary>
+  Environment teardown, snapshot recovery, and disaster recovery go through this agent, which invokes the app-deploy skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to build or redesign a frontend page or component
+  user: "Build me a beautiful landing page"
+  assistant: "I'll use the cofounder agent to design and implement the frontend."
+  <commentary>
+  Frontend design — landing pages, dashboards, React components, UI styling — goes through this agent, which invokes the frontend-design skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to test the application or verify something works
+  user: "Can you test if the login flow works?"
+  assistant: "I'll use the cofounder agent to run the test using the webapp-testing skill."
+  <commentary>
+  Application testing — Playwright E2E tests, screenshots, browser debugging — goes through this agent, which invokes the webapp-testing skill.
+  </commentary>
+  </example>
+
+  <example>
+  Context: User wants to connect to the production database or run queries
+  user: "I need to check the data in the production database"
+  assistant: "I'll use the cofounder agent to connect to the database using the app-deploy skill."
+  <commentary>
+  Live database connections on deployed infrastructure go through this agent, which invokes the app-deploy skill.
   </commentary>
   </example>
 
