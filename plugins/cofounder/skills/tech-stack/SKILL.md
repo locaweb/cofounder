@@ -40,12 +40,15 @@ Go JSON API + React SPA served from a single binary and deployed as one containe
 Ensure the project `.gitignore` includes at least:
 
 ```
+backend/cmd/server/server
 frontend/dist/
 frontend/node_modules/
 .venv/
 .env
 .claude/launch.json
 ```
+
+`backend/cmd/server/server` is the locally compiled Go binary produced by `go build`. It must not be committed.
 
 `.claude/launch.json` is generated locally by Claude Code Desktop's Preview feature and contains platform-specific commands — it must not be committed.
 
