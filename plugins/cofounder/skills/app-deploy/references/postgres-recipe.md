@@ -126,7 +126,7 @@ The script at `scripts/generate_pg_cmd.py` computes plan-appropriate PostgreSQL 
 Usage:
 
 ```bash
-python3 scripts/generate_pg_cmd.py --plan <plan>
+mise x -- python3 scripts/generate_pg_cmd.py --plan <plan>
 ```
 
 Example output for `--plan medium`:

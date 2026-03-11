@@ -61,18 +61,13 @@ brew install podman
 
 This is a no-op if podman is already installed.
 
-#### 3. Install and activate mise
+#### 3. Install mise
 
 ```bash
 brew install mise
 ```
 
-This is a no-op if mise is already installed. Then ensure mise is activated in
-the user's shell profile:
-
-```bash
-grep -q 'mise activate' ~/.zprofile || echo 'eval "$(mise activate zsh --shims)"' >> ~/.zprofile
-```
+This is a no-op if mise is already installed.
 
 #### 4. Install GH CLI
 
@@ -142,7 +137,7 @@ podman rm -f podman-setup-test-nginx
 #### 8. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 #### 9. Verify GH CLI
@@ -176,22 +171,18 @@ Linux distribution. Detect the distro:
 Use the matching section from the Podman docs (e.g., Alpine, Arch, CentOS,
 Debian, Fedora, Ubuntu, etc.).
 
-#### 2. Install and activate mise
+#### 2. Install mise
 
 ```bash
 command -v mise
 ```
 
-If `mise` is found, skip to activation below.
+If `mise` is found, skip to the next step.
 
-If not found, refer to https://mise.jdx.dev/installing-mise.html using the
-WebFetch tool and follow the specific instructions for the user's Linux
-distribution (detected above via `$ID`).
-
-Then ensure mise is activated in the user's shell profile:
+If not found, install it. Do NOT run any `mise activate` commands.
 
 ```bash
-grep -q 'mise activate' ~/.profile || echo 'eval "$(mise activate bash --shims)"' >> ~/.profile
+curl https://mise.run | sh
 ```
 
 #### 3. Install GH CLI
@@ -211,7 +202,7 @@ follow the specific instructions for the user's Linux distribution.
 
 **If any of steps 1-3 performed an install**, ask the user to **exit Claude**
 and **log out from their Linux session** (then log back in). This is needed to
-reload `.profile` so the new PATH takes effect. Tell them to come back to this
+reload `.bashrc` so the new PATH takes effect. Tell them to come back to this
 same project directory and start a new Claude session. Otherwise skip to
 Phase 2.
 
@@ -247,7 +238,7 @@ podman rm -f podman-setup-test-nginx
 #### 6. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 #### 7. Verify GH CLI
@@ -260,7 +251,7 @@ gh version
 
 ## Windows
 
-> **Note:** It may seem odd to use bash and `.bash_profile` on Windows —
+> **Note:** It may seem odd to use bash and `.bashrc` on Windows —
 > Claude Code Desktop uses git bash as its shell environment.
 
 ### 1. Verify WSL2
@@ -327,24 +318,6 @@ If not installed:
 winget install --exact --id jdx.mise --accept-source-agreements --accept-package-agreements
 ```
 
-Then ensure mise is activated in the user's shell profile:
-
-```bash
-grep -q 'mise activate' ~/.bash_profile || echo 'eval "$(mise activate bash --shims)"' >> ~/.bash_profile
-```
-
-Then add the mise shims directory to the **Windows** PATH so that tools
-installed by mise are visible to Claude Code (which launches from Windows, not
-from bash):
-
-```bash
-powershell.exe -Command "[Environment]::SetEnvironmentVariable('Path', '$(cygpath -w "$LOCALAPPDATA/mise/shims")' + ';' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')"
-```
-
-> `LOCALAPPDATA` is the default location mise uses on Windows when
-> `XDG_DATA_HOME` is not set. If in doubt, run `mise doctor` and look for the
-> `shims` entry to confirm the path.
-
 ### 4. Check GH CLI
 
 ```bash
@@ -407,7 +380,7 @@ podman rm -f podman-setup-test-nginx
 ### 7. Verify mise works
 
 ```bash
-mkdir -p ~/test1 && cd ~/test1 && mise use node@24 && node --version && rm -rf ~/test1
+mise x node@24 -- node --version
 ```
 
 ### 8. Verify GH CLI

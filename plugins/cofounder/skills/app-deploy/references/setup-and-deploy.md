@@ -101,10 +101,10 @@ Generate a random password for **each** environment:
 
 ```bash
 # Preview password
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 # Production password (different from preview)
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ### DATABASE_URL
