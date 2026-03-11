@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
   - Glob
-  - Task
+  - Agent
 ---
 
 Install the cofounder agent into the current project so it runs automatically on every session.
@@ -26,9 +26,14 @@ Install the cofounder agent into the current project so it runs automatically on
    ```
    Make sure to preserve any existing keys if the file already existed.
 
-3. Confirm to the user that the cofounder agent is now installed for this project. Explain briefly:
-   - From now on, the cofounder agent will be active in every Claude Code session in this project.
+3. Confirm to the user that the cofounder agent is now installed for this project. Explain briefly (in both English and Portuguese):
    - The setting is saved in `.claude/settings.json` which can be committed to git so all collaborators get the same experience (they need the cofounder plugin installed too).
    - To remove it later, they can delete the `"agent"` key from `.claude/settings.json`.
 
-4. After confirming installation, launch the cofounder agent by using the Task tool with subagent_type set to the "cofounder" agent. Tell it to start a new session.
+4. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one. Since we haven't asked the user's preferred language yet, give the instruction in both English and Portuguese:
+
+   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral
+   >
+   > Start a new session by clicking on **+ New session** in the sidebar
+
+5. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.
