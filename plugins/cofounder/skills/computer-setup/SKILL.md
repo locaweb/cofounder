@@ -108,13 +108,11 @@ podman machine init
 
 Add `--memory 1024` if the computer has less than 16 GB of RAM.
 
-**IMPORTANT — before running `podman machine start`:** You MUST tell the user that a macOS system dialog may appear asking to install Rosetta. It can be hidden behind other windows — the user should look for it on their Desktop and press **Install** to proceed. Claude cannot interact with this dialog. Wait for the user to confirm they are ready before running the command.
+**IMPORTANT — Rosetta dialog:** The `podman machine start` command below may trigger a macOS system dialog asking to install Rosetta. This dialog can appear hidden behind other windows. Claude cannot interact with it. Tell the user to watch for this dialog on their Desktop **as soon as the command starts running**, and press **Install** if it appears. If the command appears to hang, remind the user to look for the Rosetta dialog — the command will not complete until Rosetta is installed.
 
 ```bash
 podman machine start
 ```
-
-After running, if the command appears to hang, remind the user to check for the Rosetta dialog again.
 
 Run connectivity test:
 
