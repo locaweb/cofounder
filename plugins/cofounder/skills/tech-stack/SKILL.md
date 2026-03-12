@@ -1,6 +1,6 @@
 ---
 name: tech-stack
-description: Go + React full-stack architecture with iterative local development. Use this skill when scaffolding a new app, adding features, fixing bugs, or running the local dev loop. Covers project layout, database migrations, sqlc code generation, local Supabase/Postgres via Podman, Postgres extensions (pgmq, pg_cron, pgroonga, pgvector, pg_jsonschema, LISTEN/NOTIFY), and the write-test-repeat feedback cycle.
+description: Go + React full-stack architecture with iterative local development. Use this skill when scaffolding a new app, adding features, fixing bugs, running the local dev loop, or when the user asks to "run the app locally", "run the app on my computer", "start the app", "rodar o programa", "rodar o app", "executar localmente", or any equivalent request to launch the application in their local environment. Covers project layout, database migrations, sqlc code generation, local Supabase/Postgres via Podman, Postgres extensions (pgmq, pg_cron, pgroonga, pgvector, pg_jsonschema, LISTEN/NOTIFY), and the write-test-repeat feedback cycle.
 ---
 
 # Tech Stack
