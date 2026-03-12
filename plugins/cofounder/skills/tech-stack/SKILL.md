@@ -199,8 +199,13 @@ All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go
 
 ### 1. Start the database and local services
 
-Before starting the container, check if any podman container is already using
-port 5432. If a container from **another project** is occupying the port, do
+Before starting the container, check if any podman container is already using port 5432:
+
+```bash
+podman ps -a --format '{{.Names}} {{.Ports}}' | grep '5432'
+```
+
+If a container from **another project** is occupying the port, do
 **not** force-stop it. Instead, inform the user:
 
 > "The container `<other_name>` from another project is currently using port 5432. Could you please stop it with `podman stop <other_name>` so we can start this project's database?"
@@ -282,7 +287,7 @@ For hybrid accessories:
 
 #### Port conflict detection
 
-Same pattern as the existing Postgres port check: before starting a container, check if another podman container is already occupying the port. If it belongs to another project, ask the user to stop it.
+Same pattern as the existing Postgres port check: before starting a container, check if another podman container is already occupying the port using `podman ps -a --format '{{.Names}} {{.Ports}}' | grep '<port>'`. If the container belongs to another project, ask the user to stop it.
 
 #### Common recipes
 
