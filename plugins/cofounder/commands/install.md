@@ -13,12 +13,18 @@ Install the cofounder agent into the current project so it runs automatically on
 
 ## Steps
 
-1. Check if `.claude/settings.json` already exists in the project root.
-   - If it exists, read it and check if it already has `"agent": "cofounder:cofounder"`. If so, tell the user it's already installed and skip to step 3.
+1. **Safety check: refuse to install in the home directory.** Use the Bash tool to run `pwd` and compare it against `$HOME`. If the current working directory IS the user's home directory (e.g., `/Users/username` or `/home/username`), **do NOT proceed**. Instead, tell the user:
+
+   > **Este comando deve ser executado dentro de um diretório de projeto específico, não na pasta home.** Instalar o agente cofundador aqui o ativaria globalmente para todos os projetos. Por favor, entre no diretório do projeto que deseja configurar e tente novamente.
+
+   Then stop — do not continue with the remaining steps.
+
+2. Check if `.claude/settings.json` already exists in the project root.
+   - If it exists, read it and check if it already has `"agent": "cofounder:cofounder"`. If so, tell the user it's already installed and skip to step 4.
    - If it exists but has different content, merge the `"agent"` key into the existing settings (preserve other keys).
    - If it doesn't exist, create the `.claude/` directory if needed.
 
-2. Write `.claude/settings.json` with the agent setting:
+3. Write `.claude/settings.json` with the agent setting:
    ```json
    {
      "agent": "cofounder:cofounder"
@@ -26,14 +32,12 @@ Install the cofounder agent into the current project so it runs automatically on
    ```
    Make sure to preserve any existing keys if the file already existed.
 
-3. Confirm to the user that the cofounder agent is now installed for this project. Explain briefly (in both English and Portuguese):
-   - The setting is saved in `.claude/settings.json` which can be committed to git so all collaborators get the same experience (they need the cofounder plugin installed too).
-   - To remove it later, they can delete the `"agent"` key from `.claude/settings.json`.
+4. Confirm to the user that the cofounder agent is now installed for this project:
 
-4. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one. Since we haven't asked the user's preferred language yet, give the instruction in both English and Portuguese:
+   > O agente cofundador foi instalado. A configuração foi salva em `.claude/settings.json`, que pode ser commitado no git para que todos os colaboradores tenham a mesma experiência (eles precisam ter o plugin cofounder instalado também). Para remover depois, basta apagar a chave `"agent"` do `.claude/settings.json`.
+
+5. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one:
 
    > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral
-   >
-   > Start a new session by clicking on **+ New session** in the sidebar
 
-5. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.
+6. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.
