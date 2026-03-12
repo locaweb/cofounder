@@ -122,14 +122,23 @@ See [references/setup-and-deploy.md -- CloudStack Credentials](references/setup-
 - If not set: ask the user to set them via the GitHub UI. **Never** accept secret values through the chat -- they would be stored in conversation history
 - If the user doesn't have a Locaweb Cloud account yet, recommend they go to https://www.locaweb.com.br/locaweb-cloud/ and look for the "Contratar" button to sign up
 
-Tell the user where to find their API keys:
+Guide the user to find their API keys — follow these steps **exactly in this order**:
 
-| Name | Where to find the value |
-|------|------------------------|
-| `CLOUDSTACK_API_KEY` | [painel-cloud.locaweb.com.br](https://painel-cloud.locaweb.com.br/) -> Contas -> *(sua conta)* -> Visualizar usuarios -> *(seu usuario)* -> Copiar Chave da API |
-| `CLOUDSTACK_SECRET_KEY` | Same page -> Copiar Chave secreta |
+1. Open [painel-cloud.locaweb.com.br](https://painel-cloud.locaweb.com.br/)
+2. Navigate to: **Contas** → *(sua conta)* → **Visualizar usuarios** → *(seu usuario)*
+3. **Wait up to 60 seconds** — the keys load asynchronously and may not appear immediately. They show up under **"Criado"** (creation date) on the user page.
 
-> **Note:** Warn that the keys may take some time to show up after page has loaded. If the user has never generated keys before, they should click the **"Gerar novas chaves"** icon on the top right corner of the user page.
+If the keys appear, copy them:
+
+| Name | What to copy |
+|------|-------------|
+| `CLOUDSTACK_API_KEY` | **Copiar Chave da API** |
+| `CLOUDSTACK_SECRET_KEY` | **Copiar Chave secreta** |
+
+If the keys **do not** appear after waiting:
+
+4. Click the **"Gerar novas chaves"** icon in the **upper right corner** of the user page.
+5. Wait for the keys to be generated, then copy them as described above.
 
 ### Step 5: Set up app secrets (database, API keys, etc.)
 
