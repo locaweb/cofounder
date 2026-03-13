@@ -15,7 +15,7 @@ Install the cofounder agent into the current project so it runs automatically on
 
 1. **Safety check: refuse to install in the home directory.** Use the Bash tool to run `pwd` and compare it against `$HOME`. If the current working directory IS the user's home directory (e.g., `/Users/username` or `/home/username`), **do NOT proceed**. Instead, tell the user:
 
-   > **Este comando deve ser executado dentro de um diretório de projeto específico, não na pasta home.** Instalar o agente cofundador aqui o ativaria globalmente para todos os projetos. Por favor, entre no diretório do projeto que deseja configurar e tente novamente.
+   > **Este comando deve ser executado dentro de um diretório de projeto específico, não na pasta home.** Instalar o agente aqui o ativaria globalmente para todos os projetos. Por favor, entre no diretório do projeto que deseja configurar e tente novamente.
 
    Then stop — do not continue with the remaining steps.
 
