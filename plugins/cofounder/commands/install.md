@@ -34,10 +34,10 @@ Install the cofounder agent into the current project so it runs automatically on
 
 4. Confirm to the user that the cofounder agent is now installed for this project:
 
-   > O agente cofundador foi instalado. A configuração foi salva em `.claude/settings.json`, que pode ser commitado no git para que todos os colaboradores tenham a mesma experiência (eles precisam ter o plugin cofounder instalado também). Para remover depois, basta apagar a chave `"agent"` do `.claude/settings.json`.
+   > O agente foi instalado. A configuração foi salva em `.claude/settings.json`, que pode ser commitado no git para que todos os colaboradores tenham a mesma experiência (eles precisam ter o plugin cofounder instalado também). Para remover depois, basta apagar a chave `"agent"` do `.claude/settings.json`.
 
 5. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one:
 
-   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral
+   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral para continuar.
 
 6. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.
