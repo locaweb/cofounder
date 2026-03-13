@@ -175,7 +175,7 @@ Guide the user through these steps **exactly in this order**:
 2. Navigate to: **Contas** → *(sua conta)* → **Visualizar usuarios** → *(seu usuario)*
 3. **Wait up to 60 seconds** — the keys load asynchronously and may not appear immediately. They show up under **"Criado"** (creation date) on the user page.
 
-If the keys appear, copy them:
+If the keys appear, click **"New repository secret"** for each and copy them:
 
 | Name | What to copy |
 |------|-------------|
@@ -187,7 +187,7 @@ If the keys **do not** appear after waiting:
 4. Click the **"Gerar novas chaves"** icon in the **upper right corner** of the user page.
 5. Wait for the keys to be generated, then copy them as described above.
 
-App-specific secrets -- store each one **individually**:
+App-specific secrets -- click **"New repository secret"** for each one:
 
 | Name | Where to find the value |
 |------|------------------------|
