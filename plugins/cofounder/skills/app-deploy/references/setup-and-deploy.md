@@ -298,9 +298,9 @@ Continue the cycle: read error -> fix -> commit/push -> watch run. Do not give u
 gh run view <run-id>
 
 # Or download the provision-output artifact (clean first to avoid stale data)
-rm -rf ~/provision-output
-gh run download <run-id> --name provision-output --dir ~/provision-output
-cat ~/provision-output/provision-output.json
+rm -rf $HOME/tmp/provision-output
+gh run download <run-id> --name provision-output --dir $HOME/tmp/provision-output
+cat $HOME/tmp/provision-output/provision-output.json
 ```
 
 The app URL is `https://<web_ip>.nip.io` (TLS works with nip.io).

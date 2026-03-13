@@ -182,10 +182,10 @@ After the workflow completes successfully, verify that the new key works:
 REPO_NAME=$(gh repo view --json name -q .name)
 
 # Get the web IP from the latest deploy run
-rm -rf ~/provision-output
+rm -rf $HOME/tmp/provision-output
 gh run list --workflow=deploy-preview.yml --status=success --limit=1
-gh run download <run-id> --name provision-output --dir ~/provision-output
-cat ~/provision-output/provision-output.json
+gh run download <run-id> --name provision-output --dir $HOME/tmp/provision-output
+cat $HOME/tmp/provision-output/provision-output.json
 
 # Test SSH with the new key
 ssh -i ~/.ssh/$REPO_NAME -o ConnectTimeout=10 root@<web_ip> "echo 'SSH rotation successful'"

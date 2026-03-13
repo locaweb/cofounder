@@ -79,9 +79,9 @@ gh run list --workflow=deploy-preview.yml --limit=5
 gh run view <run-id>
 
 # Download the provision-output artifact to see IPs (clean first to avoid stale data)
-rm -rf ~/provision-output
-gh run download <run-id> --name provision-output --dir ~/provision-output
-cat ~/provision-output/provision-output.json
+rm -rf $HOME/tmp/provision-output
+gh run download <run-id> --name provision-output --dir $HOME/tmp/provision-output
+cat $HOME/tmp/provision-output/provision-output.json
 ```
 
 3. **Decode provision-output.json** -- the artifact contains:
@@ -110,9 +110,9 @@ To retrieve deployment information from a previous run (see also [operations.md 
 gh run list --workflow=deploy-preview.yml --status=success --limit=1
 
 # Get the run ID and download its artifact (clean first to avoid stale data)
-rm -rf /tmp/output
-gh run download <run-id> --name provision-output --dir /tmp/output
-cat /tmp/output/provision-output.json
+rm -rf $HOME/tmp/provision-output
+gh run download <run-id> --name provision-output --dir $HOME/tmp/provision-output
+cat $HOME/tmp/provision-output/provision-output.json
 ```
 
 The step summary (visible in the GitHub UI) also shows:
