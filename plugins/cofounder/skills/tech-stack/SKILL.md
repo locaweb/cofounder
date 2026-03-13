@@ -66,7 +66,7 @@ REDIS_URL=redis://localhost:6379
 N8N_WEBHOOK_URL=http://localhost:5678/webhook
 ```
 
-The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server using `. .env` (POSIX dot syntax — not `source`, which is a bash builtin and may not work in all shells, particularly when commands run through `subprocess` or `with_server.py`):
+The Go backend reads these values via `os.Getenv()`. During local development, load the file before starting the server using `. .env` (POSIX dot syntax — not `source`, which is a bash builtin and may not work in all shells):
 
 ```bash
 set -a && . .env && set +a
@@ -428,33 +428,7 @@ bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go tes
 
 ### Frontend testing (Playwright)
 
-Use the **webapp-testing** skill for Playwright-based end-to-end testing. The `with_server.py` helper manages the full stack:
-
-```bash
-mise x -- python skills/webapp-testing/scripts/with_server.py \
-  --server "podman start $(basename $(pwd))-db || true" --port 5432 \
-  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server" --port 8080 \
-  --server "cd frontend && mise x -- npm run dev" --port 5173 \
-  -- mise x -- python test_script.py
-```
-
-Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
-
-Or, if services are already running (with env vars already loaded), write a standalone Playwright script:
-
-```python
-from playwright.sync_api import sync_playwright
-
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
-    page = browser.new_page()
-    page.goto('http://localhost:5173')
-    page.wait_for_load_state('networkidle')
-    # ... test interactions
-    browser.close()
-```
-
-Follow the reconnaissance-then-action pattern: screenshot → identify selectors → execute actions → assert results.
+Ensure all services are running (database containers, Go backend, Vite dev server — steps 1–3 above), then use the **webapp-testing** skill for Playwright-based end-to-end testing.
 
 ### sqlc workflow
 

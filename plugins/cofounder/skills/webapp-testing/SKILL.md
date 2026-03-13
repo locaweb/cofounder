@@ -7,76 +7,23 @@ description: Toolkit for interacting with and testing local web applications usi
 
 > **Windows:** Do not use the Preview tool on Windows. Always use Playwright scripts (described below) for visual verification and testing instead.
 
-To test local web applications, write native Python Playwright scripts.
+Test local web applications by writing native Python Playwright scripts.
 
-**Helper Scripts Available**:
-- `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
+## Prerequisites
 
-**Always run scripts with `--help` first** to see usage. DO NOT read the source until you try running the script first and find that a customized solution is abslutely necessary. These scripts can be very large and thus pollute your context window. They exist to be called directly as black-box scripts rather than ingested into your context window.
+Before running tests, ensure all services are running — database containers, Go backend, and Vite dev server. Start them using the **tech-stack** skill's **Local Development** section (steps 1–3).
 
-## Decision Tree: Choosing Your Approach
+## Writing Playwright Scripts
 
-```
-User task → Is it static HTML?
-    ├─ Yes → Read HTML file directly to identify selectors
-    │         ├─ Success → Write Playwright script using selectors
-    │         └─ Fails/Incomplete → Treat as dynamic (below)
-    │
-    └─ No (dynamic webapp) → Is the server already running?
-        ├─ No → Run: python scripts/with_server.py --help
-        │        Then use the helper + write simplified Playwright script
-        │
-        └─ Yes → Reconnaissance-then-action:
-            1. Navigate and wait for networkidle
-            2. Take screenshot or inspect DOM
-            3. Identify selectors from rendered state
-            4. Execute actions with discovered selectors
-```
-
-## Example: Using with_server.py
-
-To start a server, run `--help` first, then use the helper:
-
-**Single server:**
-```bash
-mise x -- python scripts/with_server.py --server "mise x -- npm run dev" --port 5173 -- mise x -- python your_automation.py
-```
-
-**Multiple servers (e.g., backend + frontend):**
-```bash
-mise x -- python scripts/with_server.py \
-  --server "cd backend && mise x -- python server.py" --port 3000 \
-  --server "cd frontend && mise x -- npm run dev" --port 5173 \
-  -- mise x -- python your_automation.py
-```
-
-#### Including accessories
-
-If the app depends on accessories beyond the database, start them in the `with_server.py` invocation. Use `podman start` (not `podman run`) — the containers should already exist from the Local Services setup:
-
-```bash
-mise x -- python scripts/with_server.py \
-  --server "podman start $(basename $(pwd))-db || true" --port 5432 \
-  --server "podman start $(basename $(pwd))-redis || true" --port 6379 \
-  --server "set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server" --port 8080 \
-  --server "cd frontend && mise x -- npm run dev" --port 5173 \
-  -- mise x -- python test_script.py
-```
-
-Note: use `. .env` (dot) instead of `source .env` — `with_server.py` may run commands under `/bin/sh`, where `source` is not available.
-
-**Which accessories to include:** Backend-connected accessories (Redis, Kafka, Meilisearch) must be running for tests to pass — include them. Standalone accessories (n8n, WordPress) are typically not exercised by E2E tests of the main app — omit them unless a test specifically interacts with their API.
-
-To create an automation script, include only Playwright logic (servers are managed automatically):
 ```python
 from playwright.sync_api import sync_playwright
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True) # Always launch chromium in headless mode
+    browser = p.chromium.launch(headless=True)  # Always launch chromium in headless mode
     page = browser.new_page()
-    page.goto('http://localhost:5173') # Server already running and ready
-    page.wait_for_load_state('networkidle') # CRITICAL: Wait for JS to execute
-    # ... your automation logic
+    page.goto('http://localhost:5173')  # Server already running and ready
+    page.wait_for_load_state('networkidle')  # CRITICAL: Wait for JS to execute
+    # ... your test logic
     browser.close()
 ```
 
@@ -135,7 +82,6 @@ In Claude Desktop Preview, use `preview_click` to submit the login form through 
 
 ## Best Practices
 
-- **Use bundled scripts as black boxes** - To accomplish a task, consider whether one of the scripts available in `scripts/` can help. These scripts handle common, complex workflows reliably without cluttering the context window. Use `--help` to see usage, then invoke directly.
 - Use `sync_playwright()` for synchronous scripts
 - Always close the browser when done
 - Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
