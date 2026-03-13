@@ -5,7 +5,7 @@ description: Toolkit for interacting with and testing local web applications usi
 
 # Web Application Testing
 
-> **Windows:** Do not use the Preview tool on Windows. Always use Playwright scripts (described below) for visual verification and testing instead.
+> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Always use Playwright scripts (described below) for visual verification and testing instead.
 
 Test local web applications by writing native Python Playwright scripts.
 

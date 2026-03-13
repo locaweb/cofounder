@@ -343,7 +343,7 @@ This relies on the naming convention (`<repo_name>-<accessory_name>`) and remove
 
 When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. Reserve Playwright (via the **webapp-testing** skill) for comprehensive E2E test suites.
 
-> **Windows:** Do not use the Preview tool on Windows. Use Playwright via the **webapp-testing** skill for visual verification instead.
+> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Use Playwright via the **webapp-testing** skill for visual verification instead.
 
 #### Accessories in Preview mode
 
@@ -377,7 +377,7 @@ This ensures Preview and CLI modes use the same env var source and the same tool
 
 > **Preview mode:** If you have access to `preview_*` tools (Claude Code Desktop), Preview manages the dev servers — **do not start them manually**. Use `preview_screenshot`, `preview_snapshot`, and `preview_click` for visual verification instead of Playwright for quick checks. Use Playwright (via the **webapp-testing** skill) for comprehensive E2E test suites.
 >
-> **Windows:** Do not use the Preview tool on Windows. Skip the Preview branch below and use Playwright via the **webapp-testing** skill.
+> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Skip the Preview branch below and use Playwright via the **webapp-testing** skill.
 
 The core workflow is: **write code → spin up local instance → run tests → repeat until the feature works → commit & push.**
 
