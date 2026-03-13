@@ -390,7 +390,7 @@ The core workflow is: **write code → spin up local instance → run tests → 
 │   preview_* tools available?                         │
 │     Yes (not Windows) ──► Preview manages servers    │
 │     No / Windows ──► Start services manually         │
-│             (podman supabase, go run, npm dev)        │
+│             (podman supabase, go run, npm dev)       │
 │        │                                             │
 │        ▼                                             │
 │   Run Backend Tests (Go)                             │
