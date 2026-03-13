@@ -5,6 +5,8 @@ description: Toolkit for interacting with and testing local web applications usi
 
 # Web Application Testing
 
+> **Windows:** Do not use the Preview tool on Windows. Always use Playwright scripts (described below) for visual verification and testing instead.
+
 To test local web applications, write native Python Playwright scripts.
 
 **Helper Scripts Available**:
