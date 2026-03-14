@@ -17,6 +17,10 @@ Introduce automated tests after the first successful deploy. This skill defines 
 
 Each layer catches different classes of bugs. They complement each other — none replaces the others. Layers 1 and 2 run in seconds; layer 3 takes longer but tests what the user actually experiences.
 
+## Running commands
+
+All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, `mise x -- npm run test`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
+
 ## Setup Sequence
 
 When the user agrees to add tests, set up all three layers in order. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
