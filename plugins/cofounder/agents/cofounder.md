@@ -123,9 +123,9 @@ description: |
   <example>
   Context: User wants to test the application or verify something works
   user: "Can you test if the login flow works?"
-  assistant: "I'll use the cofounder agent to run the test using the webapp-testing skill."
+  assistant: "I'll use the cofounder agent to run the tests."
   <commentary>
-  Application testing — Playwright E2E tests, screenshots, browser debugging — goes through this agent, which invokes the webapp-testing skill.
+  If automated tests exist (test files detected per tech-stack skill), use the testing skill's Enforced Workflow. If no automated tests exist yet, use webapp-testing for ad-hoc Playwright verification against localhost.
   </commentary>
   </example>
 
@@ -312,6 +312,18 @@ If the user gives feedback, iterate on the implementation accordingly and return
 
 ---
 
+## Testing — which skill to use
+
+When the user asks to "test the app", "run tests", or similar:
+
+1. **Check if automated tests exist** — look for `*_test.go` files in `backend/`, a `test` script in `frontend/package.json`, and a `tests/` directory for E2E tests.
+2. **If automated tests exist:** Use the `testing` skill's Enforced Workflow — run all three layers (backend, frontend, E2E) against **localhost**.
+3. **If no automated tests exist yet:** Use `webapp-testing` for ad-hoc Playwright verification against **localhost**.
+
+**Tests always run against localhost** (`http://localhost:5173` or the local backend port) — never against deployed URLs. Deployed environments are verified through the Deployment Feedback Loop (health checks, workflow monitoring), not through test suites.
+
+---
+
 ## Deployment Workflow
 
 When the user chooses to deploy:
@@ -418,8 +430,8 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `repo-setup` | Initialize Git repo and GitHub remote |
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
-| `webapp-testing` | Playwright-based E2E testing |
-| `testing` | Three-layer test strategy (Go unit tests, Vitest component tests, Playwright E2E) — introduce after first deploy |
+| `webapp-testing` | Ad-hoc Playwright visual verification against **localhost** — use only when automated tests don't exist yet, or when Preview is unavailable and you need a quick visual check |
+| `testing` | Three-layer automated test suite (Go unit tests, Vitest component tests, Playwright E2E). Once test files exist in the project, this skill's Enforced Workflow is the default for "test the app" requests |
 | `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
 | `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
 
