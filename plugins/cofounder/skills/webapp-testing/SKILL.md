@@ -81,12 +81,113 @@ In Playwright scripts, call the dev login endpoint using `page.request.post()` b
 
 In Claude Desktop Preview, use `preview_click` to submit the login form through the UI — either a dev-mode login shortcut (if the app renders one when `DEV_MODE=1`) or the regular login form with the test user credentials.
 
+## Persistent Test Suite
+
+E2E tests are not throwaway scripts — they accumulate into a regression suite that runs before every commit. This prevents features from breaking as the app evolves.
+
+### Structure
+
+Organize tests in `tests/e2e/`, one file per user flow:
+
+```
+tests/
+└── e2e/
+    ├── conftest.py          # Shared fixtures (browser, auth, base URL)
+    ├── test_login.py        # Login / authentication flow
+    ├── test_create_todo.py  # Creating a todo item
+    ├── test_dashboard.py    # Dashboard loads with correct data
+    └── ...
+```
+
+### Shared fixtures (`conftest.py`)
+
+Create a `conftest.py` with reusable helpers to avoid duplication across test files:
+
+```python
+from playwright.sync_api import sync_playwright
+
+class AppFixture:
+    """Shared test fixture for E2E tests."""
+
+    def __init__(self, base_url='http://localhost:5173'):
+        self.base_url = base_url
+        self._pw = None
+        self._browser = None
+
+    def __enter__(self):
+        self._pw = sync_playwright().start()
+        self._browser = self._pw.chromium.launch(headless=True)
+        self.page = self._browser.new_page()
+        return self
+
+    def __exit__(self, *args):
+        self._browser.close()
+        self._pw.stop()
+
+    def login(self, email='test@example.com'):
+        """Authenticate via dev login endpoint."""
+        self.page.request.post(
+            f'{self.base_url}/api/dev/login',
+            data={'email': email}
+        )
+
+    def goto(self, path='/'):
+        """Navigate to a page and wait for it to load."""
+        self.page.goto(f'{self.base_url}{path}')
+        self.page.wait_for_load_state('networkidle')
+```
+
+### Writing test files
+
+Each test file covers one user flow. Tests should be independent — they must not depend on state left by other test files:
+
+```python
+#!/usr/bin/env python3
+"""E2E test: creating a todo item."""
+import sys
+sys.path.insert(0, '.')
+from tests.e2e.conftest import AppFixture
+
+def test_create_todo():
+    with AppFixture() as app:
+        app.login()
+        app.goto('/todos')
+
+        app.page.fill('[data-testid="new-todo-input"]', 'Buy milk')
+        app.page.click('[data-testid="add-todo-button"]')
+        app.page.wait_for_selector('text=Buy milk')
+
+        assert app.page.locator('text=Buy milk').is_visible()
+        print('PASS: test_create_todo')
+
+if __name__ == '__main__':
+    test_create_todo()
+```
+
+### Running the full suite
+
+Run all E2E tests before committing a completed feature:
+
+```bash
+bash -c 'for f in tests/e2e/test_*.py; do .venv/bin/python "$f" || exit 1; done'
+```
+
+This runs every test file in sequence and stops at the first failure. Fix failures before committing.
+
+### When to add new tests
+
+- **Every new user-facing feature** gets a corresponding `test_*.py` file.
+- **Bug fixes** get a test that reproduces the bug (and now passes).
+- **Never delete old tests** when adding new features — the suite is cumulative.
+- **Keep tests fast** — each file should complete in under 10 seconds. If a test is slow, check for unnecessary waits.
+
 ## Best Practices
 
 - Use `sync_playwright()` for synchronous scripts
 - Always close the browser when done
 - Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
 - Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
+- Add `data-testid` attributes to key interactive elements in React components to make selectors stable
 
 ## Reference Files
 

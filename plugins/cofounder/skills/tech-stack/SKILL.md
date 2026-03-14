@@ -341,7 +341,7 @@ This relies on the naming convention (`<repo_name>-<accessory_name>`) and remove
 
 ## Preview (Claude Code Desktop)
 
-When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. Reserve Playwright (via the **webapp-testing** skill) for comprehensive E2E test suites.
+When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. When Preview is not available (CLI, Windows), use Playwright (via the **webapp-testing** skill) for visual verification.
 
 > **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Use Playwright via the **webapp-testing** skill for visual verification instead.
 

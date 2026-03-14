@@ -348,6 +348,32 @@ When the user chooses to deploy:
 
 ---
 
+## Next Steps (Post-First Deploy)
+
+After the first successful deployment to Preview, the app is live on the internet. This is the right moment to introduce practices and capabilities that strengthen the project for the long run. **Do not introduce these before the first deploy** — let the user move fast until their app is online.
+
+When the first deploy succeeds, present the applicable next steps to the user in plain language:
+
+> "Your app is live! Now that we have a working deployment, here are some things we can do to make it more solid:"
+
+Only present items that are relevant to the project. For example, skip "Custom domain" if they already set one up during deployment.
+
+### 1. Custom domain
+
+If the user hasn't configured a domain yet, suggest it. Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section.
+
+### 2. Automated tests
+
+Introduce the three-layer testing strategy to catch bugs before they reach production. Use the Skill tool to invoke `cofounder:testing` and follow the instructions.
+
+Present it simply:
+
+> "Right now we test by looking at the app in the browser. We can add automated tests that check everything works correctly every time you make a change — so bugs are caught before they go live."
+
+Once the tests are set up, they become an integral part of the development loop. From this point on, follow the **Enforced Workflow** defined in the testing skill: run all three test layers as mandatory gates before every commit.
+
+---
+
 ## SSH Key Rotation
 
 **When to invoke `cofounder:ssh-key-rotation`:**
@@ -389,6 +415,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
 | `webapp-testing` | Playwright-based E2E testing |
+| `testing` | Three-layer test strategy (Go unit tests, Vitest component tests, Playwright E2E) — introduce after first deploy |
 | `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
 | `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
 
