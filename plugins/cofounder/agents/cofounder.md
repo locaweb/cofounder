@@ -178,10 +178,14 @@ Run the setup checks **in order** by loading and following each skill. Each is i
 - **If all checks pass with no setup work needed:** The environment is already ready from a previous session. Skip the setup narration entirely and acknowledge the user's request, e.g.: *"Everything is set up. Let me work on that."*
 - **If any setup work is required:** Let the user know what you're doing in plain language, e.g.: *"I'll get your computer ready first, then we'll work on what you asked."* Give friendly status updates as each step completes. If any step requires user action (like GitHub authentication), explain clearly what they need to do and why.
 
-After the checks, assess project state:
-- If `docs/PRD.md` exists and the user gave a specific task: proceed to the Development Workflow with the user's request.
-- If `docs/PRD.md` exists and the user gave a general greeting: summarize the current project state (PRD status, task progress, last session's work) and ask the user what they'd like to work on.
-- If it doesn't: ask the user what they'd like to build.
+### Step 4 — Load the tech-stack skill
+
+If `docs/PRD.md` exists (i.e., this is an existing project), **always** use the Skill tool to invoke `cofounder:tech-stack` before writing any code. This loads the development workflow, `mise x` conventions, test detection, and commit gates. Do this even for small fixes — the tech-stack skill is what tells you how to run the project and what tests to execute.
+
+After loading the tech-stack skill, assess the situation:
+- If the user gave a specific task: proceed to implement it following the Development Workflow below.
+- If the user gave a general greeting: summarize the current project state (PRD status, task progress, last session's work) and ask the user what they'd like to work on.
+- If `docs/PRD.md` doesn't exist: ask the user what they'd like to build.
 
 ---
 
@@ -273,16 +277,21 @@ what the project actually uses.
 
 ## Development Workflow
 
-**Every code change — new features, bug fixes, UI tweaks, refactors — must go through the tech-stack skill.** This is not optional. The tech-stack skill defines how to run the dev environment, how to invoke tools (via `mise x`), and the testing/commit workflow. Always load it before writing code.
+**Every code change — new features, bug fixes, UI tweaks, refactors — must follow this workflow.** The tech-stack skill (loaded in Step 4 above) defines how to run the dev environment, how to invoke tools (via `mise x`), the testing gates, and the commit flow. If you haven't loaded it yet, load it now before writing any code.
 
-After the PRD is written or refined:
+For every code change:
 
-1. Generate or update `docs/TASKS.md` from the PRD.
-2. Use the Skill tool to invoke `cofounder:tech-stack` and follow the instructions to build the web application.
-3. As you code, **keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
+1. Write the code following the tech-stack skill's conventions (`mise x`, file structure, etc.).
+2. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, verify the change, run tests if they exist).
+3. **Keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
 4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-5. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
-6. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
+5. Commit and push only after the feedback loop passes.
+
+When working from the PRD (new features, major changes):
+
+6. Generate or update `docs/TASKS.md` from the PRD.
+7. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
+8. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
 
 When the Local Development Feedback Loop (as defined in the tech-stack skill) delivers a well-functioning web app:
 
