@@ -15,30 +15,32 @@ Before running tests, ensure all services are running — database containers, G
 
 ## Writing Playwright Scripts
 
-```python
-from playwright.sync_api import sync_playwright
+Every script follows the same lifecycle: start Playwright → launch a headless browser → open a page → navigate → wait for the app to load → perform actions → close the browser. Example:
 
+```python
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)  # Always launch chromium in headless mode
+    browser = p.chromium.launch(headless=True)
     page = browser.new_page()
-    page.goto('http://localhost:5173')  # Server already running and ready
-    page.wait_for_load_state('networkidle')  # CRITICAL: Wait for JS to execute
-    # ... your test logic
+    page.goto('http://localhost:5173')
+    page.wait_for_load_state('networkidle')  # Wait for JS to finish
+    # ... test logic here
     browser.close()
 ```
 
 ## Reconnaissance-Then-Action Pattern
 
-1. **Inspect rendered DOM**:
+Never assume what's on the page — always inspect first, then act.
+
+1. **Inspect the rendered DOM** using one or more of these techniques:
    ```python
-   page.screenshot(path='/tmp/inspect.png', full_page=True)
-   content = page.content()
-   page.locator('button').all()
+   page.screenshot(path='/tmp/inspect.png', full_page=True)  # Visual snapshot
+   content = page.content()                                    # Raw HTML
+   page.locator('button').all()                                # List matching elements
    ```
 
-2. **Identify selectors** from inspection results
+2. **Identify selectors** from the inspection results
 
-3. **Execute actions** using discovered selectors
+3. **Execute actions** using the discovered selectors
 
 ## Common Pitfalls
 
@@ -99,95 +101,37 @@ tests/
     └── ...
 ```
 
-### Shared fixtures (`conftest.py`)
+### Shared fixtures
 
-Create a `conftest.py` with reusable helpers to avoid duplication across test files:
+Create a shared module (`conftest.py`) with reusable helpers to avoid duplication across test files. It should encapsulate:
 
-```python
-from playwright.sync_api import sync_playwright
+- **Browser lifecycle** — start/stop Playwright and the browser in one place (e.g., a context manager or setup/teardown pair).
+- **Dev login helper** — call the `POST /api/dev/login` endpoint to authenticate (see "Authenticating in Tests" above).
+- **Navigation helper** — go to a path and wait for the page to load.
 
-class AppFixture:
-    """Shared test fixture for E2E tests."""
-
-    def __init__(self, base_url='http://localhost:5173'):
-        self.base_url = base_url
-        self._pw = None
-        self._browser = None
-
-    def __enter__(self):
-        self._pw = sync_playwright().start()
-        self._browser = self._pw.chromium.launch(headless=True)
-        self.page = self._browser.new_page()
-        return self
-
-    def __exit__(self, *args):
-        self._browser.close()
-        self._pw.stop()
-
-    def login(self, email='test@example.com'):
-        """Authenticate via dev login endpoint."""
-        self.page.request.post(
-            f'{self.base_url}/api/dev/login',
-            data={'email': email}
-        )
-
-    def goto(self, path='/'):
-        """Navigate to a page and wait for it to load."""
-        self.page.goto(f'{self.base_url}{path}')
-        self.page.wait_for_load_state('networkidle')
-```
+Every test file imports from this module rather than repeating setup logic.
 
 ### Writing test files
 
-Each test file covers one user flow. Tests should be independent — they must not depend on state left by other test files:
-
-```python
-#!/usr/bin/env python3
-"""E2E test: creating a todo item."""
-import sys
-sys.path.insert(0, '.')
-from tests.e2e.conftest import AppFixture
-
-def test_create_todo():
-    with AppFixture() as app:
-        app.login()
-        app.goto('/todos')
-
-        app.page.fill('[data-testid="new-todo-input"]', 'Buy milk')
-        app.page.click('[data-testid="add-todo-button"]')
-        app.page.wait_for_selector('text=Buy milk')
-
-        assert app.page.locator('text=Buy milk').is_visible()
-        print('PASS: test_create_todo')
-
-if __name__ == '__main__':
-    test_create_todo()
-```
+Each test file covers one user flow. Tests should be independent — they must not depend on state left by other test files. The pattern for each test is: authenticate → navigate to the relevant page → perform actions → assert on visible results.
 
 ### Running the full suite
 
-Run all E2E tests before committing a completed feature:
-
-```bash
-bash -c 'for f in tests/e2e/test_*.py; do .venv/bin/python "$f" || exit 1; done'
-```
-
-This runs every test file in sequence and stops at the first failure. Fix failures before committing.
+Run all E2E test files sequentially before committing a completed feature. Stop on the first failure and fix it before proceeding.
 
 ### When to add new tests
 
-- **Every new user-facing feature** gets a corresponding `test_*.py` file.
+- **Every new user-facing feature** gets a corresponding test file.
 - **Bug fixes** get a test that reproduces the bug (and now passes).
 - **Never delete old tests** when adding new features — the suite is cumulative.
 - **Keep tests fast** — each file should complete in under 10 seconds. If a test is slow, check for unnecessary waits.
 
 ## Best Practices
 
-- Use `sync_playwright()` for synchronous scripts
-- Always close the browser when done
-- Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs
-- Add appropriate waits: `page.wait_for_selector()` or `page.wait_for_timeout()`
-- Add `data-testid` attributes to key interactive elements in React components to make selectors stable
+- Always close the browser when done — use a context manager or try/finally.
+- Prefer descriptive selectors: visible text, ARIA roles, or `data-testid` attributes. Avoid fragile selectors tied to CSS class names or DOM structure.
+- Add `data-testid` attributes to key interactive elements in React components to make selectors stable across UI changes.
+- Add appropriate waits before asserting — wait for specific elements to appear rather than using fixed timeouts.
 
 ## Reference Files
 
