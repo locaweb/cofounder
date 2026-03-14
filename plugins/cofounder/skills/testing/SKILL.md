@@ -109,6 +109,18 @@ E2E tests run on **feature completion**, not on every micro-edit. Between E2E ru
 
 ---
 
+## Coverage Catch-Up
+
+Features may have been added in previous sessions without corresponding tests. After running the full test suite, scan for coverage gaps:
+
+1. **Backend:** List all handler files in `backend/` and check each one has a corresponding `_test.go` file. Flag any handler without tests (except trivial ones like health checks).
+2. **Frontend:** List all components with non-trivial logic (conditional rendering, form handling, event handlers) and check each one has a corresponding `.test.tsx` file.
+3. **E2E:** Compare the features listed in `docs/PRD.md` against the E2E test files in the `tests/` directory. Flag any user-facing feature without an E2E test.
+
+If gaps are found, report them to the user and offer to add the missing tests. Do not silently skip untested features — the whole point of the test suite is to be a regression safety net, and gaps undermine that.
+
+---
+
 ## Enforced Workflow
 
 Once all three layers are set up, the development feedback loop changes. Tests become mandatory gates before every commit:
