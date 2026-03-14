@@ -74,17 +74,6 @@ set -a && . .env && set +a
 
 This bridges the gap between local and deployed: locally `.env` provides the values; deployed, Kamal config provides them. The Go code stays the same (`os.Getenv("REDIS_URL")`).
 
-#### Clear vs secret env vars in deployment
-
-When translating `.env` entries to Kamal config for deployment, the agent must decide whether each env var is **clear** or **secret**:
-
-- **Secret** — the URL contains a credential (password, API key, token). Goes in `env.secret` + `.kamal/secrets.<env>`. The credential is stored as a GitHub Secret, and the URL is derived in the secrets file. Example: `DATABASE_URL` contains `POSTGRES_PASSWORD`.
-- **Clear** — the URL has no credentials. Goes in `env.clear` in the Kamal config. No GitHub Secret needed. Example: Redis without auth (`REDIS_URL: redis://redis:6379`).
-
-The rule: **if the URL embeds a credential, it's a secret; otherwise it's clear.** When in doubt, make it a secret — it's safer and the only cost is a GitHub Secret entry.
-
-In deployed environments, secrets are injected as environment variables by the deployment platform — see the **app-deploy** skill.
-
 `mise.toml` should **not** be gitignored — it is committed to the repo so all developers use the same tool versions.
 
 ## Key Decisions
@@ -99,7 +88,7 @@ PostgreSQL is the primary external service. Use Postgres-backed alternatives whe
 - **Queues:** `pgmq` — lightweight message queue with visibility timeout, archive, and batch operations. See [references/pgmq.md](references/pgmq.md)
 - **Pub/Sub:** `LISTEN`/`NOTIFY` — no extension needed; combine with a persistence layer for durability. See [references/notify-patterns.md](references/notify-patterns.md)
 - **Caching:** unlogged tables
-- **Scheduling:** `pg_cron` + `pg_net` — in-database cron plus async HTTP requests for triggering app endpoints on a schedule. **Do not use container-level cron.** See [references/pg-cron.md](references/pg-cron.md)
+- **Scheduling:** `pg_cron` + `pg_net` — in-database cron plus async HTTP requests for triggering app endpoints on a schedule. **Preferred over container-level cron.** See [references/pg-cron.md](references/pg-cron.md)
 - **Search:** `pgroonga` — full-text search for all languages including CJK, with boolean queries, ranking, highlighting, and JSONB search. No configuration needed. When the app involves searchable content (products, articles, listings, messages, logs), **proactively propose adding search**. Falls back to native `tsvector`/`tsquery` only when a simpler built-in solution suffices for a single well-supported language. See [references/pgroonga.md](references/pgroonga.md)
 - **Vectors:** `pgvector` — embeddings storage and similarity search with HNSW and IVFFlat indexes. See [references/pgvector.md](references/pgvector.md)
 - **JSON validation:** `pg_jsonschema` — validate `json`/`jsonb` columns against JSON Schema via CHECK constraints. See [references/pg-jsonschema.md](references/pg-jsonschema.md)
@@ -125,11 +114,11 @@ The `go:embed` directive only accepts files in the same directory or subdirector
 
 ### Database connection retry
 
-The Go backend should retry the database connection at startup (up to 10 attempts, 1-second delay between each). This handles parallel startup — Preview starts all servers simultaneously, so the backend may come up before the database is ready — and is also good practice for production deployments.
+The Go backend should retry the database connection at startup (up to 6 attempts with exponential backoff: 1 s, 2 s, 4 s, 8 s, 16 s, 32 s — ~63 s total). This handles parallel startup — Preview starts all servers simultaneously, so the backend may come up before the database is ready — and is also good practice for production deployments.
 
 ```go
 var pool *pgxpool.Pool
-for i := range 10 {
+for i := range 6 {
     pool, err = pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
     if err == nil {
         if err = pool.Ping(ctx); err == nil {
@@ -137,8 +126,9 @@ for i := range 10 {
         }
         pool.Close()
     }
-    slog.Warn("database not ready, retrying", "attempt", i+1, "err", err)
-    time.Sleep(time.Second)
+    delay := time.Second * (1 << i) // 1s, 2s, 4s, 8s, 16s, 32s
+    slog.Warn("database not ready, retrying", "attempt", i+1, "delay", delay, "err", err)
+    time.Sleep(delay)
 }
 if err != nil {
     slog.Error("failed to connect to database", "err", err)
@@ -154,10 +144,10 @@ The Go backend listens for Postgres `NOTIFY` events and holds open a standard HT
 
 These match the **app-deploy** skill requirements:
 
-- Single container on **port 80** (controlled by `PORT` env var, defaulting to `8080` for local dev)
+- Always source port from `PORT` env var (set to `80` for deployed app, `8080` for local dev)
 - Health check: **`GET /up` → HTTP 200**
 - Database via `DATABASE_URL` (preferred) or individual `POSTGRES_*` env vars — **fail hard if missing**
-- File storage at `BLOB_STORAGE_PATH` (e.g. `/data/blobs`) — configured via `env.clear` in `deploy.yml`
+- File storage at `BLOB_STORAGE_PATH` (e.g. `/data/blobs`)
 - PostgreSQL as the primary data store (with 60+ bundled extensions via `supabase/postgres`). If the application needs services beyond what Postgres provides, additional accessories can be added via the deploy skill's Kamal layer
 - No ORMs, no JavaScript frameworks beyond React, no CSS preprocessors
 
@@ -393,15 +383,12 @@ The core workflow is: **write code → spin up local instance → run tests → 
 │             (podman supabase, go run, npm dev)       │
 │        │                                             │
 │        ▼                                             │
-│   Run Backend Tests (Go)                             │
-│        │                                             │
-│        ▼                                             │
 │   Visual / E2E Verification                          │
 │     Preview mode: preview_screenshot + preview_click │
 │     CLI / Windows: Playwright (webapp-testing skill) │
 │        │                                             │
 │        ▼                                             │
-│   Tests pass? ──No──► Fix & repeat from top          │
+│   Looks good? ──No──► Fix & repeat from top          │
 │        │                                             │
 │       Yes                                            │
 │        │                                             │
@@ -413,22 +400,9 @@ The core workflow is: **write code → spin up local instance → run tests → 
 
 After committing and pushing, ask the user if they want to deploy to the cloud. If yes, use the **app-deploy** skill to run the **Deployment Feedback Loop**, which monitors the GitHub Actions workflow, verifies the health check, and handles deployment-specific failures.
 
-### Backend testing (Go)
+### Running tests
 
-Run unit tests against the local database:
-
-```bash
-bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go test ./...'
-```
-
-- Test files live next to the code they test (`handler/todo_test.go` tests `handler/todo.go`).
-- Use table-driven tests. Each test case gets a descriptive name.
-- For database tests, use a test helper that runs migrations and wraps each test in a transaction that rolls back.
-- Test the HTTP handlers via `httptest.NewServer` — send real HTTP requests, assert on status codes and JSON bodies.
-
-### Frontend testing (Playwright)
-
-Ensure all services are running (database containers, Go backend, Vite dev server — steps 1–3 above), then use the **webapp-testing** skill for Playwright-based end-to-end testing.
+If the project has automated tests (introduced post-first-deploy via the **testing** skill), run them as part of the loop, following the **Enforced Workflow** from the testing skill.
 
 ### sqlc workflow
 

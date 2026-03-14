@@ -18,6 +18,8 @@
 
 Every deployed environment has **automatic daily snapshots** of all data volumes (web disk and accessory disks). Recovery uses these snapshots to recreate data volumes in a new deployment, restoring the application to the state captured by the most recent snapshot.
 
+The available zones are **ZP01** and **ZP02**. Snapshot policies replicate across both zones, so recovery can target either one regardless of where the original deployment lived.
+
 Recovery is triggered by running the same deploy workflow with `recover: true`. The provisioning script replaces blank disk creation with disk-from-snapshot creation; everything else (VMs, networks, IPs, firewall rules) is provisioned normally.
 
 ## How Data Protection Works

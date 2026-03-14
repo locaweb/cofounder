@@ -89,7 +89,20 @@ it by selecting the **Code** tab and looking for past sessions in the sidebar.
 
 #### 6. Verify Homebrew
 
+First, try running `brew --version` **without** evaluating `brew shellenv`:
+
 ```bash
+brew --version
+```
+
+If this succeeds, Homebrew is already on the PATH — **do not prefix any
+subsequent `brew` commands with the `eval "$(brew shellenv)"` pattern** for the
+remainder of this session.
+
+If the command fails (not found), fall back to the shellenv evaluation:
+
+```bash
+eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null || true)"
 brew --version
 ```
 

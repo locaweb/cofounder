@@ -146,7 +146,7 @@ See [references/setup-and-deploy.md -- Database Credentials](references/setup-an
 
 **Discover all app env vars:** Read the project's `.env` file to get the full list of environment variables the application uses. Cross-reference with the application's config loading code (e.g., `backend/internal/config/config.go`) to confirm which variables are expected. For each variable, decide:
 
-- **Skip** — local-development-only (`DEV_MODE` must never be set in production) or already set directly in the Kamal config's `env.clear` (`PORT`)
+- **Skip** — local-development-only (`DEV_MODE` must never be set in production) or already set directly in the Kamal config's `env.clear` or Dockerfile (example: `PORT`)
 - **Derived** — composed from other secrets in `.kamal/secrets` (`DATABASE_URL` from `POSTGRES_PASSWORD`)
 - **Clear** — non-sensitive, goes in `env.clear` in the Kamal config (no GitHub Secret needed)
 - **Secret** — sensitive, needs a GitHub Secret + entry in `.kamal/secrets.<env>` + entry in `env.secret` + entry in the workflow `env:` block
@@ -433,6 +433,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 80
+ENV PORT=80
 CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "app:app"]
 ```
 
