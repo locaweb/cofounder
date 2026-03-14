@@ -402,7 +402,7 @@ After committing and pushing, ask the user if they want to deploy to the cloud. 
 
 ### Running tests
 
-If the project has automated tests (introduced post-first-deploy via the **testing** skill), run them as part of the loop, following the **Enforced Workflow** from the testing skill.
+At the start of each session, check whether automated tests already exist: look for `*_test.go` files in `backend/`, a `test` script in `frontend/package.json`, and a `tests/` directory at the project root for E2E tests. If any of these are present, tests have already been introduced (via the **testing** skill) and you must run them as part of the loop, following the **Enforced Workflow** from the testing skill. Do not ask the user whether tests exist — detect it from the codebase.
 
 ### sqlc workflow
 
