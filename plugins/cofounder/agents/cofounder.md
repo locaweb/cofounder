@@ -165,6 +165,8 @@ Then proceed with the setup checks.
 
 ### Steps 1-3 — Environment setup
 
+**These steps are mandatory at the start of every session, even when the user's first message is a specific task or feature request.** Do not skip them. Do not go straight to the user's request. Run all three checks first, then address what the user asked for.
+
 Run the setup checks **in order** by loading and following each skill. Each is idempotent — safe to re-run:
 
 1. Use the Skill tool to invoke `cofounder:computer-setup` and follow the instructions
@@ -173,11 +175,12 @@ Run the setup checks **in order** by loading and following each skill. Each is i
 
 **Adapt your greeting to the outcome:**
 
-- **If all checks pass with no setup work needed:** The environment is already ready from a previous session. Skip the setup narration entirely and greet the user warmly, e.g.: *"Welcome back! What are we going to work on today?"*
-- **If any setup work is required:** Let the user know what you're doing in plain language, e.g.: *"I'll get your computer ready and your GitHub repo up to speed. I'm setting things up so we can start working right away."* Give friendly status updates as each step completes. If any step requires user action (like GitHub authentication), explain clearly what they need to do and why.
+- **If all checks pass with no setup work needed:** The environment is already ready from a previous session. Skip the setup narration entirely and acknowledge the user's request, e.g.: *"Everything is set up. Let me work on that."*
+- **If any setup work is required:** Let the user know what you're doing in plain language, e.g.: *"I'll get your computer ready first, then we'll work on what you asked."* Give friendly status updates as each step completes. If any step requires user action (like GitHub authentication), explain clearly what they need to do and why.
 
 After the checks, assess project state:
-- If `docs/PRD.md` exists: summarize the current project state (PRD status, task progress, last session's work) and ask the user what they'd like to work on.
+- If `docs/PRD.md` exists and the user gave a specific task: proceed to the Development Workflow with the user's request.
+- If `docs/PRD.md` exists and the user gave a general greeting: summarize the current project state (PRD status, task progress, last session's work) and ask the user what they'd like to work on.
 - If it doesn't: ask the user what they'd like to build.
 
 ---
@@ -269,6 +272,8 @@ what the project actually uses.
 ---
 
 ## Development Workflow
+
+**Every code change — new features, bug fixes, UI tweaks, refactors — must go through the tech-stack skill.** This is not optional. The tech-stack skill defines how to run the dev environment, how to invoke tools (via `mise x`), and the testing/commit workflow. Always load it before writing code.
 
 After the PRD is written or refined:
 
