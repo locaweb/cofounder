@@ -61,16 +61,12 @@ jobs:
           current="${{ steps.current.outputs.version }}"
           latest="${{ steps.latest.outputs.version }}"
 
-          # Check if any file has a 17.x tag that isn't the latest
-          stale=$(grep -roh "supabase/postgres:17\.[0-9]*\.[0-9]*\.[0-9]*" plugins/cofounder/ \
-            | grep -v "supabase/postgres:${latest}" || true)
-
-          if [ -z "$stale" ]; then
+          if [ "$current" = "$latest" ]; then
             echo "update=false" >> "$GITHUB_OUTPUT"
             echo "Already up to date ($current)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "update=true" >> "$GITHUB_OUTPUT"
-            echo "Update available: found stale tags -> $latest" >> "$GITHUB_STEP_SUMMARY"
+            echo "Update available: $current -> $latest" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Update pinned version
@@ -79,8 +75,8 @@ jobs:
           current="${{ steps.current.outputs.version }}"
           latest="${{ steps.latest.outputs.version }}"
 
-          grep -rl "supabase/postgres:17\." plugins/cofounder/ \
-            | xargs sed -i -E "s|supabase/postgres:17\.[0-9]+\.[0-9]+\.[0-9]+|supabase/postgres:${latest}|g"
+          grep -rl "supabase/postgres:${current}" plugins/cofounder/ \
+            | xargs sed -i "s|supabase/postgres:${current}|supabase/postgres:${latest}|g"
 
       - name: Bump plugin version
         if: steps.compare.outputs.update == 'true'
