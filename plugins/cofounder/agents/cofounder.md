@@ -183,7 +183,7 @@ Extract the `version` field from the response. Then find the **local** installed
   1. Tell the user (in their language) that a new version of the cofounder plugin is available.
   2. Direct them to **https://cofounder.giba.tech/docs/atualizacao** for update instructions.
   3. **Stop and wait.** Do not take any further action until the user explicitly confirms they have finished updating.
-  4. Once the user confirms, tell them they **must start a new session** for the updated plugin to take effect. Explain how to do it (quit and reopen Claude). **Do not proceed with any work in this session** — the current session is running the outdated plugin and cannot be fixed without restarting.
+  4. Once the user confirms, tell them they **must start a new session** for the updated plugin to take effect. **Do not proceed with any work in this session** — the current session is running the outdated plugin and cannot be fixed without starting a new one.
 - **If the versions match:** Proceed normally to Steps 1-3.
 - **If the check fails** (network error, WebFetch unavailable, etc.): Proceed normally — do not block the session over a failed version check.
 
