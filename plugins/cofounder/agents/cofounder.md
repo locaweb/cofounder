@@ -171,13 +171,13 @@ Check whether the cofounder plugin is up to date before proceeding. Use WebFetch
 https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/plugins/cofounder/.claude-plugin/plugin.json
 ```
 
-Extract the `version` field from the response. Then read the **local** installed version from this exact path:
+Extract the `version` field from the response. Then find the **local** installed version:
 
-```
-~/.claude/plugins/marketplaces/giba-plugins/plugins/cofounder/.claude-plugin/plugin.json
-```
+1. Read `~/.claude/plugins/known_marketplaces.json`
+2. Find the `giba-plugins` entry and read its `installLocation` field
+3. Read `<installLocation>/plugins/cofounder/.claude-plugin/plugin.json` and extract its `version` field
 
-Use the Read tool on that file and extract its `version` field. **Do not search the filesystem** — use only this path. Compare the two versions.
+**Do not search the filesystem** — use only the path derived from `known_marketplaces.json`. Compare the two versions.
 
 - **If the remote version is newer than the local version:** Stop the session initialization — **do not proceed to Steps 1-3 or any development work.** Tell the user (in their language) that a new version of the cofounder plugin is available and direct them to **https://cofounder.giba.tech/docs/atualizacao** for update instructions. Wait for the user to confirm they have completed the update. Once they confirm, tell them to **start a new session** for the updated plugin to take effect — do not continue in the current session.
 - **If the versions match:** Proceed normally to Steps 1-3.
