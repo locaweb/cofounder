@@ -24,7 +24,7 @@ The JSON contains:
 |------------------|--------------------------------------------------------------------|
 | `web_ip`         | Public IP of the web VM -- used for SSH and app URL (`https://<web_ip>.nip.io`) |
 | `worker_ips`     | JSON array of public worker VM IPs -- used for SSH                  |
-| `accessory_ips`  | JSON object with accessory IPs. Each key is the accessory name (e.g., `db`, `redis`) with `ip` (public, SSH only) and `internal_ip` (private, used by the app) fields. |
+| `accessory_ips`  | JSON object with accessory data. Each key is the accessory name (e.g., `db`, `redis`) with `vm_id`, `vm_scaled`, `ip` (public), `ip_id`, and `volume_id` fields. |
 
 Example `provision-output.json`:
 
@@ -34,12 +34,18 @@ Example `provision-output.json`:
   "worker_ips": ["200.234.y.y"],
   "accessories": {
     "db": {
+      "vm_id": "abc-123",
+      "vm_scaled": false,
       "ip": "200.234.z.z",
-      "internal_ip": "10.1.1.x"
+      "ip_id": "ip-456",
+      "volume_id": "vol-789"
     },
     "redis": {
+      "vm_id": "abc-321",
+      "vm_scaled": false,
       "ip": "200.234.w.w",
-      "internal_ip": "10.1.1.y"
+      "ip_id": "ip-654",
+      "volume_id": "vol-987"
     }
   }
 }
@@ -106,8 +112,7 @@ The container name follows Kamal's naming convention: `<service-name>-<accessory
 
 ### Understanding accessory IPs
 
-- **`accessories.<name>.ip`** -- public IP, used for **SSH access** to the accessory VM
-- **`accessories.<name>.internal_ip`** -- private IP on the CloudStack network. App containers connect to the accessory by its short hostname (e.g., `db`, `redis`) via CloudStack internal DNS — no IP needed.
+- **`accessories.<name>.ip`** -- public IP, used for **SSH access** to the accessory VM. App containers connect to the accessory by its short hostname (e.g., `db`, `redis`) via CloudStack internal DNS — no IP needed.
 
 ### Example: connecting to PostgreSQL
 

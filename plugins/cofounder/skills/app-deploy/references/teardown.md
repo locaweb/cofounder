@@ -92,8 +92,11 @@ cat $HOME/tmp/provision-output/provision-output.json
   "worker_ips": ["200.234.y.y"],
   "accessories": {
     "db": {
+      "vm_id": "abc-123",
+      "vm_scaled": false,
       "ip": "200.234.z.z",
-      "internal_ip": "10.1.1.x"
+      "ip_id": "ip-456",
+      "volume_id": "vol-789"
     }
   }
 }
