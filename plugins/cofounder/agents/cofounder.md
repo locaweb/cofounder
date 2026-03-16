@@ -281,7 +281,7 @@ what the project actually uses.
 
 For every code change:
 
-1. Write the code **and its tests in tandem** — when you create a handler, create its `_test.go` file; when you create an interactive component, create its `.test.tsx` file; when you complete a feature, write its E2E spec. Follow the **testing** skill for how to structure tests. Follow the tech-stack skill's conventions (`mise x`, file structure, etc.).
+1. Write code **and tests in tandem** — never defer tests to a later step. Follow the **tech-stack** skill for coding conventions and local environment, and the **testing** skill for how to structure tests.
 2. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the test suite).
 3. **Keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
 4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
