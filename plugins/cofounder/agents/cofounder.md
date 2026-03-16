@@ -305,17 +305,24 @@ what the project actually uses.
 
 For every code change:
 
-1. Write code **and tests in tandem** — never defer tests to a later step. Follow the **tech-stack** skill for coding conventions and local environment, and the **testing** skill for how to structure tests.
-2. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the test suite).
-3. **Keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
-4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-5. Commit and push only after the feedback loop passes.
+1. Write the code. Follow the **tech-stack** skill for coding conventions and local environment.
+2. **Keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
+
+When working through multiple tasks in a batch (e.g., tackling a PRD), you may write all the code first for productivity. However, **before committing**, you must pass the test gate below.
+
+**Test gate (mandatory — do not skip, do not defer past commit):**
+
+3. Use the Skill tool to invoke `cofounder:testing` to determine which test layers are affected by the changes made since the last commit.
+4. Write or update tests covering the changed code. If tests already exist and still cover the changes, this step is a no-op.
+5. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the affected test layers). If any test fails, fix the code or the test and re-run until all pass.
+6. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
+7. **Commit and push only after all tests pass.** Do not present the next-steps menu or offer deployment until this step completes.
 
 When working from the PRD (new features, major changes):
 
-6. Generate or update `docs/TASKS.md` from the PRD.
-7. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
-8. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
+7. Generate or update `docs/TASKS.md` from the PRD.
+8. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
+9. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
 
 **After completing a task or set of tasks** (all code written, tests passing, committed and pushed), **always** present the user with a visible link and a menu of next steps:
 
