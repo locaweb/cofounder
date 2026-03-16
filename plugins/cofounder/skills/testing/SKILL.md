@@ -95,13 +95,15 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 Full end-to-end tests that exercise real user flows through the browser. These require all services running (database, backend, frontend dev server).
 
-### Playwright via npx
+### Isolated E2E directory
 
-Since the frontend is already React/Vite, use Playwright through `npx` (`@playwright/test`) — same JS runtime, same `package.json`, no separate Python virtualenv needed. Install as a dev dependency in the frontend directory, add a config at the project root pointing `testDir` to `tests/e2e/`, and run with `mise x -- npx playwright test`.
+E2E tests live in a dedicated `e2e/` directory at the project root with its own `package.json` and `node_modules`. This isolation is required — browser test frameworks and component test frameworks define conflicting globals and cannot share the same `node_modules`.
+
+The `e2e/` directory contains its own `package.json` (with `@playwright/test` as the only dependency), a `playwright.config.ts`, and a `tests/` subdirectory. Run with `cd e2e && mise x -- npx playwright test`.
 
 ### Test suite structure
 
-Organize tests in `tests/e2e/`, one file per user flow (e.g., `login.spec.ts`, `create-todo.spec.ts`, `dashboard.spec.ts`).
+Organize tests in `e2e/tests/`, one file per user flow (e.g., `login.spec.ts`, `create-todo.spec.ts`, `dashboard.spec.ts`).
 
 ### Auth in tests
 
@@ -136,7 +138,7 @@ Features may have been added in previous sessions without corresponding tests. A
 
 1. **Backend:** List all handler files in `backend/` and check each one has a corresponding `_test.go` file. Flag any handler without tests (except trivial ones like health checks).
 2. **Frontend:** List all components with non-trivial logic (conditional rendering, form handling, event handlers) and check each one has a corresponding `.test.tsx` file.
-3. **E2E:** Compare the features listed in `docs/PRD.md` against the E2E test files in the `tests/` directory. Flag any user-facing feature without an E2E test.
+3. **E2E:** Compare the features listed in `docs/PRD.md` against the E2E test files in the `e2e/tests/` directory. Flag any user-facing feature without an E2E test.
 
 If gaps are found, report them to the user and offer to add the missing tests. Do not silently skip untested features — the whole point of the test suite is to be a regression safety net, and gaps undermine that.
 
