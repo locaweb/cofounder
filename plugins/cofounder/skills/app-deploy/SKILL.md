@@ -84,7 +84,7 @@ If the application's current design conflicts with any of these, resolve the con
 Outputs the complete PostgreSQL `cmd` string tuned for a VM plan, if using the [`supabase/postgres` recipe](references/postgres-recipe.md). Use this for the `accessories.db.cmd` field in `config/deploy.<environment>.yml`.
 
 ```bash
-mise x -- python3 generate_pg_cmd.py --plan medium
+mise x -- python3 scripts/generate_pg_cmd.py --plan medium
 # Output: postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100
 ```
 
