@@ -193,7 +193,7 @@ Kamal config applicable to all environments. See [references/env-vars.md](refere
 - **Proxy settings** -- `app_port`, `forward_headers`, healthcheck
 - **SSH and registry** -- user, keys, ghcr.io registry with ERB templates
 - **Builder** -- arch and cache settings
-- **Common environment variables** -- `env.clear` for non-sensitive config, `env.secret` for secrets shared across all environments
+- **Common environment variables** -- `env.clear` for non-sensitive config (do NOT put `env.secret` here; secrets must go in each destination file)
 - **Common volumes** -- host mounts applicable to all environments
 - **Workers** (if any) -- `servers.workers.cmd` and `servers.workers.proxy: false`
 - **Deployment timings** -- `readiness_delay`, `deploy_timeout`, `drain_timeout` (sensible defaults: 15, 180, 30)
