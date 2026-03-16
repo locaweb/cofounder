@@ -61,12 +61,16 @@ jobs:
           current="${{ steps.current.outputs.version }}"
           latest="${{ steps.latest.outputs.version }}"
 
-          if [ "$current" = "$latest" ]; then
+          # Check if any file has a 17.x tag that isn't the latest
+          stale=$(grep -roh "supabase/postgres:17\.[0-9]*\.[0-9]*\.[0-9]*" plugins/cofounder/ \
+            | grep -v "supabase/postgres:${latest}" || true)
+
+          if [ -z "$stale" ]; then
             echo "update=false" >> "$GITHUB_OUTPUT"
             echo "Already up to date ($current)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "update=true" >> "$GITHUB_OUTPUT"
-            echo "Update available: $current -> $latest" >> "$GITHUB_STEP_SUMMARY"
+            echo "Update available: found stale tags -> $latest" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Update pinned version
@@ -75,10 +79,8 @@ jobs:
           current="${{ steps.current.outputs.version }}"
           latest="${{ steps.latest.outputs.version }}"
 
-          sed -i "s|supabase/postgres:${current}|supabase/postgres:${latest}|g" \
-            plugins/cofounder/skills/tech-stack/SKILL.md \
-            plugins/cofounder/skills/app-deploy/SKILL.md \
-            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md
+          grep -rl "supabase/postgres:17\." plugins/cofounder/ \
+            | xargs sed -i -E "s|supabase/postgres:17\.[0-9]+\.[0-9]+\.[0-9]+|supabase/postgres:${latest}|g"
 
       - name: Bump plugin version
         if: steps.compare.outputs.update == 'true'
@@ -102,11 +104,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin --delete "$branch" 2>/dev/null || true
           git checkout -b "$branch"
-          git add \
-            plugins/cofounder/skills/tech-stack/SKILL.md \
-            plugins/cofounder/skills/app-deploy/SKILL.md \
-            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md \
-            plugins/cofounder/.claude-plugin/plugin.json
+          git add plugins/cofounder/
           git commit -m "Bump supabase/postgres ${current} -> ${latest}"
           git push -u origin "$branch"
 
@@ -120,11 +118,7 @@ jobs:
           | **Current** | \`${current}\` |
           | **New** | \`${latest}\` |
 
-          Updated files:
-          - \`plugins/cofounder/skills/tech-stack/SKILL.md\`
-          - \`plugins/cofounder/skills/app-deploy/SKILL.md\`
-          - \`plugins/cofounder/skills/app-deploy/references/postgres-recipe.md\`
-          - \`plugins/cofounder/.claude-plugin/plugin.json\` (patch version bump)
+          Updated all files under \`plugins/cofounder/\` referencing the old tag, plus patch version bump in \`plugin.json\`.
 
           > Staying within major version 17, so this is a safe patch/minor bump.
           EOF
