@@ -53,7 +53,7 @@ This key will be:
 
 ### Additional environment keys
 
-Generate a separate key for each additional environment (Step 8). For example, for the "production" environment:
+Generate a separate key for each additional environment (Step 9). For example, for the "production" environment:
 
 ```bash
 test -f ~/.ssh/<repo-name>-production && echo "Key exists" || echo "Key missing"

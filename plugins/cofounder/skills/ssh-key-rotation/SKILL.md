@@ -84,20 +84,7 @@ gh secret set SSH_PRIVATE_KEY < ~/.ssh/$REPO_NAME
 gh secret set SSH_PRIVATE_KEY_PRODUCTION < ~/.ssh/$REPO_NAME-production
 ```
 
-### Step 4: Determine the zone
-
-The rotation workflow needs the `zone` where the environment is deployed. Infer it from the existing deploy workflow:
-
-```bash
-# Read the deploy workflow for the environment
-cat .github/workflows/deploy-preview.yml | grep zone
-# or for production:
-cat .github/workflows/deploy-production.yml | grep zone
-```
-
-The `zone` value is in the `with:` block of the infra job (e.g., `zone: "ZP01"`).
-
-### Step 5: Create and run the rotation caller workflow
+### Step 4: Create and run the rotation caller workflow
 
 Create a caller workflow that invokes the reusable rotation workflow. This follows the same pattern as teardown workflows:
 
@@ -154,7 +141,7 @@ git push
 gh workflow run rotate-ssh-key-preview.yml
 ```
 
-### Step 6: Monitor the rotation
+### Step 5: Monitor the rotation
 
 ```bash
 # Watch the run
@@ -174,7 +161,7 @@ If the workflow fails, read the logs:
 gh run view <run-id> --log-failed
 ```
 
-### Step 7: Verify SSH access
+### Step 6: Verify SSH access
 
 After the workflow completes successfully, verify that the new key works:
 
@@ -191,7 +178,7 @@ cat $HOME/tmp/provision-output/provision-output.json
 ssh -i ~/.ssh/$REPO_NAME -o ConnectTimeout=10 root@<web_ip> "echo 'SSH rotation successful'"
 ```
 
-### Step 8: Resume the original task
+### Step 7: Resume the original task
 
 If rotation was triggered because the agent needed SSH access for troubleshooting, resume the original operation (checking logs, debugging, database access, etc.) using the new key.
 
