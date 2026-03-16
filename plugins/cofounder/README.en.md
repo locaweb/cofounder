@@ -55,7 +55,7 @@ Cofounder is an AI-powered co-founder that helps you:
 
 - **Describe your idea** in plain language and get a structured Product Requirements Document
 - **Build a full-stack web app** (Go + React + PostgreSQL) with guided development
-- **Test your app** with automated end-to-end testing via Playwright
+- **Test your app** with a two-layer automated test suite (Go + Vitest)
 - **Deploy to the cloud** on Locaweb Cloud with GitHub Actions CI/CD
 
 It handles environment setup, dependency management, Git/GitHub workflows, database containers, and deployment — explaining everything in accessible language along the way.
@@ -153,7 +153,7 @@ Just describe what you want in your own words — no technical knowledge require
 | `repo-setup` | Git + GitHub repository initialization |
 | `tech-stack` | Full-stack app development (Go, React, PostgreSQL) |
 | `frontend-design` | Distinctive UI/UX design guidance |
-| `testing` | Three-layer automated test suite (Go, Vitest, Playwright) |
+| `testing` | Two-layer automated test suite (Go, Vitest) |
 | `app-deploy` | Deploy to Locaweb Cloud infrastructure |
 
 ## Tech stack

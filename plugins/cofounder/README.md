@@ -55,7 +55,7 @@ Cofounder é um cofundador movido por IA que ajuda você a:
 
 - **Descrever sua ideia** em linguagem simples e obter um documento estruturado de requisitos (PRD)
 - **Construir um app web completo** (Go + React + PostgreSQL) com desenvolvimento guiado
-- **Testar seu app** com testes automatizados de ponta a ponta via Playwright
+- **Testar seu app** com testes automatizados em 2 camadas (Go + Vitest)
 - **Publicar na nuvem** na Locaweb Cloud com CI/CD via GitHub Actions
 
 Ele cuida da configuração do ambiente, gerenciamento de dependências, fluxos do Git/GitHub, containers de banco de dados e deploy — explicando tudo em linguagem acessível ao longo do caminho.
@@ -153,7 +153,7 @@ Basta descrever o que você quer com suas próprias palavras — nenhum conhecim
 | `repo-setup` | Inicialização do repositório Git + GitHub |
 | `tech-stack` | Desenvolvimento full-stack (Go, React, PostgreSQL) |
 | `frontend-design` | Orientação de design UI/UX diferenciado |
-| `testing` | Testes automatizados em 3 camadas (Go, Vitest, Playwright) |
+| `testing` | Testes automatizados em 2 camadas (Go, Vitest) |
 | `app-deploy` | Deploy na infraestrutura da Locaweb Cloud |
 
 ## Stack

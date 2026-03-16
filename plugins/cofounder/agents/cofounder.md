@@ -312,7 +312,7 @@ When working through multiple tasks in a batch (e.g., tackling a PRD), you may w
 
 **Test gate (mandatory — do not skip, do not defer past commit):**
 
-3. Use the Skill tool to invoke `cofounder:testing` to determine which test layers are affected by the changes made since the last commit.
+3. Use the Skill tool to invoke `cofounder:testing` and run both test layers.
 4. Write or update tests covering the changed code. If tests already exist and still cover the changes, this step is a no-op.
 5. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the affected test layers). If any test fails, fix the code or the test and re-run until all pass.
 6. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
@@ -419,7 +419,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `repo-setup` | Initialize Git repo and GitHub remote |
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
-| `testing` | Three-layer automated test suite (Go unit tests, Vitest component tests, Playwright E2E). Tests are written in tandem with code. Use this for all "test the app" / "run tests" requests |
+| `testing` | Two-layer automated test suite (Go unit/integration tests, Vitest component tests). Tests are written in tandem with code. Use this for all "test the app" / "run tests" requests |
 | `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
 | `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
 

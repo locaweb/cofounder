@@ -1,29 +1,28 @@
 ---
 name: testing
-description: Three-layer automated testing strategy for Go + React web applications. Covers backend unit/integration tests (Go), frontend component tests (Vitest), and end-to-end browser tests (Playwright via npx). Tests are written in tandem with application code — every handler gets a test file, every interactive component gets a test file, every completed feature gets an E2E test. Use this skill whenever the user asks to test, run tests, add tests, or verify the application.
+description: Two-layer automated testing strategy for Go + React web applications. Covers backend unit/integration tests (Go) and frontend component tests (Vitest). Tests are written in tandem with application code — every handler gets a test file, every interactive component gets a test file. Use this skill whenever the user asks to test, run tests, add tests, or verify the application.
 ---
 
 # Automated Testing
 
-Tests are written **in tandem with the code they verify** — not as an afterthought, not deferred to a later milestone. When you create a handler, create its test file. When you create an interactive component, create its test file. When you complete a feature, write its E2E test. This keeps tests and code in sync and prevents coverage drift.
+Tests are written **in tandem with the code they verify** — not as an afterthought, not deferred to a later milestone. When you create a handler, create its test file. When you create an interactive component, create its test file. This keeps tests and code in sync and prevents coverage drift.
 
-## The Three Layers
+## The Two Layers
 
 | Layer | What it tests | Requires running services? |
 |-------|--------------|---------------------------|
 | 1. Backend unit/integration | Handlers, database queries, business logic | Database only |
 | 2. Frontend components | UI logic, rendering, user interactions | Nothing — runs in simulated DOM |
-| 3. E2E (browser) | Full user flows across frontend + backend | All services |
 
-Each layer catches different classes of bugs. They complement each other — none replaces the others. Layers 1 and 2 run in seconds; layer 3 takes longer but tests what the user actually experiences.
+Layer 1 tests the API contract against a real database. Layer 2 tests UI logic, rendering, and user interactions with mocked API calls. Together they cover the full stack — backend correctness and frontend behavior — while running in seconds.
 
 ## Running commands
 
-All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, `mise x -- npx playwright test`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
+All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
 
 ## Setup Sequence
 
-When starting a new project, set up all three layers as the first features are being built. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
+When starting a new project, set up both layers as the first features are being built. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
 
 ---
 
@@ -87,48 +86,7 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 1. Identify components with non-trivial logic.
 2. Create test files for those components first.
-3. Add `data-testid` attributes to key interactive elements for stable selectors (also benefits E2E tests).
-
----
-
-## Layer 3: E2E tests (browser)
-
-Full end-to-end tests that exercise real user flows through the browser. These require all services running (database, backend, frontend dev server).
-
-### Isolated E2E directory
-
-E2E tests live in a dedicated `e2e/` directory at the project root with its own `package.json` and `node_modules`. This isolation is required — browser test frameworks and component test frameworks define conflicting globals and cannot share the same `node_modules`.
-
-The `e2e/` directory contains its own `package.json` (with `@playwright/test` as the only dependency), a `playwright.config.ts`, and a `tests/` subdirectory. Run with `cd e2e && mise x -- npx playwright test`.
-
-### Test suite structure
-
-Organize tests in `e2e/tests/`, one file per user flow (e.g., `login.spec.ts`, `create-todo.spec.ts`, `dashboard.spec.ts`).
-
-### Auth in tests
-
-Create a shared auth setup that calls the `POST /api/dev/login` endpoint and saves browser state for reuse across tests. This avoids repeating login logic in every spec file. Look up Playwright's current recommended pattern for shared authentication state.
-
-### Writing test files
-
-Each test file covers one user flow. Tests must be independent — no shared state between files. The pattern: authenticate → navigate → perform actions → assert on visible results.
-
-### Principles
-
-- Wait for the app to fully load before asserting (SPAs need `networkidle` or equivalent).
-- Don't assume the default Vite port (5173) — check the Vite startup output for the actual URL.
-- Prefer descriptive selectors: visible text, ARIA roles, or `data-testid` attributes. Avoid fragile selectors tied to CSS class names or DOM structure.
-- Add `data-testid` attributes to key interactive elements in React components for stable selectors.
-
-### Coverage expectations
-
-- **Every user-facing feature** gets a corresponding E2E test file.
-- **Bug fixes** get a test that reproduces the bug (and now passes with the fix).
-- **Tests accumulate** — old tests are not deleted when new features are added. The suite is a regression safety net. Delete a test only when its corresponding handler, component, or feature is removed.
-
-### Cadence
-
-E2E tests run on **feature completion**, not on every micro-edit. Between E2E runs, use Preview quick checks or manual browser checks to verify visual changes.
+3. Add `data-testid` attributes to key interactive elements for stable selectors.
 
 ---
 
@@ -138,7 +96,6 @@ Features may have been added in previous sessions without corresponding tests. A
 
 1. **Backend:** List all handler files in `backend/` and check each one has a corresponding `_test.go` file. Flag any handler without tests (except trivial ones like health checks).
 2. **Frontend:** List all components with non-trivial logic (conditional rendering, form handling, event handlers) and check each one has a corresponding `.test.tsx` file.
-3. **E2E:** Compare the features listed in `docs/PRD.md` against the E2E test files in the `e2e/tests/` directory. Flag any user-facing feature without an E2E test.
 
 If gaps are found, report them to the user and offer to add the missing tests. Do not silently skip untested features — the whole point of the test suite is to be a regression safety net, and gaps undermine that.
 

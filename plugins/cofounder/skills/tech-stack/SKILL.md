@@ -373,7 +373,7 @@ This ensures Preview and CLI modes use the same env var source and the same tool
 
 The core workflow is: **write code and tests in tandem → run the test suite → repeat until everything passes → commit & push.**
 
-Preview and manual browser checks are useful for quick visual verification during development, but they are not a substitute for the automated test suite. Testing is covered by the **testing** skill's three-layer approach (Go unit tests, Vitest component tests, Playwright E2E), which runs on all platforms.
+Preview and manual browser checks are useful for quick visual verification during development, but they are not a substitute for the automated test suite. Testing is covered by the **testing** skill's two-layer approach (Go unit/integration tests, Vitest component tests), which runs on all platforms.
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -389,7 +389,6 @@ Preview and manual browser checks are useful for quick visual verification durin
 │   Run tests (see testing skill for details)          │
 │     Layer 1: Go unit/integration tests               │
 │     Layer 2: Vitest component tests                  │
-│     Layer 3: Playwright E2E (on feature completion)  │
 │        │                                             │
 │        ▼                                             │
 │   All pass? ──No──► Fix & repeat from top            │
@@ -436,7 +435,7 @@ If the application has a user login area, **self sign-in with username and passw
 
 ## Dev Login for Testing
 
-During local development, the agent (Playwright scripts or Claude Desktop Preview) needs to test pages behind authentication. Magic link and Google Auth flows cannot be completed in automated tests, so the backend must expose a **dev-only login endpoint** that bypasses the real auth flow.
+During local development, the agent (Claude Desktop Preview) needs to test pages behind authentication. Magic link and Google Auth flows cannot be completed in automated tests, so the backend must expose a **dev-only login endpoint** that bypasses the real auth flow.
 
 ### How it works
 
