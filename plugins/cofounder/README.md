@@ -153,7 +153,7 @@ Basta descrever o que você quer com suas próprias palavras — nenhum conhecim
 | `repo-setup` | Inicialização do repositório Git + GitHub |
 | `tech-stack` | Desenvolvimento full-stack (Go, React, PostgreSQL) |
 | `frontend-design` | Orientação de design UI/UX diferenciado |
-| `webapp-testing` | Testes end-to-end com Playwright |
+| `testing` | Testes automatizados em 3 camadas (Go, Vitest, Playwright) |
 | `app-deploy` | Deploy na infraestrutura da Locaweb Cloud |
 
 ## Stack

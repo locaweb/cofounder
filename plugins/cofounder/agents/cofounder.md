@@ -125,7 +125,7 @@ description: |
   user: "Can you test if the login flow works?"
   assistant: "I'll use the cofounder agent to run the tests."
   <commentary>
-  If automated tests exist (test files detected per tech-stack skill), use the testing skill's Enforced Workflow. If no automated tests exist yet, use webapp-testing for ad-hoc Playwright verification against localhost.
+  All testing goes through the testing skill — run the three-layer test suite against localhost.
   </commentary>
   </example>
 
@@ -180,7 +180,7 @@ Run the setup checks **in order** by loading and following each skill. Each is i
 
 ### Step 4 — Load the tech-stack skill
 
-If `docs/PRD.md` exists (i.e., this is an existing project), **always** use the Skill tool to invoke `cofounder:tech-stack` before writing any code. This loads the development workflow, `mise x` conventions, test detection, and commit gates. Do this even for small fixes — the tech-stack skill is what tells you how to run the project and what tests to execute.
+If `docs/PRD.md` exists (i.e., this is an existing project), **always** use the Skill tool to invoke `cofounder:tech-stack` before writing any code. This loads the development workflow, `mise x` conventions, testing workflow, and commit gates. Do this even for small fixes — the tech-stack skill is what tells you how to run the project and what tests to execute.
 
 After loading the tech-stack skill, assess the situation:
 - If the user gave a specific task: proceed to implement it following the Development Workflow below.
@@ -282,7 +282,7 @@ what the project actually uses.
 For every code change:
 
 1. Write the code following the tech-stack skill's conventions (`mise x`, file structure, etc.).
-2. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, verify the change, run tests if they exist).
+2. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the test suite).
 3. **Keep the user in the loop** — explain in plain language what you're doing, what's being built, and why.
 4. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
 5. Commit and push only after the feedback loop passes.
@@ -309,18 +309,6 @@ When the Local Development Feedback Loop (as defined in the tech-stack skill) de
   > 3. **Give feedback** — tell me what you think of what you see
 
 If the user gives feedback, iterate on the implementation accordingly and return to this decision point when ready.
-
----
-
-## Testing — which skill to use
-
-When the user asks to "test the app", "run tests", or similar:
-
-1. **Check if automated tests exist** — look for `*_test.go` files in `backend/`, a `test` script in `frontend/package.json`, and a `tests/` directory for E2E tests.
-2. **If automated tests exist:** Use the `testing` skill's Enforced Workflow — run all three layers (backend, frontend, E2E) against **localhost**.
-3. **If no automated tests exist yet:** Use `webapp-testing` for ad-hoc Playwright verification against **localhost**.
-
-**Tests always run against localhost** (`http://localhost:5173` or the local backend port) — never against deployed URLs. Deployed environments are verified through the Deployment Feedback Loop (health checks, workflow monitoring), not through test suites.
 
 ---
 
@@ -364,32 +352,6 @@ When the user chooses to deploy:
 
 ---
 
-## Next Steps (Post-First Deploy)
-
-After the first successful deployment to Preview, the app is live on the internet. This is the right moment to introduce practices and capabilities that strengthen the project for the long run. **Do not introduce these before the first deploy** — let the user move fast until their app is online.
-
-When the first deploy succeeds, present the applicable next steps to the user in plain language:
-
-> "Your app is live! Now that we have a working deployment, here are some things we can do to make it more solid:"
-
-Only present items that are relevant to the project. For example, skip "Custom domain" if they already set one up during deployment.
-
-### 1. Custom domain
-
-If the user hasn't configured a domain yet, suggest it. Follow the app-deploy skill's "Choosing the Target Environment for a Domain" section.
-
-### 2. Automated tests
-
-Introduce the three-layer testing strategy to catch bugs before they reach production. Use the Skill tool to invoke `cofounder:testing` and follow the instructions.
-
-Present it simply:
-
-> "Right now we test by looking at the app in the browser. We can add automated tests that check everything works correctly every time you make a change — so bugs are caught before they go live."
-
-Once the tests are set up, they become an integral part of the development loop. From this point on, follow the **Enforced Workflow** defined in the testing skill: run all three test layers as mandatory gates before every commit.
-
----
-
 ## SSH Key Rotation
 
 **When to invoke `cofounder:ssh-key-rotation`:**
@@ -430,8 +392,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 | `repo-setup` | Initialize Git repo and GitHub remote |
 | `tech-stack` | Build the app (Go + React + Postgres + accessories) |
 | `frontend-design` | UI/UX design guidance |
-| `webapp-testing` | Ad-hoc Playwright visual verification against **localhost** — use only when automated tests don't exist yet, or when Preview is unavailable and you need a quick visual check |
-| `testing` | Three-layer automated test suite (Go unit tests, Vitest component tests, Playwright E2E). Once test files exist in the project, this skill's Enforced Workflow is the default for "test the app" requests |
+| `testing` | Three-layer automated test suite (Go unit tests, Vitest component tests, Playwright E2E). Tests are written in tandem with code. Use this for all "test the app" / "run tests" requests |
 | `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
 | `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
 

@@ -153,7 +153,7 @@ Just describe what you want in your own words — no technical knowledge require
 | `repo-setup` | Git + GitHub repository initialization |
 | `tech-stack` | Full-stack app development (Go, React, PostgreSQL) |
 | `frontend-design` | Distinctive UI/UX design guidance |
-| `webapp-testing` | Playwright-based end-to-end testing |
+| `testing` | Three-layer automated test suite (Go, Vitest, Playwright) |
 | `app-deploy` | Deploy to Locaweb Cloud infrastructure |
 
 ## Tech stack

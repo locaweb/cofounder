@@ -331,9 +331,9 @@ This relies on the naming convention (`<repo_name>-<accessory_name>`) and remove
 
 ## Preview (Claude Code Desktop)
 
-When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. When Preview is not available (CLI, Windows), use Playwright (via the **webapp-testing** skill) for visual verification.
+When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. When Preview is not available (CLI, Windows), start the Go backend and Vite dev server manually (steps 2–3 above).
 
-> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Use Playwright via the **webapp-testing** skill for visual verification instead.
+> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
 
 #### Accessories in Preview mode
 
@@ -365,30 +365,32 @@ This ensures Preview and CLI modes use the same env var source and the same tool
 
 ## Local Development Feedback Loop
 
-> **Preview mode:** If you have access to `preview_*` tools (Claude Code Desktop), Preview manages the dev servers — **do not start them manually**. Use `preview_screenshot`, `preview_snapshot`, and `preview_click` for visual verification instead of Playwright for quick checks. Use Playwright (via the **webapp-testing** skill) for comprehensive E2E test suites.
+> **Preview mode:** If you have access to `preview_*` tools (Claude Code Desktop), Preview manages the dev servers — **do not start them manually**. Use `preview_screenshot`, `preview_snapshot`, and `preview_click` for quick visual checks during development.
 >
-> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Skip the Preview branch below and use Playwright via the **webapp-testing** skill.
+> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
 
-The core workflow is: **write code → spin up local instance → run tests → repeat until the feature works → commit & push.**
+The core workflow is: **write code and tests in tandem → run the test suite → repeat until everything passes → commit & push.**
+
+Preview and manual browser checks are useful for quick visual verification during development, but they are not a substitute for the automated test suite. Testing is covered by the **testing** skill's three-layer approach (Go unit tests, Vitest component tests, Playwright E2E), which runs on all platforms.
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │                                                      │
-│   Write / Edit Code                                  │
+│   Write / Edit Code + Tests (in tandem)              │
 │        │                                             │
 │        ▼                                             │
-│   preview_* tools available?                         │
-│     Yes (not Windows) ──► Preview manages servers    │
-│     No / Windows ──► Start services manually         │
-│             (podman supabase, go run, npm dev)       │
+│   Start services                                     │
+│     Preview (Desktop, not Windows) ──► automatic     │
+│     CLI / Windows ──► manual (podman, go run, npm)   │
 │        │                                             │
 │        ▼                                             │
-│   Visual / E2E Verification                          │
-│     Preview mode: preview_screenshot + preview_click │
-│     CLI / Windows: Playwright (webapp-testing skill) │
+│   Run tests (see testing skill for details)          │
+│     Layer 1: Go unit/integration tests               │
+│     Layer 2: Vitest component tests                  │
+│     Layer 3: Playwright E2E (on feature completion)  │
 │        │                                             │
 │        ▼                                             │
-│   Looks good? ──No──► Fix & repeat from top          │
+│   All pass? ──No──► Fix & repeat from top            │
 │        │                                             │
 │       Yes                                            │
 │        │                                             │
@@ -399,10 +401,6 @@ The core workflow is: **write code → spin up local instance → run tests → 
 ```
 
 After committing and pushing, ask the user if they want to deploy to the cloud. If yes, use the **app-deploy** skill to run the **Deployment Feedback Loop**, which monitors the GitHub Actions workflow, verifies the health check, and handles deployment-specific failures.
-
-### Running tests
-
-At the start of each session, check whether automated tests already exist: look for `*_test.go` files in `backend/`, a `test` script in `frontend/package.json`, and a `tests/` directory at the project root for E2E tests. If any of these are present, tests have already been introduced (via the **testing** skill) and you must run them as part of the loop, following the **Enforced Workflow** from the testing skill. Do not ask the user whether tests exist — detect it from the codebase.
 
 ### sqlc workflow
 

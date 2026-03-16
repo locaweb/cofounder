@@ -1,11 +1,11 @@
 ---
 name: testing
-description: Three-layer automated testing strategy for web applications. Defines coverage expectations for backend unit/integration tests, frontend component tests, and end-to-end browser tests. Use this skill after the first successful deployment to introduce systematic testing.
+description: Three-layer automated testing strategy for Go + React web applications. Covers backend unit/integration tests (Go), frontend component tests (Vitest), and end-to-end browser tests (Playwright via npx). Tests are written in tandem with application code — every handler gets a test file, every interactive component gets a test file, every completed feature gets an E2E test. Use this skill whenever the user asks to test, run tests, add tests, or verify the application.
 ---
 
 # Automated Testing
 
-Introduce automated tests after the first successful deploy. This skill defines a three-layer testing strategy that catches bugs before they reach production.
+Tests are written **in tandem with the code they verify** — not as an afterthought, not deferred to a later milestone. When you create a handler, create its test file. When you create an interactive component, create its test file. When you complete a feature, write its E2E test. This keeps tests and code in sync and prevents coverage drift.
 
 ## The Three Layers
 
@@ -19,17 +19,17 @@ Each layer catches different classes of bugs. They complement each other — non
 
 ## Running commands
 
-All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, `mise x -- npm run test`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
+All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, `mise x -- npx playwright test`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
 
 ## Setup Sequence
 
-When the user agrees to add tests, set up all three layers in order. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
+When starting a new project, set up all three layers as the first features are being built. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
 
 ---
 
 ## Layer 1: Backend unit and integration tests
 
-Go has a built-in test runner. Backend tests may already exist from the development phase. If not, set them up now.
+Go has a built-in test runner.
 
 ### Coverage expectations
 
@@ -95,13 +95,34 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 Full end-to-end tests that exercise real user flows through the browser. These require all services running (database, backend, frontend dev server).
 
-Use the **webapp-testing** skill for Playwright setup, installation, and the persistent test suite structure. That skill covers installation, writing test scripts, shared fixtures with login helpers, the persistent test suite directory, and running the full suite.
+### Playwright via npx
+
+Since the frontend is already React/Vite, use Playwright through `npx` (`@playwright/test`) — same JS runtime, same `package.json`, no separate Python virtualenv needed. Install as a dev dependency in the frontend directory, add a config at the project root pointing `testDir` to `tests/e2e/`, and run with `mise x -- npx playwright test`.
+
+### Test suite structure
+
+Organize tests in `tests/e2e/`, one file per user flow (e.g., `login.spec.ts`, `create-todo.spec.ts`, `dashboard.spec.ts`).
+
+### Auth in tests
+
+Create a shared auth setup that calls the `POST /api/dev/login` endpoint and saves browser state for reuse across tests. This avoids repeating login logic in every spec file. Look up Playwright's current recommended pattern for shared authentication state.
+
+### Writing test files
+
+Each test file covers one user flow. Tests must be independent — no shared state between files. The pattern: authenticate → navigate → perform actions → assert on visible results.
+
+### Principles
+
+- Wait for the app to fully load before asserting (SPAs need `networkidle` or equivalent).
+- Don't assume the default Vite port (5173) — check the Vite startup output for the actual URL.
+- Prefer descriptive selectors: visible text, ARIA roles, or `data-testid` attributes. Avoid fragile selectors tied to CSS class names or DOM structure.
+- Add `data-testid` attributes to key interactive elements in React components for stable selectors.
 
 ### Coverage expectations
 
 - **Every user-facing feature** gets a corresponding E2E test file.
 - **Bug fixes** get a test that reproduces the bug (and now passes with the fix).
-- **Tests accumulate** — old tests are never deleted when new features are added. The suite is a regression safety net.
+- **Tests accumulate** — old tests are not deleted when new features are added. The suite is a regression safety net. Delete a test only when its corresponding handler, component, or feature is removed.
 
 ### Cadence
 
@@ -119,35 +140,3 @@ Features may have been added in previous sessions without corresponding tests. A
 
 If gaps are found, report them to the user and offer to add the missing tests. Do not silently skip untested features — the whole point of the test suite is to be a regression safety net, and gaps undermine that.
 
----
-
-## Enforced Workflow
-
-Once all three layers are set up, the development feedback loop changes. Tests become mandatory gates before every commit:
-
-```
-Write / Edit Code (including tests)
-       │
-       ▼
-Layer 1: Backend Tests ──Fail──► Fix & repeat
-       │
-      Pass
-       │
-       ▼
-Layer 2: Component Tests ──Fail──► Fix & repeat
-       │
-      Pass
-       │
-       ▼
-Layer 3: E2E Tests ──Fail──► Fix & repeat
-  (on feature completion)
-       │
-      Pass
-       │
-       ▼
-Commit & push
-```
-
-- **Layers 1 + 2** run in seconds and gate every commit.
-- **Layer 3** gates the commit that delivers a completed feature.
-- Write tests as part of building the feature, not as an afterthought.
