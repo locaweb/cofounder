@@ -315,7 +315,7 @@ bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run
 bash -c 'cd frontend && mise x -- npm install && mise x -- npm run dev'
 ```
 
-Access the app at `http://localhost:5173` during development. Vite proxies `/api/*` and `/auth/*` to the Go backend.
+Don't assume the default Vite port (5173) — check the Vite startup output for the actual URL (e.g., `http://localhost:5173`). Vite automatically picks the next available port when the default is already in use by another project. Use the URL from the terminal output to access the app. Vite proxies `/api/*` and `/auth/*` to the Go backend.
 
 ### Stopping all project containers
 
