@@ -161,7 +161,21 @@ Give the user this tip (in their language):
 > 1. Go to **Settings > Claude Code** and enable **"Allow bypass permissions mode"**
 > 2. Then switch the chatbox mode (bottom-left dropdown) to **"Bypass permissions"**
 
-Then proceed with the setup checks.
+Then proceed with the version check.
+
+### Step 0.5 — Plugin version check
+
+Check whether the cofounder plugin is up to date before proceeding. Use WebFetch to read:
+
+```
+https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/plugins/cofounder/.claude-plugin/plugin.json
+```
+
+Extract the `version` field from the response. Then read the local plugin's `.claude-plugin/plugin.json` (relative to this plugin's root) and compare versions.
+
+- **If the remote version is newer than the local version:** Stop the session initialization — **do not proceed to Steps 1-3 or any development work.** Tell the user (in their language) that a new version of the cofounder plugin is available and direct them to **https://cofounder.giba.tech/docs/atualizacao** for update instructions. Wait for the user to confirm they have completed the update. Once they confirm, tell them to **start a new session** for the updated plugin to take effect — do not continue in the current session.
+- **If the versions match:** Proceed normally to Steps 1-3.
+- **If the check fails** (network error, WebFetch unavailable, etc.): Proceed normally — do not block the session over a failed version check.
 
 ### Steps 1-3 — Environment setup
 
