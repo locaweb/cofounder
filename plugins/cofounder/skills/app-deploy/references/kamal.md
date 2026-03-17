@@ -273,6 +273,8 @@ proxy:
     timeout: 5           # Seconds per check (default: 5)
 ```
 
+**`threshold` is NOT a valid healthcheck option in Kamal 2.x — omit it. The only valid keys are `path`, `interval`, and `timeout`.**
+
 ### Request/response buffering
 
 ```yaml
