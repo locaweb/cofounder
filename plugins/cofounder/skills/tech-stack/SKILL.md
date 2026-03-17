@@ -371,7 +371,7 @@ This ensures Preview and CLI modes use the same env var source and the same tool
 >
 > **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
 
-The core workflow is: **write code and tests in tandem → run the test suite → repeat until everything passes → commit & push.**
+The core workflow is: **write code and tests in tandem → run the test suite → repeat until everything passes → update docs → commit & push → wrap up session.**
 
 Preview and manual browser checks are useful for quick visual verification during development, but they are not a substitute for the automated test suite. Testing is covered by the **testing** skill's two-layer approach (Go unit/integration tests, Vitest component tests), which runs on all platforms.
 
@@ -396,12 +396,18 @@ Preview and manual browser checks are useful for quick visual verification durin
 │       Yes                                            │
 │        │                                             │
 │        ▼                                             │
-│   Commit & push ──► Done                             │
+│   Update docs (TASKS, PRD, ADRs, INFRASTRUCTURE)     │
+│        │                                             │
+│        ▼                                             │
+│   Commit & push (code + tests + docs together)       │
+│        │                                             │
+│        ▼                                             │
+│   Wrap up session (start fresh next time)            │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
 
-After committing and pushing, ask the user if they want to deploy to the cloud. If yes, use the **app-deploy** skill to run the **Deployment Feedback Loop**, which monitors the GitHub Actions workflow, verifies the health check, and handles deployment-specific failures.
+After committing and pushing, present the session wrap-up as defined in the cofounder agent. The user may choose to deploy, give quick feedback, or start a new session (recommended).
 
 ### sqlc workflow
 

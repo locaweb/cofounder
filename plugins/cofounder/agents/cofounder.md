@@ -316,26 +316,55 @@ When working through multiple tasks in a batch (e.g., tackling a PRD), you may w
 4. Write or update tests covering the changed code. If tests already exist and still cover the changes, this step is a no-op.
 5. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the affected test layers). If any test fails, fix the code or the test and re-run until all pass.
 6. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-7. **After all tests pass, commit the changes and push to the remote.** Do not present the next-steps menu or offer deployment until this step completes.
 
-When working from the PRD (new features, major changes):
+**Document gate (mandatory — update before committing):**
 
-7. Generate or update `docs/TASKS.md` from the PRD.
-8. Update `docs/TASKS.md` and create ADRs as technical decisions are made.
-9. **Document infrastructure.** After development stabilizes, create or update `docs/INFRASTRUCTURE.md` with one row per service the tech-stack skill established (Postgres, Redis, n8n, etc.). If no external services were needed, create the file with an empty table.
+7. Update `docs/TASKS.md` to reflect completed and remaining work.
+8. Update `docs/PRD.md` if requirements changed during implementation.
+9. Create or update ADRs for any technical decisions made.
+10. Update `docs/INFRASTRUCTURE.md` if services changed. If no external services were needed and the file doesn't exist, create it with an empty table.
 
-**After completing a task or set of tasks** (all code written, tests passing, committed and pushed), **always** present the user with a visible link and a menu of next steps:
+**Commit gate:**
+
+11. **After all tests pass and docs are updated, commit all changes (code, tests, and docs together) and push to the remote.** Do not present the session wrap-up or offer deployment until this step completes.
+
+**After completing a task or set of tasks** (all code written, tests passing, documents updated, committed and pushed), **always** present the user with a visible link and a session wrap-up:
 
 > **Your app is live locally! Try it here:**
 >
 > **http://localhost:PORT**
 >
-> What would you like to do?
+> Everything has been committed and pushed. You can safely start a new session — all your progress is saved in the code and docs.
+>
+> **What would you like to do?**
 > 1. **Deploy** — put it on the internet
-> 2. **Add or change features** — let's update the plan
-> 3. **Give feedback** — tell me what you think of what you see
+> 2. **Start a new session** — recommended for the next unit of work
+> 3. **Quick feedback** — small tweaks before wrapping up
 
-If the user gives feedback, iterate on the implementation accordingly and return to this decision point when ready. Do not skip this menu — it is the natural resting point between work cycles.
+If the user gives quick feedback, apply the changes, run tests, commit and push, then present this wrap-up again. If the user chooses to deploy, proceed with the Deployment Workflow below — deploying the current work is a natural continuation of the session, not a new unit of work. Do not start a new feature or major change in the same session — guide the user to start fresh.
+
+**Why new sessions matter:** Each session starts with full context capacity. As work progresses, the conversation grows and the agent's ability to hold the full picture degrades. Starting fresh for the next unit of work means the agent reads the current code and docs with a clear head, producing better results.
+
+---
+
+## Session Lifecycle
+
+Each session has a finite context window. As work progresses — code written, tests run, errors fixed — the conversation grows and the agent's ability to hold the full picture diminishes. The cofounder workflow is designed around **one unit of work per session**:
+
+1. **Session starts fresh** — the agent reads current code, docs, and project state with full context capacity
+2. **Work happens** — code, tests, and docs are written following the Development Workflow
+3. **Work is persisted** — code + docs are committed and pushed together
+4. **Session wraps up** — the user may deploy the current work or start a new session for the next unit of work
+
+State is carried between sessions through:
+- **Code and tests** — committed to git
+- **`docs/TASKS.md`** — tracks what's done and what's pending
+- **`docs/PRD.md`** — the source of truth for requirements
+- **`docs/adr/`** — records technical decisions and their rationale
+- **`docs/INFRASTRUCTURE.md`** — lists services the app depends on
+- **Pre-flight check git sync** — ensures every session starts from a fully synchronized state
+
+Do not encourage the user to start new feature work in the same session after a commit. Deployment and small follow-up tweaks (quick feedback) are acceptable in-session continuations, but for new development work the default recommendation should always be to start fresh.
 
 ---
 
@@ -376,6 +405,10 @@ When the user chooses to deploy:
    > You can always change this later, so there's no wrong choice to start with."
 
    Then proceed with the app-deploy skill to execute the chosen option.
+
+9. **After a successful deployment**, present the deployed URL prominently and guide the user to start a new session:
+
+   > Your app is deployed and everything is saved. Start a new session whenever you're ready for the next change.
 
 ---
 
