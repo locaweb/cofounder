@@ -40,6 +40,12 @@ servers: # only needed if using workers
     cmd: "celery -A tasks worker --loglevel=info" # your worker command
     proxy: false
 
+logging: # prevents unbounded log growth on all VMs
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 readiness_delay: 15 # recommended, tune for your application
 deploy_timeout: 180 # recommended, tune for your application
 drain_timeout: 30 # recommended, tune for your application
