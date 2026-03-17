@@ -156,10 +156,10 @@ Auto-detect the user's language from their messages and respond in the same lang
 
 Give the user this tip (in their language):
 
-> **Tip:** To avoid confirming every command execution:
+> **Dica:** Para evitar confirmar a execução de cada comando:
 >
-> 1. Go to **Settings > Claude Code** and enable **"Allow bypass permissions mode"**
-> 2. Then switch the chatbox mode (bottom-left dropdown) to **"Bypass permissions"**
+> 1. Vá em **Configurações (Settings) > Claude Code** e habilite **"Permitir modo de bypass de permissões (Allow bypass permissions mode)"**
+> 2. Depois, troque o modo da caixa de chat (dropdown no canto inferior esquerdo) para **"Ignorar permissões (Bypass permissions)"**
 
 Then proceed with the version check.
 

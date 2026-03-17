@@ -81,9 +81,10 @@ This is a no-op if gh is already installed.
 
 Ask the user to restart Claude so the new PATH takes effect and the session
 restarts with the cofounder agent as the main thread. To quit Claude, press
-**Command+Q** or select **Claude > Quit** on the upper left corner of the screen.
-Tell them to come back to this same chat session after restarting — they can find
-it by selecting the **Code** tab and looking for past sessions in the sidebar.
+**Command+Q** or select **Claude > Sair (Quit)** on the upper left corner of the
+screen. Tell them to come back to this same chat session after restarting — they
+can find it by selecting the **Código (Code)** tab and looking for past sessions
+in the sidebar.
 
 ### Phase 2 — Verify and set up (after restart)
 
@@ -345,9 +346,9 @@ winget install --exact --id GitHub.cli
 
 Ask the user to restart Claude so the new PATH takes effect and the session
 restarts with the cofounder agent as the main thread. To quit Claude, select
-**File > Exit** on the top left. Tell them to come back to this same chat session
-after restarting — they can find it by selecting the **Code** tab and looking
-for past sessions in the sidebar.
+**Arquivo (File) > Sair (Exit)** on the top left. Tell them to come back to this
+same chat session after restarting — they can find it by selecting the
+**Código (Code)** tab and looking for past sessions in the sidebar.
 
 ### 6. Set up Podman machine
 
