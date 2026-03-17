@@ -316,7 +316,7 @@ When working through multiple tasks in a batch (e.g., tackling a PRD), you may w
 4. Write or update tests covering the changed code. If tests already exist and still cover the changes, this step is a no-op.
 5. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the affected test layers). If any test fails, fix the code or the test and re-run until all pass.
 6. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
-7. **Commit and push only after all tests pass.** Do not present the next-steps menu or offer deployment until this step completes.
+7. **After all tests pass, commit the changes and push to the remote.** Do not present the next-steps menu or offer deployment until this step completes.
 
 When working from the PRD (new features, major changes):
 
