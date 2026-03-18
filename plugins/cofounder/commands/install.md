@@ -1,5 +1,5 @@
 ---
-description: Install the cofounder agent as the main thread for this project. This ensures the cofounder is always active in every session, managing your environment, requirements, and development workflow automatically.
+description: Instala o agente cofounder como a thread principal deste projeto. Isso garante que o cofounder esteja sempre ativo em cada sessão, gerenciando o fluxo de desenvolvimento automaticamente.
 allowed-tools:
   - Bash
   - Read
@@ -32,12 +32,8 @@ Install the cofounder agent into the current project so it runs automatically on
    ```
    Make sure to preserve any existing keys if the file already existed.
 
-4. Confirm to the user that the cofounder agent is now installed for this project:
+4. Confirm to the user that the cofounder agent is now installed. Tell them to start a new session to begin using it:
 
-   > O agente foi instalado. A configuração foi salva em `.claude/settings.json`, que pode ser commitado no git para que todos os colaboradores tenham a mesma experiência (eles precisam ter o plugin cofounder instalado também). Para remover depois, basta apagar a chave `"agent"` do `.claude/settings.json`.
+   > Agente instalado. Para começar a usar, clique em **+ Nova sessão** e descreva o que deseja construir.
 
-5. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one:
-
-   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral — ou, no terminal, reinicie o Claude.
-
-6. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.
+5. If the user responds back, remind them once that the cofounder agent will only be active in new sessions, then continue the conversation normally.
