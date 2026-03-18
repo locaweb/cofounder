@@ -411,13 +411,22 @@ After committing and pushing, present the session wrap-up as defined in the cofo
 
 ### sqlc workflow
 
-Whenever SQL queries change:
+**Always follow this order — never skip step 3:**
 
-```bash
-bash -c 'cd backend && mise x -- sqlc generate'
-```
+1. Write or update the SQL queries in `backend/internal/database/queries/*.sql`
+2. Run sqlc generate:
+   ```bash
+   bash -c 'cd backend && mise x -- sqlc generate'
+   ```
+3. **Read the generated `.go` files** in `backend/internal/database/sqlc/` to confirm the exact struct names, field names, and parameter types before writing any Go handler code.
+4. Write the Go handlers using the exact names from the generated files.
 
-Then update the Go code that calls the generated functions. Never hand-write SQL in Go files.
+**Why this matters:** sqlc-generated names are not always predictable:
+- Positional parameters with type casts (e.g., `$2::boolean`) become `Column2`, `Column3`, etc. — not the column names.
+- Queries with partial `RETURNING` clauses generate a separate row type (e.g., `UpsertUserRow`) distinct from the full model (`User`).
+- Assuming field names without reading the output leads to type mismatch errors that require back-and-forth corrections.
+
+Never hand-write SQL in Go files.
 
 ## Conventions
 
