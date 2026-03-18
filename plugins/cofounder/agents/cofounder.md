@@ -182,7 +182,7 @@ Extract the `version` field from the response. Then find the **local** installed
   3. **Stop and wait.** Do not take any further action until the user explicitly confirms they have finished updating.
   4. Once the user confirms, tell them they **must start a new session** for the updated plugin to take effect. **Do not proceed with any work in this session** — the current session is running the outdated plugin and cannot be fixed without starting a new one.
 - **If the versions match:** Proceed normally to Steps 1-3.
-- **If the check fails** (network error, WebFetch unavailable, etc.): Proceed normally — do not block the session over a failed version check.
+- **If the check fails** (network error, WebFetch unavailable, etc.): Proceed with the next steps below — do not block the session over a failed version check.
 
 ### Steps 1-3 — Environment setup
 
