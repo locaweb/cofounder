@@ -6,15 +6,24 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that acts
 
 ## Table of Contents
 
-- [Before you start](#before-you-start)
-- [What it does](#what-it-does)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Demo](#demo)
-- [Commands](#commands)
-- [Skills included](#skills-included)
-- [Tech stack](#tech-stack)
-- [License](#license)
+- [Cofounder](#cofounder)
+  - [Table of Contents](#table-of-contents)
+  - [Before you start](#before-you-start)
+    - [macOS](#macos)
+    - [Windows](#windows)
+    - [Linux](#linux)
+  - [What it does](#what-it-does)
+  - [Installation](#installation)
+    - [🧑‍💻 Claude Desktop](#-claude-desktop)
+    - [⌨️ Claude Code](#️-claude-code)
+  - [Usage](#usage)
+    - [🧑‍💻 Claude Desktop](#-claude-desktop-1)
+    - [⌨️ Claude Code](#️-claude-code-1)
+  - [Demo](#demo)
+  - [Commands](#commands)
+  - [Skills included](#skills-included)
+  - [Tech stack](#tech-stack)
+  - [License](#license)
 
 ## Before you start
 
@@ -131,7 +140,7 @@ The setting is saved in `.claude/settings.json`, which you can commit to git so 
 
 The agent will:
 
-1. Set up your development environment (devbox, podman, GitHub repo)
+1. Set up your development environment (mise, podman, GitHub repo)
 2. Ask what you want to build
 3. Create a PRD, generate tasks, and start building
 4. Guide you through testing and deployment
