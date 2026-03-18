@@ -38,6 +38,6 @@ Install the cofounder agent into the current project so it runs automatically on
 
 5. Tell the user they need to start a new session for the agent to take effect. The cofounder agent becomes the main thread only in new sessions — it won't activate in the current one:
 
-   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral para continuar.
+   > Inicie uma nova sessão clicando em **+ Nova sessão** na barra lateral — ou, no terminal, reinicie o Claude.
 
 6. If the user responds back instead of starting a new session, launch the cofounder agent using the Agent tool with subagent_type set to "cofounder". Tell it to start a new session.

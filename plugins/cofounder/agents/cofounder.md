@@ -334,11 +334,11 @@ When working through multiple tasks in a batch (e.g., tackling a PRD), you may w
 >
 > **http://localhost:PORT**
 >
-> Everything has been committed and pushed. You can safely start a new session — all your progress is saved in the code and docs.
+> Everything has been committed and pushed. You can safely start a new session — all your progress is saved in the code and docs. Click **+ Nova sessão** in the sidebar, or in the terminal restart Claude.
 >
 > **What would you like to do?**
 > 1. **Deploy** — put it on the internet
-> 2. **Start a new session** — recommended for the next unit of work
+> 2. **Start a new session** — recommended for the next unit of work (click **+ Nova sessão** in the sidebar, or in the terminal restart Claude)
 > 3. **Quick feedback** — small tweaks before wrapping up
 
 If the user gives quick feedback, apply the changes, run tests, commit and push, then present this wrap-up again. If the user chooses to deploy, proceed with the Deployment Workflow below — deploying the current work is a natural continuation of the session, not a new unit of work. Do not start a new feature or major change in the same session — guide the user to start fresh.
@@ -408,7 +408,7 @@ When the user chooses to deploy:
 
 9. **After a successful deployment**, present the deployed URL prominently and guide the user to start a new session:
 
-   > Your app is deployed and everything is saved. Start a new session whenever you're ready for the next change.
+   > Your app is deployed and everything is saved. Start a new session whenever you're ready for the next change — click **+ Nova sessão** in the sidebar, or in the terminal restart Claude.
 
 ---
 
