@@ -54,7 +54,7 @@ deploy:
 
 3. **Kamal reads from the environment** via `.kamal/secrets-common` and `.kamal/secrets.<destination>` and injects them into the container.
 
-Store each secret **individually** as a GitHub Secret. Ask the user to set these via the GitHub UI (see [setup-and-deploy.md -- Secrets the user must set via GitHub UI](setup-and-deploy.md#secrets-the-user-must-set-via-github-ui)). **Never** accept secret values through the chat.
+Store each secret **individually** as a GitHub Secret. Ask the user to set these via the GitHub UI (see the **app-deploy** skill, Step 6). **Never** accept secret values through the chat.
 
 Secrets like `DATABASE_URL` that can be derived from other secrets do not need their own GitHub Secret -- they are composed in the `.kamal/secrets` file.
 
@@ -93,7 +93,7 @@ API_KEY=$API_KEY_PRODUCTION
 
 ## Passing Variables in Caller Workflows
 
-See [workflows.md](workflows.md) for complete caller workflow examples showing the two-job pattern. See [setup-and-deploy.md -- Creating GitHub Secrets](setup-and-deploy.md#creating-github-secrets) for how to create the secrets referenced below.
+See [workflows.md](workflows.md) for complete caller workflow examples showing the two-job pattern. See the **app-deploy** skill (Step 6) for how to create the secrets referenced below.
 
 Complete example showing both clear and secret custom variables for a production environment. Note the two-job pattern: infra job handles infrastructure, deploy job handles Kamal and application secrets. Environment-scoped secrets use the `_PRODUCTION` suffix, while common secrets (`CLOUDSTACK_*`) are shared across all environments:
 

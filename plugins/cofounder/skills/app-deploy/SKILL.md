@@ -92,7 +92,7 @@ Valid plans: `micro`, `small`, `medium`, `large`, `xlarge`, `2xlarge`, `4xlarge`
 
 ## Setup Procedure
 
-Follow these steps in order. Each step is idempotent -- safe to re-run across agent sessions. See [references/setup-and-deploy.md](references/setup-and-deploy.md) for detailed commands and procedures for each step.
+Follow these steps in order. Each step is idempotent -- safe to re-run across agent sessions.
 
 ### Step 1: Prepare the application
 
@@ -107,42 +107,78 @@ Follow these steps in order. Each step is idempotent -- safe to re-run across ag
 
 ### Step 3: Generate SSH key
 
-See [references/setup-and-deploy.md -- SSH Key Generation](references/setup-and-deploy.md#ssh-key-generation) for detailed commands.
+Check if an SSH key already exists for this repo:
 
-- If `~/.ssh/<repo-name>` already exists, skip generation and reuse the existing key
-- Otherwise, generate an Ed25519 SSH key locally at `~/.ssh/<repo-name>` with no passphrase
-- Set permissions to 0600
-- This key is used for the preview environment
+```bash
+test -f ~/.ssh/<repo-name> && echo "Key exists" || echo "Key missing"
+```
+
+If the key already exists, reuse it -- do not overwrite.
+
+If the key does not exist, generate a new Ed25519 SSH key:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/<repo-name> -N "" -C "<repo-name>-deploy"
+chmod 600 ~/.ssh/<repo-name>
+```
+
+This key will be:
+- Stored as the `SSH_PRIVATE_KEY` GitHub secret (the private key)
+- Used locally to SSH into preview environment VMs for debugging
+- The public key is derived automatically by the deploy workflow at runtime
 
 ### Step 4: Collect CloudStack credentials
 
-See [references/setup-and-deploy.md -- CloudStack Credentials](references/setup-and-deploy.md#cloudstack-credentials) for detailed commands.
+```bash
+gh secret list
+```
 
-- Check if `CLOUDSTACK_API_KEY` and `CLOUDSTACK_SECRET_KEY` are already set in the repo (`gh secret list`)
-- If not set: ask the user to set them via the GitHub UI. **Never** accept secret values through the chat -- they would be stored in conversation history
-- If the user doesn't have a Locaweb Cloud account yet, recommend they go to https://www.locaweb.com.br/locaweb-cloud/ and look for the "Contratar" button to sign up
+**If both `CLOUDSTACK_API_KEY` and `CLOUDSTACK_SECRET_KEY` appear → skip to Step 5.**
 
-Guide the user to find their API keys — follow these steps **exactly in this order**:
+Otherwise:
+
+**A. Check for a Locaweb Cloud account**
+
+Ask the user: **"Você já tem uma conta na Locaweb Cloud?"**
+
+- **No** → tell them to visit [locaweb.com.br/locaweb-cloud](https://www.locaweb.com.br/locaweb-cloud/) and click **"Contratar"** to sign up. Wait for them to confirm they have an account, then continue with **B**.
+- **Yes** → continue with **B**.
+
+**B. Find the API keys**
+
+Guide the user through these steps:
 
 1. Open [painel-cloud.locaweb.com.br](https://painel-cloud.locaweb.com.br/)
 2. Navigate to: **Contas** → *(sua conta)* → **Visualizar usuarios** → *(seu usuario)*
-3. **Wait up to 60 seconds** — the keys load asynchronously and may not appear immediately. They show up under **"Criado"** (creation date) on the user page.
-
-If the keys appear, copy them:
-
-| Name | What to copy |
-|------|-------------|
-| `CLOUDSTACK_API_KEY` | **Copiar Chave da API** |
-| `CLOUDSTACK_SECRET_KEY` | **Copiar Chave secreta** |
+3. **Wait up to 60 seconds** -- the keys load asynchronously and may not appear immediately. They show up under **"Criado"** (creation date) on the user page.
 
 If the keys **do not** appear after waiting:
 
 4. Click the **"Gerar novas chaves"** icon in the **upper right corner** of the user page.
-5. Wait for the keys to be generated, then copy them as described above.
+5. Wait for the keys to appear.
+
+**Wait for the user to confirm they have both keys in hand, then continue with C.**
+
+**C. Create the GitHub secrets**
+
+Give them the GitHub secrets URL:
+
+```bash
+echo "$(gh repo view --json url -q .url)/settings/secrets/actions"
+```
+
+Ask them to open that URL and click **"New repository secret"** for each:
+
+| Name | What to paste |
+|------|--------------|
+| `CLOUDSTACK_API_KEY` | **Copiar Chave da API** |
+| `CLOUDSTACK_SECRET_KEY` | **Copiar Chave secreta** |
+
+**Wait for the user to confirm both secrets are saved, then continue to Step 5.**
 
 ### Step 5: Set up app secrets (database, API keys, etc.)
 
-See [references/setup-and-deploy.md -- Database Credentials](references/setup-and-deploy.md#database-credentials) for detailed commands. For the full secrets and environment variables reference, see [references/env-vars.md](references/env-vars.md).
+For the full secrets and environment variables reference, see [references/env-vars.md](references/env-vars.md).
 
 **Discover all app env vars:** Read the project's `.env` file to get the full list of environment variables the application uses. Cross-reference with the application's config loading code (e.g., `backend/internal/config/config.go`) to confirm which variables are expected. For each variable, decide:
 
@@ -157,34 +193,63 @@ Check which secrets already exist via `gh secret list`.
 
 If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md), set up database secrets:
 
-- Generate a random password for each environment
+- Generate a random password for each environment:
+
+  ```bash
+  # Preview password
+  mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+  # Production password (different from preview)
+  mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
+  ```
 - Set `POSTGRES_PASSWORD` as a GitHub Secret using `gh secret set --body` with the generated password (the agent does this directly -- never ask the user to set generated passwords)
 - `DATABASE_URL` is **not** a separate GitHub Secret -- it is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file (see [examples/](examples/) for the pattern)
 - The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`
 - Additional environments use suffixed names matching the environment name: e.g., `POSTGRES_PASSWORD_PRODUCTION`
 
-For any other app secrets identified in the discovery step above, ask the user to store each one **individually** as a GitHub Secret via the GitHub UI.
+For any other app secrets identified in the discovery step above, give the user the GitHub secrets URL and ask them to click **"New repository secret"** for each one individually.
 
 - **Never** accept secret values through the chat
 
 ### Step 6: Create GitHub secrets
 
-See [references/setup-and-deploy.md -- Creating GitHub Secrets](references/setup-and-deploy.md#creating-github-secrets) for detailed commands.
+Use `gh secret list` to check which secrets already exist -- only create missing ones.
 
-- Use `gh secret list` to check which secrets already exist in the repo
-- Only create secrets that are missing
-- Infrastructure secrets (common to all environments, no suffix needed): `CLOUDSTACK_API_KEY`, `CLOUDSTACK_SECRET_KEY`
-- Environment-scoped secrets (suffixed for additional environments):
-  - `SSH_PRIVATE_KEY` (from the generated key)
-  - `POSTGRES_PASSWORD` (if using Postgres)
-  - Any app-specific secrets
-- The agent sets `SSH_PRIVATE_KEY` directly from the local key file
-- The agent sets `POSTGRES_PASSWORD` directly using `gh secret set --body` with the generated password
-- Secrets only the user knows (CloudStack keys, app API keys, SMTP credentials, etc.): ask the user to set via the GitHub UI (see [references/setup-and-deploy.md](references/setup-and-deploy.md#secrets-the-user-must-set-via-github-ui))
+#### Secrets the agent sets directly
+
+```bash
+# SSH private key for preview (skip if already set)
+gh secret set SSH_PRIVATE_KEY < ~/.ssh/<repo-name>
+
+# Postgres password for preview (skip if already set)
+gh secret set POSTGRES_PASSWORD --body "<generated password from Step 5>"
+```
+
+For additional environments, use suffixed names:
+
+```bash
+# SSH private key for production
+gh secret set SSH_PRIVATE_KEY_PRODUCTION < ~/.ssh/<repo-name>-production
+
+# Postgres password for production
+gh secret set POSTGRES_PASSWORD_PRODUCTION --body "<generated password from Step 5>"
+```
+
+Note: `DATABASE_URL` does not need a GitHub Secret -- it is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file.
+
+#### App-specific secrets (user must set via GitHub UI)
+
+For secrets only the user knows (app API keys, SMTP credentials, etc.), give them the GitHub secrets URL:
+
+```bash
+echo "$(gh repo view --json url -q .url)/settings/secrets/actions"
+```
+
+For each secret, ask them to click **"New repository secret"** and tell them the exact **Name** to enter and where to find the **value**. **Wait for the user to confirm all app-specific secrets are added before continuing.**
 
 ### Step 7: Create Kamal configuration and secrets files
 
-The agent writes these files directly. See the [examples/](examples/) folder for complete working examples.
+The agent must write these files directly. See the [examples/](examples/) folder for complete working examples.
 
 #### 7a: Common config (`config/deploy.yml`)
 
@@ -325,7 +390,7 @@ For each additional environment:
 
 ## Deployment Feedback Loop
 
-After setup is complete, use this loop to deploy and verify the application. See [references/setup-and-deploy.md](references/setup-and-deploy.md) for detailed commands.
+After setup is complete, use this loop to deploy and verify the application.
 
 > **Prerequisite:** Before entering this loop, all changes -- including the Kamal config files, workflow files, and any application code -- must be **committed and pushed** to the remote repository. The deploy is triggered by `git push`. If the code has not been committed and pushed yet, do that first:
 >
@@ -367,16 +432,37 @@ After setup is complete, use this loop to deploy and verify the application. See
 
 ### Workflow monitoring
 
-- After push, **before starting to monitor**, give the user a prominent clickable link to the workflow run so they can follow along in the GitHub UI:
+After push, **before starting to monitor**, give the user a prominent clickable link to the workflow run:
 
-  > **Your deploy is running! Follow it live here:**
-  >
-  > **\<workflow run URL\>**
+```bash
+gh run list --limit=1 --json databaseId,url -q '.[0].url'
+```
 
-  Get the URL with `gh run list --limit=1 --json databaseId,url -q '.[0].url'`
-- Then monitor the run with `gh run watch`
-- If the workflow fails: read the error from the run logs, fix the issue, commit/push, repeat
-- Continue until the workflow succeeds
+Present it prominently:
+
+> **Your deploy is running! Follow it live here:**
+>
+> **\<URL from the command above\>**
+
+Then monitor the run:
+
+```bash
+gh run watch
+```
+
+If the workflow fails, read the error:
+
+```bash
+gh run view <run-id> --log-failed
+```
+
+Common failure causes:
+- **Missing secrets**: `gh secret list` to verify all required secrets exist
+- **Dockerfile issues**: build failures, wrong port, missing health check
+- **Permission errors**: ensure `permissions: contents: read, packages: write` in the caller workflow
+- **Input errors**: invalid zone, plan name, or type mismatches
+
+Fix the issue, commit, and push. The preview workflow (triggered on push) will start a new run automatically. Continue the cycle until the workflow succeeds.
 
 ### Health check verification
 
@@ -600,7 +686,6 @@ When the developer cannot run the language runtime or database locally, the Depl
 ## References
 
 - **[references/operations.md](references/operations.md)** -- Post-deployment operations: finding IPs, SSH access, database access, container debugging
-- **[references/setup-and-deploy.md](references/setup-and-deploy.md)** -- Detailed commands for each setup step, development routine, and SSH debugging
 - **[references/workflows.md](references/workflows.md)** -- Complete caller workflow examples (deploy + teardown) with all inputs documented
 - **[references/env-vars.md](references/env-vars.md)** -- Environment variables and secrets configuration
 - **[references/scaling.md](references/scaling.md)** -- VM plans, worker scaling, disk sizes

@@ -61,7 +61,7 @@ gh run view <run-id>
 
 ## SSH Access
 
-**User is always `root`.** Use the SSH key that matches the environment. See [setup-and-deploy.md -- SSH Key Generation](setup-and-deploy.md#ssh-key-generation) for how these keys are generated.
+**User is always `root`.** Use the SSH key that matches the environment. SSH keys are generated during the deployment setup procedure (see the **app-deploy** skill, Step 3).
 
 ### Resolve the key path first
 
