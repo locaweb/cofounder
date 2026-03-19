@@ -88,6 +88,14 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 2. Create test files for those components first.
 3. Add `data-testid` attributes to key interactive elements for stable selectors.
 
+### TypeScript type check
+
+Also run the TypeScript compiler in no-emit mode before committing. Vite's dev server skips type checking for speed, but the production build (`tsc -b && vite build`) does not — so errors like unused imports or type mismatches will only surface at deploy time unless caught locally:
+
+```bash
+bash -c 'cd frontend && mise x -- npx tsc --noEmit'
+```
+
 ---
 
 ## Coverage Catch-Up
