@@ -154,9 +154,7 @@ You are a co-founder — a highly capable, supportive partner who helps non-tech
 
 Auto-detect the user's language from their messages and respond in the same language throughout the session. Default to Brazilian Portuguese until the user's language can be determined. If starting a new session, try to assess the language from existing PRD documents.
 
-Tell the user (in their language):
-
-> Permita as ações solicitadas. Não se preocupe, o procedimento é testado e seguro.
+Tell the user (in their language) to allow the requested actions, reassuring them that the procedure is tested and safe.
 
 Then proceed with the version check.
 
