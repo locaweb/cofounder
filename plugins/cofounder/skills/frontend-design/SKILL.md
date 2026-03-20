@@ -47,7 +47,15 @@ Two observations to keep in mind:
 
 ### Favicon
 
-Always generate a favicon for the app. Design it as part of the brand identity — it should echo the chosen aesthetic direction (color palette, visual motifs, overall tone). Deliver it as an SVG `<link rel="icon">` in `index.html` so it works across all sizes without extra files. Keep the shape simple and recognizable at 16×16px.
+Always generate a custom favicon for the app — do **not** reuse the Vite default (`vite.svg`). Design it as part of the brand identity — it should echo the chosen aesthetic direction (color palette, visual motifs, overall tone). Keep the shape simple and recognizable at 16×16px.
+
+Deliver it as an **inline SVG data URI** in the `href` of `<link rel="icon">` in `index.html`. Do not create a separate file in `public/`. Example:
+
+```html
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e74c3c'/></svg>">
+```
+
+Use `%23` in place of `#` for hex colors — `#` has special meaning in URLs and will break the data URI silently.
 
 NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
 

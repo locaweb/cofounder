@@ -80,7 +80,27 @@ This bridges the gap between local and deployed: locally `.env` provides the val
 
 ### Single-binary serving
 
-The Go server handles everything: API routes under `/api/`, static assets under `/assets/`, and a catch-all that returns `index.html` for SPA routing. In development, Vite's dev server proxies API calls to the Go backend.
+The Go server handles everything: API routes under `/api/`, frontend static files, and SPA routing. In development, Vite's dev server proxies API calls to the Go backend.
+
+The SPA serving pattern must use `http.FileServer(http.Dir(frontendDist))` to serve the **full** `dist/` directory — not just the `/assets/` subdirectory. Root-level static files (`favicon.svg`, `robots.txt`, `manifest.json`, etc.) live in `dist/` alongside `assets/` and must be reachable. The catch-all returns `index.html` only when the requested path does not match a real file. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
+
+```go
+fs := http.FileServer(http.Dir(frontendDist))
+mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+    if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
+        http.NotFound(w, r)
+        return
+    }
+    // Serve real files from dist; fall back to index.html for SPA routes
+    if r.URL.Path != "/" {
+        if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
+            fs.ServeHTTP(w, r)
+            return
+        }
+    }
+    http.ServeFile(w, r, filepath.Join(frontendDist, "index.html"))
+})
+```
 
 ### Postgres first
 
@@ -139,6 +159,17 @@ if err != nil {
 ### Real-time updates via SSE
 
 The Go backend listens for Postgres `NOTIFY` events and holds open a standard HTTP response with `Content-Type: text/event-stream` for each connected client. The React frontend uses the browser's built-in `EventSource` API. SSE is preferred over WebSockets to avoid adverse proxy configurations.
+
+### Vite scaffold cleanup
+
+After running `npm create vite`, remove all Vite/React template defaults before writing application code:
+
+- Delete `public/vite.svg` (the Vite logo — must not ship as the app's favicon)
+- Delete `src/assets/react.svg`
+- Set `<title>` in `index.html` to the app's actual name (not `"frontend"` or `"Vite + React"`)
+- Replace the boilerplate `App.tsx`/`App.css` with the application's root component
+
+Do **not** create a placeholder `public/favicon.svg` — the **frontend-design** skill handles favicon generation separately.
 
 ## Deployment Constraints
 
