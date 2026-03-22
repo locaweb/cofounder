@@ -249,61 +249,48 @@ For each secret, ask them to click **"New repository secret"** and tell them the
 
 ### Step 7: Create Kamal configuration and secrets files
 
-The agent must write these files directly. See the [examples/](examples/) folder for complete working examples.
+**Read the example files before writing.** Each sub-step below names an example file — read it with the Read tool first, then adapt it for the project. Lines marked `# do not change` must be preserved exactly. Remove sections the project doesn't need (e.g., workers, volumes). Add project-specific values where the comments indicate.
 
 #### 7a: Common config (`config/deploy.yml`)
 
-Kamal config applicable to all environments. See [references/env-vars.md](references/env-vars.md) for environment variable and secrets configuration details. Contains:
+Read [examples/config/deploy.yml](examples/config/deploy.yml) and adapt it:
 
-- **Proxy settings** -- `app_port`, `forward_headers`, healthcheck
-- **SSH and registry** -- user, keys, ghcr.io registry with ERB templates
-- **Builder** -- arch and cache settings
-- **Common environment variables** -- `env.clear` for non-sensitive config (do NOT put `env.secret` here; secrets must go in each destination file)
-- **Common volumes** -- host mounts applicable to all environments
-- **Workers** (if any) -- `servers.workers.cmd` and `servers.workers.proxy: false`
-- **Deployment timings** -- `readiness_delay`, `deploy_timeout`, `drain_timeout` (sensible defaults: 15, 180, 30)
+- **Add** project-specific `env.clear` variables (non-sensitive config shared by all environments)
+- **Add** `volumes` entries if the app stores files on disk (keep paths under `/data/`)
+- **Remove** the `servers.workers` block if the project has no workers
+- **Remove** the `volumes` block if the app has no persistent storage
+- **Keep** all lines marked `# do not change` exactly as-is — these are platform constraints (`forward_headers: false`, registry ERB templates, builder config, SSH user)
+- **Do NOT** put `env.secret` here — arrays are replaced (not merged) by destination files, so any secrets listed here would be silently lost. Put ALL secrets in each `config/deploy.<env>.yml`
 
-For Postgres accessories, follow the [`supabase/postgres` recipe](references/postgres-recipe.md). Generate the `cmd` string using `generate_pg_cmd.py --plan <chosen_plan>`.
+For Postgres accessories, generate the `cmd` string using `generate_pg_cmd.py --plan <chosen_plan>`. See the [`supabase/postgres` recipe](references/postgres-recipe.md).
 
 #### 7b: Environment-specific config (`config/deploy.{env}.yml`)
 
-Environment-specific Kamal config. See [references/env-vars.md -- Clear Variables](references/env-vars.md#clear-variables-deployyml) for environment-specific variable placement. Contains:
+Read [examples/config/deploy.preview.yml](examples/config/deploy.preview.yml) (or [examples/config/deploy.production.yml](examples/config/deploy.production.yml) for non-preview) and adapt it:
 
-- **Server hosts** -- web and worker IPs via ERB templates (e.g., `<%= ENV['INFRA_WEB_IP'] %>`)
-- **Environment-specific variables** -- `env.clear` (e.g., `APP_ENV: preview`) and `env.secret` for secrets specific to this environment
-- **Proxy host and TLS** -- nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production. Always `ssl: true`.
-- **Accessories** -- image, host (ERB), port, cmd, env, directories
+- **Set** `env.secret` to list ALL secrets for this environment (common + env-specific) — this is the only place secrets are declared
+- **Set** `env.clear` for environment-specific non-sensitive config (e.g., `APP_ENV: preview`)
+- **Set** accessories from `docs/INFRASTRUCTURE.md` — match image, set host via ERB (`<%= ENV['INFRA_<NAME>_IP'] %>`), configure port, cmd, env, and `directories` (always under `/data/`)
+- **Set** `proxy.host` — nip.io for preview (`<%= ENV['INFRA_WEB_IP'] %>.nip.io`), custom domain for production. Always `ssl: true`
+- **Remove** the `servers.workers` block if the project has no workers
 
-**IMPORTANT — `INFRA_*_IP` is for Kamal and external URLs only:** The `INFRA_*_IP` env vars contain **public** IPs. Use them only in Kamal's `host:` fields (SSH deployment), `servers.web.hosts` / `servers.workers.hosts`, and `proxy.host` (external-facing URLs). **Never** use `INFRA_*_IP` in `env.clear` or `env.secret` for inter-component communication (database hosts, cache endpoints, message brokers, etc.). Instead, use the CloudStack internal DNS hostname — the accessory name (e.g., `db`, `redis`). See [references/kamal.md — Accessories](references/kamal.md#accessories) for details.
+**IMPORTANT — `INFRA_*_IP` is for Kamal and external URLs only:** Use `INFRA_*_IP` only in `host:` fields, `servers.*.hosts`, and `proxy.host`. **Never** in `env.clear` or `env.secret`. For inter-component communication, use the CloudStack internal DNS hostname (the accessory name, e.g., `db`, `redis`).
 
 #### 7c: Common secrets (`.kamal/secrets-common`)
 
-Secrets shared across all environments. Each line maps a Kamal secret name (left) to a shell environment variable name (right):
+Read [examples/.kamal/secrets-common](examples/.kamal/secrets-common) and adapt it:
 
-```
-KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD
-MY_SECRET=$MY_SECRET
-```
-
-**`KAMAL_REGISTRY_PASSWORD` is NOT a GitHub Secret and the user does NOT need to create a PAT.** It is set automatically in the deploy workflow step as `KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}` — the built-in GitHub Actions token that has `packages: write` permission (declared in the workflow's `permissions` block). See the workflow examples in [references/workflows.md](references/workflows.md).
+- **Keep** the `KAMAL_REGISTRY_PASSWORD` line — this is NOT a GitHub Secret; it comes from `secrets.GITHUB_TOKEN` in the workflow
+- **Add** one line per common secret identified in Step 5 (format: `SECRET_NAME=$SECRET_NAME`)
 
 #### 7d: Environment-specific secrets (`.kamal/secrets.{env}`)
 
-Secrets for a specific environment. Each line maps a Kamal secret name to either a shell env var or a derived value. See the [examples/](examples/) folder for the full pattern:
+Read [examples/.kamal/secrets.preview](examples/.kamal/secrets.preview) (or [examples/.kamal/secrets.production](examples/.kamal/secrets.production) for non-preview) and adapt it:
 
-```
-# .kamal/secrets.preview (unsuffixed env var names)
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
-```
-
-```
-# .kamal/secrets.production (suffixed env var names)
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION
-DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD_PRODUCTION}@db:5432/postgres
-```
-
-Note that `DATABASE_URL` is derived directly from `POSTGRES_PASSWORD` -- it does not need a separate GitHub Secret.
+- **Add** one line per environment-specific secret identified in Step 5
+- **Preview** uses unsuffixed env var names: `POSTGRES_PASSWORD=$POSTGRES_PASSWORD`
+- **Non-preview** maps to suffixed names: `POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION`
+- **Derived** secrets (like `DATABASE_URL`) are composed inline — they don't need their own GitHub Secret
 
 #### How secrets flow from GitHub to your app
 
@@ -353,21 +340,16 @@ with:
 
 ### Step 8: Create deploy and teardown workflows
 
-Write the deploy and teardown workflows for each environment. See [references/workflows.md](references/workflows.md) for the full two-job deploy pattern, input reference, and examples. See [references/teardown.md](references/teardown.md) for the teardown workflow pattern.
+Start with a **preview environment**. Read the example workflows with the Read tool, then adapt them:
 
-Start with a **preview environment**:
+1. **Deploy workflow:** Read the **Preview Workflow Example** section in [references/workflows.md](references/workflows.md). Copy the full workflow YAML and adapt it:
+   - **Set** the `accessories` JSON to match the accessories in `config/deploy.preview.yml` and `docs/INFRASTRUCTURE.md` — every accessory needs `name`, `plan`, and `disk_size_gb`; web-facing ones also need `"ports": "80,443"`
+   - **Add** project secrets to the deploy job's `env:` block — one entry per GitHub Secret that `.kamal/secrets` files reference (derived secrets like `DATABASE_URL` don't need an entry)
+   - **Remove** `workers_replicas` and `workers_plan` if the project has no workers
+   - **Do NOT** add Docker build/push steps or `secrets: inherit` — Kamal handles the entire build-push-deploy lifecycle
+   - Save as `.github/workflows/deploy-preview.yml`
 
-1. Create `.github/workflows/deploy-preview.yml` following the two-job pattern from workflows.md -- an `infra` job that calls the reusable provision workflow, and a `deploy` job that runs Kamal
-2. Create `.github/workflows/teardown-preview.yml` following the teardown pattern from teardown.md
-
-The deploy workflow's `env:` block must include every GitHub Secret that the `.kamal/secrets` files reference. For preview (unsuffixed):
-
-```yaml
-env:
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-```
-
-Secrets derived in the `.kamal/secrets` file (like `DATABASE_URL` composed from `POSTGRES_PASSWORD`) do not need their own GitHub Secret or workflow env entry.
+2. **Teardown workflow:** Read [references/teardown.md](references/teardown.md) for the teardown pattern. Save as `.github/workflows/teardown-preview.yml`
 
 ### Step 9: Add additional environments (when ready)
 
