@@ -75,9 +75,9 @@ jobs:
 
       - name: Set repo identity
         run: |
-          echo "REPO_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
-          echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
-          echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
+          echo "REPO_NAME=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_FULL=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -105,7 +105,7 @@ jobs:
       # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
       - uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ github.event.repository.name }}
+          package-name: ${{ env.REPO_NAME }}
           package-type: container
           min-versions-to-keep: 1
 ```
@@ -179,9 +179,9 @@ jobs:
 
       - name: Set repo identity
         run: |
-          echo "REPO_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
-          echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
-          echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
+          echo "REPO_NAME=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_FULL=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -209,7 +209,7 @@ jobs:
       # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
       - uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ github.event.repository.name }}
+          package-name: ${{ env.REPO_NAME }}
           package-type: container
           min-versions-to-keep: 1
 ```
@@ -304,9 +304,9 @@ jobs:
 
       - name: Set repo identity
         run: |
-          echo "REPO_NAME=${{ github.event.repository.name }}" >> "$GITHUB_ENV"
-          echo "REPO_FULL=${{ github.repository }}" >> "$GITHUB_ENV"
-          echo "REPO_OWNER=${{ github.repository_owner }}" >> "$GITHUB_ENV"
+          echo "REPO_NAME=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_FULL=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -334,7 +334,7 @@ jobs:
       # Image is cached via GHA, not the registry -- clean up to prevent storage accumulation
       - uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ github.event.repository.name }}
+          package-name: ${{ env.REPO_NAME }}
           package-type: container
           min-versions-to-keep: 1
 ```
