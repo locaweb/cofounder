@@ -82,7 +82,7 @@ This bridges the gap between local and deployed: locally `.env` provides the val
 
 The Go server handles everything: API routes under `/api/`, frontend static files, and SPA routing. In development, Vite's dev server proxies API calls to the Go backend.
 
-The SPA serving pattern must use `http.FileServer(http.Dir(frontendDist))` to serve the **full** `dist/` directory — not just the `/assets/` subdirectory. Root-level static files (`favicon.svg`, `robots.txt`, `manifest.json`, etc.) live in `dist/` alongside `assets/` and must be reachable. The catch-all returns `index.html` only when the requested path does not match a real file. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
+The SPA catch-all **must not** serve `index.html` for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to `index.html` only for SPA routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
 
 ```go
 fs := http.FileServer(http.Dir(frontendDist))
