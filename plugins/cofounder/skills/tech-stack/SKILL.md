@@ -164,6 +164,7 @@ The Go backend listens for Postgres `NOTIFY` events and holds open a standard HT
 
 After running `npm create vite`, remove all Vite/React template defaults before writing application code:
 
+- Delete `frontend/.git` if it exists (Vite scaffolding initializes its own git repo — it must be removed to avoid a nested repository)
 - Delete `public/vite.svg` (the Vite logo — must not ship as the app's favicon)
 - Delete `src/assets/react.svg`
 - Set `<title>` in `index.html` to the app's actual name (not `"frontend"` or `"Vite + React"`)
