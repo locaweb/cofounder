@@ -310,17 +310,19 @@ to:
 After reboot, re-run `wsl --status` to confirm. A second install run may be
 needed in some cases.
 
-### 2. Check Podman
+### 2. Install Podman
 
 ```bash
 podman version
 ```
 
-If not installed:
+If the command is not found, install it yourself:
 
 ```bash
 winget install --exact --id RedHat.Podman --accept-source-agreements --accept-package-agreements
 ```
+
+This is a no-op if Podman is already installed.
 
 ### 3. Install mise
 
@@ -328,23 +330,27 @@ winget install --exact --id RedHat.Podman --accept-source-agreements --accept-pa
 mise version
 ```
 
-If not installed:
+If the command is not found, install it yourself:
 
 ```bash
 winget install --exact --id jdx.mise --accept-source-agreements --accept-package-agreements
 ```
 
-### 4. Check GH CLI
+This is a no-op if mise is already installed.
+
+### 4. Install GH CLI
 
 ```bash
 gh version
 ```
 
-If not installed:
+If the command is not found, install it yourself:
 
 ```bash
-winget install --exact --id GitHub.cli
+winget install --exact --id GitHub.cli --accept-source-agreements --accept-package-agreements
 ```
+
+This is a no-op if GH CLI is already installed.
 
 ### 5. Restart Claude
 
