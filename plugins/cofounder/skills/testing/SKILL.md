@@ -82,6 +82,8 @@ The specific API depends on the test runner and testing library in use. The patt
 
 Choose a test runner compatible with the frontend framework (e.g., Vitest for Vite-based projects) and a DOM testing library that encourages testing from the user's perspective. Configure a simulated DOM environment (jsdom or similar) and add a `test` script to `package.json`. Look up the current recommended setup for the project's toolchain.
 
+**Vitest + Vite config:** When adding Vitest's `test` block to `vite.config.ts`, change the import from `import { defineConfig } from 'vite'` to `import { defineConfig } from 'vitest/config'`. The `vitest/config` module re-exports everything from Vite with the `test` property added to the type — this is the only reliable way to make `tsc -b` accept the `test` block. Do **not** use `/// <reference types="vitest" />` as a substitute; it augments global types but does not fix the `defineConfig` overload signature, and the production build will still fail with TS2769.
+
 ### Retrofitting tests to existing components
 
 1. Identify components with non-trivial logic.
