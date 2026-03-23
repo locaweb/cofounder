@@ -354,12 +354,8 @@ This is a no-op if GH CLI is already installed.
 
 ### 5. Restart Claude
 
-If the user already needs to reboot the computer for WSL (step 1), skip
-this step — the reboot already refreshes the PATH. Just tell them to open
-Claude again after the reboot.
-
-Otherwise, ask the user to restart Claude so the new PATH takes effect and the
-session restarts with the cofounder agent as the main thread.
+Ask the user to restart Claude so the new PATH takes effect and the session
+restarts with the cofounder agent as the main thread.
 
 - **Desktop app:** Select **Arquivo (File) > Sair (Exit)** on the top left. Tell
   them to come back to this same chat session after restarting — they can find it
