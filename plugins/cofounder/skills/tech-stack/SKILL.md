@@ -419,7 +419,7 @@ Preview and manual browser checks are useful for quick visual verification durin
 │        ▼                                             │
 │   Run tests (see testing skill for details)          │
 │     Layer 1: Go unit/integration tests               │
-│     Layer 2: Vitest component tests + tsc --noEmit   │
+│     Layer 2: Vitest component tests + tsc -b          │
 │        │                                             │
 │        ▼                                             │
 │   All pass? ──No──► Fix & repeat from top            │
