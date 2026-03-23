@@ -80,11 +80,15 @@ This is a no-op if gh is already installed.
 #### 5. Restart Claude
 
 Ask the user to restart Claude so the new PATH takes effect and the session
-restarts with the cofounder agent as the main thread. To quit Claude, press
-**Command+Q** or select **Claude > Sair (Quit)** on the upper left corner of the
-screen. Tell them to come back to this same chat session after restarting — they
-can find it by selecting the **Código (Code)** tab and looking for past sessions
-in the sidebar.
+restarts with the cofounder agent as the main thread.
+
+- **Desktop app:** Press **Command+Q** or select **Claude > Sair (Quit)** on the
+  upper left corner of the screen. Tell them to come back to this same chat
+  session after restarting — they can find it by selecting the **Código (Code)**
+  tab and looking for past sessions in the sidebar.
+- **CLI (`claude` command):** Type `/exit` to quit, then close and reopen the
+  terminal so the shell profile is reloaded with the updated PATH. After that,
+  run `claude` again from the same project directory.
 
 ### Phase 2 — Verify and set up (after restart)
 
@@ -345,10 +349,15 @@ winget install --exact --id GitHub.cli
 ### 5. Restart Claude
 
 Ask the user to restart Claude so the new PATH takes effect and the session
-restarts with the cofounder agent as the main thread. To quit Claude, select
-**Arquivo (File) > Sair (Exit)** on the top left. Tell them to come back to this
-same chat session after restarting — they can find it by selecting the
-**Código (Code)** tab and looking for past sessions in the sidebar.
+restarts with the cofounder agent as the main thread.
+
+- **Desktop app:** Select **Arquivo (File) > Sair (Exit)** on the top left. Tell
+  them to come back to this same chat session after restarting — they can find it
+  by selecting the **Código (Code)** tab and looking for past sessions in the
+  sidebar.
+- **CLI (`claude` command):** Type `/exit` to quit, then close and reopen the
+  terminal (or PowerShell) so the environment variables are reloaded with the
+  updated PATH. After that, run `claude` again from the same project directory.
 
 ### 6. Set up Podman machine
 
