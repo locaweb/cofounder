@@ -346,7 +346,13 @@ bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run
 bash -c 'cd frontend && mise x -- npm install && mise x -- npm run dev'
 ```
 
-Don't assume the default Vite port (5173) — check the Vite startup output for the actual URL (e.g., `http://localhost:5173`). Vite automatically picks the next available port when the default is already in use by another project. Use the URL from the terminal output to access the app.
+Don't assume the default Vite port (5173) — Vite automatically picks the next available port when the default is already in use by another project. After starting the dev server in the background, read the task output and look for the `Local:` line in Vite's startup banner (e.g., `Local: http://localhost:5174/`). Use the URL from that line — not a hardcoded port — for all subsequent access.
+
+If the task output is no longer available, detect the port from the OS:
+
+```bash
+lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
+```
 
 Vite proxies `/api/*` and `/auth/*` to the Go backend.
 
@@ -367,6 +373,17 @@ This relies on the naming convention (`<repo_name>-<accessory_name>`) and remove
 When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. When Preview is not available (CLI, Windows), start the Go backend and Vite dev server manually (steps 2–3 above).
 
 > **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
+
+#### Port verification in Preview
+
+Vite auto-increments its port when 5173 is already occupied by another project. Preview may then display that other project's UI instead of the current one. After your first `preview_screenshot`, verify the content matches the app you are working on. If the screenshot shows an unrelated page:
+
+1. Find the actual port this project's Vite chose:
+   ```bash
+   lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
+   ```
+   Compare the ports against any other Vite projects the user may have running. The highest port number is usually the most recently started server.
+2. Use the correct port URL in subsequent `preview_screenshot` calls.
 
 #### Accessories in Preview mode
 
