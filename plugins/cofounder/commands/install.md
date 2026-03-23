@@ -40,6 +40,6 @@ Install the cofounder agent into the current project so it runs automatically on
 
    > Agente instalado. Para começar a usar:
    > - **Claude Desktop:** clique em **+ Nova sessão** e descreva o que deseja construir.
-   > - **Terminal (Claude Code CLI):** digite `/exit` para sair do Claude, e reinicie o terminal para voltar ao Claude.
+   > - **Terminal (Claude Code CLI):** digite `/exit` para sair do Claude, e digite `claude` no terminal para reiniciar.
 
 5. If the user responds back, remind them once that the cofounder agent will only be active in new sessions, then continue the conversation normally.
