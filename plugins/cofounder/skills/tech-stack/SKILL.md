@@ -187,6 +187,8 @@ These match the **app-deploy** skill requirements:
 
 Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions in `mise.toml` — check `mise.toml` before writing or updating the Dockerfile.
 
+**Do not create a `.dockerignore` file.** The multi-stage build already keeps the final image small, and a `.dockerignore` that accidentally excludes files needed by `go:embed` (e.g., `migrations/`) will break the build with no clear error at authoring time.
+
 ## Local Development
 
 All tools are invoked via **mise** (set up by **computer-setup**) using the `mise x` command, which reads `mise.toml` and runs the tool at the pinned version without requiring shell activation. The database runs as a `supabase/postgres` container via **podman** (also set up by **computer-setup**), matching the production image.
