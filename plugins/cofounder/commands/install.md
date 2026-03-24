@@ -20,14 +20,14 @@ Install the cofounder agent into the current project so it runs automatically on
    Then stop — do not continue with the remaining steps.
 
 2. Check if `.claude/settings.json` already exists in the project root.
-   - If it exists, read it and check if it already has `"model": "opus[1m]"`, `"agent": "cofounder:cofounder"`, `"defaultMode": "acceptEdits"`, and the permissions allow list below. If all are present, tell the user it's already installed and skip to step 4.
+   - If it exists, read it and check if it already has `"model": "opus"`, `"agent": "cofounder:cofounder"`, `"defaultMode": "acceptEdits"`, and the permissions allow list below. If all are present, tell the user it's already installed and skip to step 4.
    - If it exists but is missing some of those keys, merge them in (preserve any other existing keys).
    - If it doesn't exist, create the `.claude/` directory if needed.
 
 3. Write `.claude/settings.json` with the following settings:
    ```json
    {
-     "model": "opus[1m]",
+     "model": "opus",
      "agent": "cofounder:cofounder",
      "defaultMode": "acceptEdits",
      "permissions": {
