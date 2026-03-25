@@ -354,16 +354,26 @@ This is a no-op if GH CLI is already installed.
 
 ### 5. Restart Claude
 
-Ask the user to restart Claude so the new PATH takes effect and the session
-restarts with the cofounder agent as the main thread.
+Choose **one** of the following based on what happened in the previous steps:
 
-- **Desktop app:** Select **Arquivo (File) > Sair (Exit)** on the top left. Tell
-  them to come back to this same chat session after restarting — they can find it
-  by selecting the **Código (Code)** tab and looking for past sessions in the
-  sidebar.
-- **CLI (`claude` command):** Type `/exit` to quit, then close and reopen the
-  terminal (or PowerShell) so the environment variables are reloaded with the
-  updated PATH. After that, run `claude` again from the same project directory.
+1. **If step 1 asked the user to install or reinstall WSL** (i.e., they had to
+   run `wsl --install` or `wsl.exe --install --no-distribution`): tell the user
+   to **reboot** their computer and relaunch Claude after the reboot completes.
+
+2. **If steps 2–4 installed podman, mise, and/or GH CLI** (but WSL was already
+   fine): ask the user to restart Claude so the new PATH takes effect and the
+   session restarts with the cofounder agent as the main thread.
+   - **Desktop app:** Select **Arquivo (File) > Sair (Exit)** on the top left.
+     Tell them to come back to this same chat session after restarting — they can
+     find it by selecting the **Código (Code)** tab and looking for past sessions
+     in the sidebar.
+   - **CLI (`claude` command):** Type `/exit` to quit, then close and reopen the
+     terminal (or PowerShell) so the environment variables are reloaded with the
+     updated PATH. After that, run `claude` again from the same project
+     directory.
+
+3. **If none of the above** (all tools were already installed): no restart is
+   needed — proceed directly to step 6.
 
 ### 6. Set up Podman machine
 
