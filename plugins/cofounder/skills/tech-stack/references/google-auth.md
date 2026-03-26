@@ -21,3 +21,5 @@
 3. Under **URIs de redirecionamento autorizados** → **Adicionar URI** → paste the redirect URI provided by Claude
 4. Click **Criar**
 5. Copy the **ID do cliente** (Client ID) and **Chave secreta do cliente** (Client Secret)
+
+**Important:** These credentials are secrets. When entering them for local development, follow the "Entering secrets in `.env`" procedure in the tech-stack skill — the agent must never accept these values through the chat.
