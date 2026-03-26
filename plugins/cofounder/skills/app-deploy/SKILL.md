@@ -207,7 +207,10 @@ If the app uses the [`supabase/postgres` recipe](references/postgres-recipe.md),
 - The default preview environment uses unsuffixed names: `POSTGRES_PASSWORD`
 - Additional environments use suffixed names matching the environment name: e.g., `POSTGRES_PASSWORD_PRODUCTION`
 
-For any other app secrets identified in the discovery step above, give the user the GitHub secrets URL and ask them to click **"New repository secret"** for each one individually.
+For any other app secrets identified in the discovery step above, check whether the value already exists in the project's `.env` file:
+
+- **OK to use same value locally and deployed** (e.g., SMTP passwords, OAuth credentials, third-party API keys, depending on the case) — the agent sets the GitHub Secret directly from `.env` (see Step 6).
+- **Different value or not in `.env`** — the user must set it via the GitHub UI (see Step 6).
 
 - **Never** accept secret values through the chat
 
@@ -237,15 +240,27 @@ gh secret set POSTGRES_PASSWORD_PRODUCTION --body "<generated password from Step
 
 Note: `DATABASE_URL` does not need a GitHub Secret -- it is derived from `POSTGRES_PASSWORD` in the `.kamal/secrets` file.
 
-#### App-specific secrets (user must set via GitHub UI)
+#### App-specific secrets
 
-For secrets only the user knows (app API keys, SMTP credentials, etc.), give them the GitHub secrets URL:
+For secrets only the user knows (app API keys, SMTP credentials, etc.), check the project's `.env` file first. 
+
+**Reuse from `.env`:** If the secret exists in `.env` and the same value may apply to the deployed environment, set it directly — the value never appears in chat:
+
+```bash
+# One-time setup (skip if already installed):
+mise x -- pip install -q python-dotenv
+
+# Set a secret from .env (value never appears in chat):
+mise x -- python -c "from dotenv import dotenv_values; import sys; print(dotenv_values('.env')[sys.argv[1]], end='')" SECRET_NAME | gh secret set SECRET_NAME
+```
+
+**Fall back to GitHub UI:** If the secret is not in `.env`, or the deployed value should differ from the local one, give the user the GitHub secrets URL:
 
 ```bash
 echo "$(gh repo view --json url -q .url)/settings/secrets/actions"
 ```
 
-For each secret, ask them to click **"New repository secret"** and tell them the exact **Name** to enter and where to find the **value**. **Wait for the user to confirm all app-specific secrets are added before continuing.**
+Ask them to click **"New repository secret"** and tell them the exact **Name** to enter and where to find the **value**. **Wait for the user to confirm all manually-added secrets are saved before continuing.**
 
 ### Step 7: Create Kamal configuration and secrets files
 
@@ -362,7 +377,7 @@ For each additional environment:
 - Generate a separate SSH key: `~/.ssh/<repo-name>-<env_name>` (same procedure as Step 3)
 - Store it as a suffixed GitHub secret matching the environment name: e.g., `SSH_PRIVATE_KEY_PRODUCTION`
 - If using a database, create a separate secret with the same suffix: e.g., `POSTGRES_PASSWORD_PRODUCTION`
-- If the app has custom secrets scoped to the environment, suffix them the same way: e.g., `API_KEY_PRODUCTION`, `SMTP_PASSWORD_PRODUCTION`
+- If the app has custom secrets scoped to the environment **with different values per env**, suffix them the same way: e.g., `API_KEY_PRODUCTION`.
 - Secrets common to all environments (e.g., `CLOUDSTACK_API_KEY`, `CLOUDSTACK_SECRET_KEY`) don't need to be recreated -- just pass them in every caller workflow
 - Write a new environment-specific Kamal config: `config/deploy.<env>.yml` (same structure as the preview config, with the appropriate hosts, proxy host, and accessories)
 - Write a `.kamal/secrets.<env>` file mapping Kamal secret names to suffixed env var names (e.g., `POSTGRES_PASSWORD=$POSTGRES_PASSWORD_PRODUCTION`)
