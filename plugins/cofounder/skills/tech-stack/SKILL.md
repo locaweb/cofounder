@@ -40,7 +40,7 @@ Go JSON API + React SPA served from a single binary and deployed as one containe
 Ensure the project `.gitignore` includes at least:
 
 ```
-backend/cmd/server/server
+backend/server  # add the actual output path used by `go build`
 frontend/dist/
 frontend/node_modules/
 .venv/
