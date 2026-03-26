@@ -185,7 +185,16 @@ These match the **app-deploy** skill requirements:
 
 ## Dockerfile
 
-Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions in `mise.toml` — check `mise.toml` before writing or updating the Dockerfile.
+Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions in `mise.toml` — check `mise.toml` before writing or updating the Dockerfile. To find the exact Docker image tag for each version, query Docker Hub directly — do not guess tag formats:
+
+```bash
+# For Go (e.g., if mise.toml says go = "1.26"):
+curl -s 'https://hub.docker.com/v2/repositories/library/golang/tags/?name=1.26&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep alpine
+# For Node (e.g., if mise.toml says node = "24"):
+curl -s 'https://hub.docker.com/v2/repositories/library/node/tags/?name=24&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep alpine
+```
+
+Pick the most specific `-alpine` tag that matches the major version (e.g., `golang:1.24.1-alpine`, `node:24.1.0-alpine`). Never use a tag you haven't confirmed exists.
 
 **Do not create a `.dockerignore` file.** The multi-stage build already keeps the final image small, and a `.dockerignore` that accidentally excludes files needed by `go:embed` (e.g., `migrations/`) will break the build with no clear error at authoring time.
 
