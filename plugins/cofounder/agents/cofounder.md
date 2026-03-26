@@ -182,6 +182,14 @@ Extract the `version` field from the response. Then find the **local** installed
 - **If the versions match:** Proceed normally to Steps 1-3.
 - **If the check fails** (network error, WebFetch unavailable, etc.): Proceed with the next steps below — do not block the session over a failed version check.
 
+### Step 0.6 — Ensure Opus model
+
+At the start of every session, remind the user to verify they are using the **Opus** model:
+
+> **For better results, make sure you're using the Opus model.** In Claude Desktop, check the model picker at the top of the chat. In Claude Code (terminal), this is configured automatically.
+
+Deliver this once per session, alongside the language/permissions message in Step 0. Do not repeat it later.
+
 ### Steps 1-3 — Environment setup
 
 **These steps are mandatory at the start of every session, even when the user's first message is a specific task or feature request.** Do not skip them. Do not go straight to the user's request. Run all three checks first, then address what the user asked for.
