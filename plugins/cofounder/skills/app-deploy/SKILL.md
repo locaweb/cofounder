@@ -185,7 +185,7 @@ For the full secrets and environment variables reference, see [references/env-va
 - **Skip** — local-development-only (`DEV_MODE` must never be set in production) or already set directly in the Kamal config's `env.clear` or Dockerfile (example: `PORT`)
 - **Derived** — composed from other secrets in `.kamal/secrets` (`DATABASE_URL` from `POSTGRES_PASSWORD`)
 - **Clear** — non-sensitive, goes in `env.clear` in the Kamal config (no GitHub Secret needed)
-- **Secret** — sensitive, needs a GitHub Secret + entry in `.kamal/secrets.<env>` + entry in `env.secret` + entry in the workflow `env:` block
+- **Secret** — sensitive, needs a GitHub Secret + entry in `.kamal/secrets.<env>` + entry in `env.secret` in `config/deploy.<env>.yml` + entry in the workflow `env:` block
 
 Keep this classified list — it drives Steps 6 and 7.
 
