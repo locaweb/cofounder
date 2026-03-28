@@ -10,6 +10,7 @@ servers:
 env:
   clear:
     APP_ENV: production
+    BASE_URL: https://www.example.com # use the custom domain; fall back to https://<%= ENV['INFRA_WEB_IP'] %>.nip.io if none
   secret:
     - MY_SECRET # common secrets, obtained from .kamal/secrets-common
     - DATABASE_URL # obtained from .kamal/secrets.<environment> eg .kamal/secrets.production
