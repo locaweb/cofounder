@@ -28,3 +28,5 @@ An SMTP gateway is needed if the app sends e-mails (reminders, authentication li
 Sign up at <https://www.locaweb.com.br/smtp-locaweb/>. If you already have the SMTP service, go to **Central do Cliente** to retrieve your credentials.
 
 **Important:** SMTP credentials are secrets. When entering them for local development, follow the "Entering secrets in `.env`" procedure in the tech-stack skill — the agent must never accept these values through the chat.
+
+**Configure and test SMTP in the local development environment before deploying.** Gmail SMTP works from any network — verify that magic link emails are sent and received.

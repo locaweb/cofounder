@@ -23,3 +23,5 @@
 5. Copy the **ID do cliente** (Client ID) and **Chave secreta do cliente** (Client Secret)
 
 **Important:** These credentials are secrets. When entering them for local development, follow the "Entering secrets in `.env`" procedure in the tech-stack skill — the agent must never accept these values through the chat.
+
+**Configure and test Google Auth in the local development environment before deploying.** Google OAuth works on `localhost` — ask the user to open the app in the browser and verify the full sign-in flow.
