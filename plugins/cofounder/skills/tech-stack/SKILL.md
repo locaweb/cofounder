@@ -128,6 +128,8 @@ External credentials (OAuth client IDs/secrets, SMTP passwords, third-party API 
 
 The Go server handles everything: API routes under `/api/`, frontend static files, and SPA routing. In development, Vite's dev server proxies API calls to the Go backend.
 
+In local development, the Vite dev server is the user-facing entry point — all browser traffic goes through it, and the proxy forwards `/api/*` and `/auth/*` to Go transparently. This means external-facing URLs — including OAuth redirect URIs configured in third-party consoles (e.g., Google Cloud) — must use the Vite port (e.g., `http://localhost:5173/auth/google/callback`), not the Go backend port. The Go backend can derive the redirect URI from the request's `Host` header or from the deploy URL.
+
 The SPA catch-all **must not** serve `index.html` for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to `index.html` only for SPA routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
 
 ```go
