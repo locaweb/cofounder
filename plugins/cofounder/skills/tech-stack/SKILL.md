@@ -245,6 +245,8 @@ curl -s 'https://hub.docker.com/v2/repositories/library/node/tags/?name=24&page_
 
 Pick the most specific `-alpine` tag that matches the major version (e.g., `golang:1.24.1-alpine`, `node:24.1.0-alpine`). Never use a tag you haven't confirmed exists.
 
+**The `frontendDist` path in Go must match the Dockerfile's `COPY` layout.** The runtime stage's `WORKDIR` and the path used to copy `frontend/dist/` determine where the binary finds the assets — ensure the Go code uses the same relative path. In local dev mode, Vite serves the frontend, so the Go handler for static files should only be registered in the deployed app.
+
 **Do not create a `.dockerignore` file.** The multi-stage build already keeps the final image small, and a `.dockerignore` that accidentally excludes files needed by `go:embed` (e.g., `migrations/`) will break the build with no clear error at authoring time.
 
 ## Local Development
