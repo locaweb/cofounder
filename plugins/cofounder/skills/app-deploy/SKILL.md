@@ -589,6 +589,31 @@ The web VM's public IP is not known until the first deployment completes. To set
 
 Let's Encrypt HTTP-01 challenge requires the domain to resolve to the server before the certificate can be issued. The IP is stable across re-deployments to the same environment -- it only changes if the environment is torn down and recreated.
 
+#### Apex domains and www
+
+When the custom domain is an apex/bare domain (e.g., `example.com` rather than a subdomain like `app.example.com`), users commonly expect both `example.com` and `www.example.com` to work. kamal-proxy only routes requests whose `Host` header matches the configured host(s), so `www.example.com` will fail with a TLS error unless explicitly included.
+
+When the user provides an apex domain, **proactively include** the `www` subdomain. Use the `hosts:` array in the proxy config and instruct the user to create **two** DNS A records:
+
+```
+Type: A    Name: @      Value: <web_ip>    TTL: 300
+Type: A    Name: www    Value: <web_ip>    TTL: 300
+```
+
+The destination config uses `proxy.hosts` (array) instead of `proxy.host` (string):
+
+```yaml
+proxy:
+  hosts:
+    - example.com
+    - www.example.com
+  ssl: true
+```
+
+kamal-proxy will provision separate Let's Encrypt certificates for each hostname. Both DNS records must resolve to the server before deployment.
+
+**Canonical hostname and redirect:** `BASE_URL` is always the bare/apex domain (e.g., `https://example.com`). This applies even when the user specifies `www.example.com` as their domain -- recognize the apex (`example.com`) as the canonical hostname. The application **must** redirect `www` requests to the bare domain (HTTP 301) so that only one hostname serves content. This keeps `BASE_URL` unique and avoids issues with OAuth callbacks, cookies, and link sharing referencing inconsistent hostnames. kamal-proxy does not perform host-to-host redirects -- the redirect must be implemented at the application level (e.g., middleware that checks the `Host` header and redirects `www.*` to the bare domain).
+
 ## Workers
 
 Workers scale horizontally by changing `workers_replicas` in the caller workflow (see [references/workflows.md -- Deploy Input Reference](references/workflows.md#deploy-input-reference) for all inputs). For scaling details, see [references/scaling.md -- Scaling Workers](references/scaling.md#scaling-workers). The worker command is set in `config/deploy.yml` under `servers.workers.cmd`, not as a workflow input.

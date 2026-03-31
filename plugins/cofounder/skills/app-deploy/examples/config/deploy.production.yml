@@ -10,14 +10,20 @@ servers:
 env:
   clear:
     APP_ENV: production
-    BASE_URL: https://www.example.com # use the custom domain; fall back to https://<%= ENV['INFRA_WEB_IP'] %>.nip.io if none
+    BASE_URL: https://example.com # for apex domains, BASE_URL is the bare domain; fall back to https://<%= ENV['INFRA_WEB_IP'] %>.nip.io if no domain configured
   secret:
     - MY_SECRET # common secrets, obtained from .kamal/secrets-common
     - DATABASE_URL # obtained from .kamal/secrets.<environment> eg .kamal/secrets.production
 
 proxy:
-  host: www.example.com
-  ssl: true # when true, make sure the above domain points to the web VM IP
+  # For apex domains, use hosts (array) to include both bare and www.
+  # The app must redirect www to the bare domain (see SKILL.md).
+  hosts:
+    - example.com
+    - www.example.com
+  # For subdomains (e.g., app.example.com), a single host is sufficient:
+  #   host: app.example.com
+  ssl: true # when true, make sure the above domain(s) point to the web VM IP
 
 accessories:
   db:
