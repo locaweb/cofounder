@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/version-probe.sh",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/inject-version.sh",
             "timeout": 5
           }
         ]
