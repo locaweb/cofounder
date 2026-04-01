@@ -234,16 +234,9 @@ These match the **app-deploy** skill requirements:
 
 ## Dockerfile
 
-Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk. The Node and Go versions in the Dockerfile must match the versions in `mise.toml` — check `mise.toml` before writing or updating the Dockerfile. To find the exact Docker image tag for each version, query Docker Hub directly — do not guess tag formats:
+Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk.
 
-```bash
-# For Go (e.g., if mise.toml says go = "1.26"):
-curl -s 'https://hub.docker.com/v2/repositories/library/golang/tags/?name=1.26&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep alpine
-# For Node (e.g., if mise.toml says node = "24"):
-curl -s 'https://hub.docker.com/v2/repositories/library/node/tags/?name=24&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep alpine
-```
-
-Pick the most specific `-alpine` tag that matches the major version (e.g., `golang:1.24.1-alpine`, `node:24.1.0-alpine`). Never use a tag you haven't confirmed exists.
+The `FROM` tags in the Dockerfile use the same major versions as `mise.toml` with the `-alpine` suffix — e.g., `FROM node:24-alpine` and `FROM golang:1-alpine`. Docker Hub resolves these floating tags to the latest minor/patch at build time, so the Dockerfile stays in sync with `mise.toml` without manual version lookups. When a new Go or Node minor/patch is released, the next build picks it up automatically. The GHA BuildKit cache detects the manifest change and rebuilds from that layer down.
 
 **The `frontendDist` path in Go must match the Dockerfile's `COPY` layout.** The runtime stage's `WORKDIR` and the path used to copy `frontend/dist/` determine where the binary finds the assets — ensure the Go code uses the same relative path. In local dev mode, Vite serves the frontend, so the Go handler for static files should only be registered in the deployed app.
 

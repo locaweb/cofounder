@@ -389,17 +389,6 @@ For each additional environment:
 
 After setup is complete, use this loop to deploy and verify the application.
 
-> **Pre-deploy: update Dockerfile runtime versions.** Before each deploy, ensure the Go and Node image tags in the `Dockerfile` match the latest minor/patch for the major versions in `mise.toml`. Query Docker Hub to find the current tags — do not guess:
->
-> ```bash
-> # For Go (e.g., if mise.toml says go = "1"):
-> curl -s 'https://hub.docker.com/v2/repositories/library/golang/tags/?name=1&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep -E '^1\.[0-9]+\.[0-9]+-alpine$' | head -5
-> # For Node (e.g., if mise.toml says node = "24"):
-> curl -s 'https://hub.docker.com/v2/repositories/library/node/tags/?name=24&page_size=25&ordering=last_updated' | jq -r '.results[].name' | grep -E '^24\.[0-9]+\.[0-9]+-alpine$' | head -5
-> ```
->
-> Compare the latest tags with the `FROM` lines in the Dockerfile. If they differ, update the Dockerfile and include the change in the deploy commit. If they already match, no action needed.
-
 > **Prerequisite:** Before entering this loop, all changes -- including the Kamal config files, workflow files, and any application code -- must be **committed and pushed** to the remote repository. The deploy is triggered by `git push`. If the code has not been committed and pushed yet, do that first:
 >
 > ```bash
