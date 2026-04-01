@@ -277,9 +277,19 @@ mise trust
 mise install
 ```
 
-This `mise.toml` is committed to the repo, ensuring all developers use the same versions. To upgrade a version later, edit `mise.toml` and re-run `mise install`.
+This `mise.toml` is committed to the repo, ensuring all developers use the same versions. `mise.toml` specifies major versions only (e.g., `go = "1"`); mise resolves these to the latest stable minor/patch at install time. To change a major version, edit `mise.toml` and re-run `mise install`.
 
 All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go run ./cmd/server`). This runs the tool at the version specified in `mise.toml` without requiring shell activation hooks — it works reliably in Claude Code's non-interactive shell, in Preview's `launch.json`, and in any script context.
+
+### Upgrade tools before starting services
+
+On every session (not just first setup), run `mise upgrade` before starting the dev servers. This ensures Go, Node, and other tools are at the latest minor/patch matching the major version in `mise.toml`. If versions are already current, this is a no-op.
+
+```bash
+mise upgrade
+```
+
+> **Why `mise upgrade` instead of `mise install`?** Bare `mise install` only installs tools that are completely missing — it will not pick up a newer minor/patch if an older one is already installed. `mise upgrade` always checks the remote for the latest matching version and installs it if newer than what's locally present.
 
 ### 1. Start the database and local services
 
