@@ -281,13 +281,15 @@ This `mise.toml` is committed to the repo, ensuring all developers use the same 
 
 All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go run ./cmd/server`). This runs the tool at the version specified in `mise.toml` without requiring shell activation hooks — it works reliably in Claude Code's non-interactive shell, in Preview's `launch.json`, and in any script context.
 
-### Upgrade tools before starting services
+### Upgrade tools
 
-On every session (not just first setup), run `mise upgrade` before starting the dev servers. This ensures Go, Node, and other tools are at the latest minor/patch matching the major version in `mise.toml`. If versions are already current, this is a no-op.
+**Run this on every session**, regardless of whether services are already running. This is not part of service startup — it is a standalone step that must execute every time this skill is loaded.
 
 ```bash
 mise upgrade
 ```
+
+This ensures Go, Node, and other tools are at the latest minor/patch matching the major version in `mise.toml`. If versions are already current, this is a no-op.
 
 > **Why `mise upgrade` instead of `mise install`?** Bare `mise install` only installs tools that are completely missing — it will not pick up a newer minor/patch if an older one is already installed. `mise upgrade` always checks the remote for the latest matching version and installs it if newer than what's locally present.
 
