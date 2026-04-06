@@ -95,7 +95,7 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 Vite's dev server skips type checking for speed, but the production build (`tsc -b && vite build`) does not — so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run the TypeScript compiler before committing:**
 
 ```bash
-bash -c 'cd frontend && mise x -- npx tsc -b'
+bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx tsc -b'
 ```
 
 ---

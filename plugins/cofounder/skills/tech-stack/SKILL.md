@@ -171,7 +171,7 @@ When the application needs a capability that Postgres and its extensions cannot 
 
 ### sqlc for all queries
 
-All SQL lives in `backend/internal/database/queries/*.sql`. Run `cd backend && mise x -- sqlc generate` after changes. **Never write raw SQL strings in Go handler code.**
+All SQL lives in `backend/internal/database/queries/*.sql`. Run `cd "$(git rev-parse --show-toplevel)/backend" && mise x -- sqlc generate` after changes. **Never write raw SQL strings in Go handler code.**
 
 Always include `emit_json_tags: true` in `sqlc.yaml` so that generated Go structs include lowercase JSON tags (e.g., `json:"id"` instead of exporting `ID` as-is). Without this, the API returns PascalCase field names that don't match frontend expectations.
 
@@ -248,7 +248,7 @@ All tools are invoked via **mise** (set up by **computer-setup**) using the `mis
 
 > **Container naming convention:** Each project's database container is named `<repo_name>-db` (e.g., `myapp-db`), where `<repo_name>` is the basename of the project's root directory. This prevents collisions when multiple cofounder projects coexist on the same machine. Derive the name once at the start of the session and use it consistently for all `podman` commands.
 
-> **Critical: `go.mod` lives in `backend/`, not in the project root.** All Go and sqlc commands (`mise x -- go run`, `mise x -- go build`, `mise x -- go test`, `mise x -- go mod tidy`, `mise x -- sqlc generate`) **must** execute from the `backend/` directory. Always include `cd backend &&` inside the `bash -c` string. When a command chain involves multiple layers of shell invocation (bash → go), prefer writing a small helper script instead of nesting everything in a single `bash -c` string — this avoids the most common source of repeated build failures.
+> **Critical: `go.mod` lives in `backend/`, not in the project root.** All Go and sqlc commands (`mise x -- go run`, `mise x -- go build`, `mise x -- go test`, `mise x -- go mod tidy`, `mise x -- sqlc generate`) **must** execute from the `backend/` directory. Always include `cd "$(git rev-parse --show-toplevel)/backend" &&` inside the `bash -c` string. When a command chain involves multiple layers of shell invocation (bash → go), prefer writing a small helper script instead of nesting everything in a single `bash -c` string — this avoids the most common source of repeated build failures.
 
 ### Project tool versions
 
@@ -405,13 +405,13 @@ The `.env` file (local) and Kamal config (deployed) each provide the correct val
 ### 2. Start the Go API (terminal 1)
 
 ```bash
-bash -c 'set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server'
+bash -c 'ROOT="$(git rev-parse --show-toplevel)" && set -a && . "$ROOT/.env" && set +a && cd "$ROOT/backend" && DEV_MODE=1 mise x -- go run ./cmd/server'
 ```
 
 ### 3. Start the Vite dev server (terminal 2)
 
 ```bash
-bash -c 'cd frontend && mise x -- npm install && mise x -- npm run dev'
+bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npm install && mise x -- npm run dev'
 ```
 
 Don't assume the default Vite port (5173) — Vite automatically picks the next available port when the default is already in use by another project. After starting the dev server in the background, read the task output and look for the `Local:` line in Vite's startup banner (e.g., `Local: http://localhost:5174/`). Use the URL from that line — not a hardcoded port — for all subsequent access.
@@ -447,7 +447,7 @@ After tests pass, the agent takes headless screenshots of key pages and reviews 
 The `e2e/` directory at the project root contains a minimal `package.json` with `playwright` as its only dependency. On first setup (alongside `mise install` and podman containers):
 
 ```bash
-bash -c 'cd e2e && mise x -- npm install && mise x -- npx playwright install chromium'
+bash -c 'cd "$(git rev-parse --show-toplevel)/e2e" && mise x -- npm install && mise x -- npx playwright install chromium'
 ```
 
 The `e2e/` directory is completely separate from `frontend/` — the Dockerfile never touches it, so it has no impact on the production image.
@@ -463,13 +463,13 @@ lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
 Then take a screenshot using the correct port:
 
 ```bash
-bash -c 'cd e2e && mise x -- npx playwright screenshot --viewport-size="1280,720" --full-page http://localhost:5173 /tmp/homepage.png'
+bash -c 'cd "$(git rev-parse --show-toplevel)/e2e" && mise x -- npx playwright screenshot --viewport-size="1280,720" --full-page http://localhost:5173 /tmp/homepage.png'
 ```
 
 If the PRD specifies mobile support, also screenshot at a mobile viewport:
 
 ```bash
-bash -c 'cd e2e && mise x -- npx playwright screenshot --viewport-size="375,812" --full-page http://localhost:5173 /tmp/homepage-mobile.png'
+bash -c 'cd "$(git rev-parse --show-toplevel)/e2e" && mise x -- npx playwright screenshot --viewport-size="375,812" --full-page http://localhost:5173 /tmp/homepage-mobile.png'
 ```
 
 For authenticated routes, use the dev login endpoint first. Write a short script in `e2e/` that:
@@ -539,7 +539,7 @@ After committing and pushing, present the session wrap-up as defined in the cofo
 1. Write or update the SQL queries in `backend/internal/database/queries/*.sql`
 2. Run sqlc generate:
    ```bash
-   bash -c 'cd backend && mise x -- sqlc generate'
+   bash -c 'cd "$(git rev-parse --show-toplevel)/backend" && mise x -- sqlc generate'
    ```
 3. **Read the generated `.go` files** in `backend/internal/database/sqlc/` to confirm the exact struct names, field names, and parameter types before writing any Go handler code.
 4. Write the Go handlers using the exact names from the generated files.
@@ -557,7 +557,7 @@ Never hand-write SQL in Go files.
 - **Logging:** `slog` exclusively. Never `fmt.Println` or `log.Println`.
 - **Validation:** Server-side validation for all inputs. Never trust client-side validation alone.
 - **Authorization:** Checks in every handler, not just middleware.
-- **Frontend components:** `bash -c 'cd frontend && mise x -- npx shadcn@latest add <component>'`
+- **Frontend components:** `bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx shadcn@latest add <component>'`
 - **No ORMs.** SQL through sqlc only.
 - **No CSS preprocessors.** Tailwind CSS only.
 - **No additional JavaScript frameworks.** React + React Router only.
