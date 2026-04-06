@@ -507,7 +507,39 @@ Quick reference for interacting with deployed infrastructure. See [references/op
 - Health check endpoint at `GET /up` returning HTTP 200 when healthy
 - If connecting to a database, read connection from the `DATABASE_URL` env var (or individual vars like `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` if the framework requires them -- the agent sets these in `deploy.yml` under `env.clear`/`env.secret`). The app must **fail with a clear error** if it needs the database but these variables are missing -- do not silently skip database functionality.
 
-Example minimal Dockerfile:
+Example Dockerfile for Go+React apps built with the **tech-stack** skill:
+
+```dockerfile
+# Stage 1: Build frontend
+FROM node:24-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Build backend
+FROM golang:1-alpine AS backend-build
+WORKDIR /app/backend
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ ./
+RUN CGO_ENABLED=0 go build -o /server ./cmd/server
+
+# Stage 3: Runtime — binary and frontend/dist as siblings under WORKDIR
+FROM alpine:3
+RUN apk add --no-cache ca-certificates
+WORKDIR /app
+COPY --from=backend-build /server ./server
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+EXPOSE 80
+ENV PORT=80
+CMD ["./server"]
+```
+
+The runtime stage must place the compiled binary and `frontend/dist/` as siblings under `WORKDIR`. The Go code expects the assets at the relative path `"frontend/dist"` — see the tech-stack skill's Dockerfile section for details.
+
+Example Dockerfile for apps **not** using the tech-stack skill:
 
 ```dockerfile
 FROM python:3.12-slim

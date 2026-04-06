@@ -133,22 +133,29 @@ In local development, the Vite dev server is the user-facing entry point — all
 
 The SPA catch-all **must not** serve `index.html` for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to `index.html` only for SPA routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
 
+> **`frontendDist` must be the literal string `"frontend/dist"`.** Never use `"../frontend/dist"`, never use an absolute path like `"/frontend/dist"`, and never add fallback logic that tries multiple paths. The binary's working directory in production is the Dockerfile's `WORKDIR` — not `backend/`. The path `../frontend/dist` seems correct when looking at the local repo layout (Go runs from `backend/`), but in the Docker container it escapes to the wrong parent and causes a 404. This mistake is invisible during local development because Vite serves the frontend and the static-file handler is not registered when `DEV_MODE` is set — the error only surfaces after deploy. The Dockerfile section below shows the matching layout.
+
 ```go
-fs := http.FileServer(http.Dir(frontendDist))
-mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
-        http.NotFound(w, r)
-        return
-    }
-    // Serve real files from dist; fall back to index.html for SPA routes
-    if r.URL.Path != "/" {
-        if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
-            fs.ServeHTTP(w, r)
+frontendDist := "frontend/dist"
+if _, err := os.Stat(frontendDist); err == nil && !cfg.DevMode {
+    fs := http.FileServer(http.Dir(frontendDist))
+    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
+            http.NotFound(w, r)
             return
         }
-    }
-    http.ServeFile(w, r, filepath.Join(frontendDist, "index.html"))
-})
+        // Serve real files from dist; fall back to index.html for SPA routes
+        if r.URL.Path != "/" {
+            if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
+                fs.ServeHTTP(w, r)
+                return
+            }
+        }
+        http.ServeFile(w, r, filepath.Join(frontendDist, "index.html"))
+    })
+} else if !cfg.DevMode {
+    slog.Warn("frontend dist not found — SPA routes will return 404", "path", frontendDist)
+}
 ```
 
 ### Postgres first
@@ -234,11 +241,21 @@ These match the **app-deploy** skill requirements:
 
 ## Dockerfile
 
-Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are served from `/frontend/dist` on disk.
+Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are copied alongside the binary.
 
 The `FROM` tags in the Dockerfile use the same major versions as `mise.toml` with the `-alpine` suffix — e.g., `FROM node:24-alpine` and `FROM golang:1-alpine`. Docker Hub resolves these floating tags to the latest minor/patch at build time, so the Dockerfile stays in sync with `mise.toml` without manual version lookups. When a new Go or Node minor/patch is released, the next build picks it up automatically. The GHA BuildKit cache detects the manifest change and rebuilds from that layer down.
 
-**The `frontendDist` path in Go must match the Dockerfile's `COPY` layout.** The runtime stage's `WORKDIR` and the path used to copy `frontend/dist/` determine where the binary finds the assets — ensure the Go code uses the same relative path. In local dev mode, Vite serves the frontend, so the Go handler for static files should only be registered in the deployed app.
+**The runtime stage must place the binary and `frontend/dist/` as siblings under `WORKDIR`:**
+
+```dockerfile
+# Runtime stage (after build stages)
+WORKDIR /app
+COPY --from=backend-build /server ./server
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+CMD ["./server"]
+```
+
+The specific `WORKDIR` path does not matter — what matters is that both the binary and `frontend/dist/` are placed directly under it. The Go code uses `frontendDist := "frontend/dist"` (see the SPA catch-all above), so the Dockerfile must place the assets at that relative path from the binary's working directory. Since `CMD` runs from `WORKDIR`, copying both into `WORKDIR` satisfies this. In local dev, Vite serves the frontend, so the Go handler for static files is only registered when `DEV_MODE` is not set.
 
 **Do not create a `.dockerignore` file.** The multi-stage build already keeps the final image small, and a `.dockerignore` that accidentally excludes files needed by `go:embed` (e.g., `migrations/`) will break the build with no clear error at authoring time.
 
