@@ -316,16 +316,20 @@ When working through multiple tasks in a batch (e.g., tackling a PRD), you may w
 5. Run the Local Development Feedback Loop as defined in the tech-stack skill (start services, run the affected test layers). If any test fails, fix the code or the test and re-run until all pass.
 6. Share test results in accessible terms. Let the user know when tests pass. When tests fail, reassure them that you're aware and taking care of it.
 
+**Visual check (mandatory for UI-visible changes — do not skip, do not defer past commit):**
+
+7. With dev servers still running, take Playwright screenshots of the key pages affected by this session's work. Review each screenshot for correctness and aesthetics (alignment, padding, readability, contrast). If something looks off, fix it and re-run tests before continuing. Skip this gate only if the session's changes are purely backend with no UI impact.
+
 **Document gate (mandatory — update before committing):**
 
-7. Update `docs/TASKS.md` to reflect completed and remaining work.
-8. Update `docs/PRD.md` if requirements changed during implementation.
-9. Create or update ADRs for any technical decisions made.
-10. Update `docs/INFRASTRUCTURE.md` if services changed. If no external services were needed and the file doesn't exist, create it with an empty table.
+8. Update `docs/TASKS.md` to reflect completed and remaining work.
+9. Update `docs/PRD.md` if requirements changed during implementation.
+10. Create or update ADRs for any technical decisions made.
+11. Update `docs/INFRASTRUCTURE.md` if services changed. If no external services were needed and the file doesn't exist, create it with an empty table.
 
 **Commit gate:**
 
-11. **After all tests pass and docs are updated, commit all changes (code, tests, and docs together) and push to the remote.** Do not present the session wrap-up or offer deployment until this step completes.
+12. **After all tests pass, visual check passes, and docs are updated, commit all changes (code, tests, and docs together) and push to the remote.** Do not present the session wrap-up or offer deployment until this step completes.
 
 **After completing a task or set of tasks** (all code written, tests passing, documents updated, committed and pushed), **always** present the user with a visible link and a session wrap-up:
 

@@ -29,6 +29,8 @@ Go JSON API + React SPA served from a single binary and deployed as one containe
 │   ├── go.mod
 │   ├── go.sum
 │   └── sqlc.yaml
+├── e2e/                        # Visual checks (Playwright screenshots)
+│   └── package.json
 ├── frontend/                    # Vite + React SPA
 │   ├── src/
 │   │   ├── components/ui/       # shadcn/ui (generated, editable)
@@ -43,14 +45,12 @@ Ensure the project `.gitignore` includes at least:
 backend/server  # add the actual output path used by `go build`
 frontend/dist/
 frontend/node_modules/
+e2e/node_modules/
 .venv/
 .env
-.claude/launch.json
 ```
 
 `backend/cmd/server/server` is the locally compiled Go binary produced by `go build`. It must not be committed.
-
-`.claude/launch.json` is generated locally by Claude Code Desktop's Preview feature and contains platform-specific commands — it must not be committed.
 
 `.env` holds **all** service connection strings and application secrets needed to run locally. It must **never** be committed. After creating or updating it, restrict permissions:
 
@@ -436,60 +436,63 @@ podman ps -a --filter "name=^${REPO_NAME}-" --format '{{.Names}}' | xargs -r pod
 
 This relies on the naming convention (`<repo_name>-<accessory_name>`) and removes all project containers at once.
 
-## Preview (Claude Code Desktop)
+## Visual Check (Playwright screenshots)
 
-When `preview_*` tools are available (Claude Code Desktop), Preview manages the dev servers automatically — you do not need to start or stop them manually. Use `preview_screenshot`, `preview_click`, and `preview_snapshot` for quick visual checks during development. When Preview is not available (CLI, Windows), start the Go backend and Vite dev server manually (steps 2–3 above).
+> **Do NOT use Claude Desktop Preview** servers based on `launch.json`. Start the Go backend and Vite dev server manually (steps 2–3 above) and use Playwright for visual checks as described below.
 
-> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
+After tests pass, the agent takes headless screenshots of key pages and reviews them visually. This works identically on macOS, Linux, and Windows — no platform-specific setup.
 
-#### Port verification in Preview
+### Setup
 
-Vite auto-increments its port when 5173 is already occupied by another project. Preview may then display that other project's UI instead of the current one. After your first `preview_screenshot`, verify the content matches the app you are working on. If the screenshot shows an unrelated page:
-
-1. Find the actual port this project's Vite chose:
-   ```bash
-   lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
-   ```
-   Compare the ports against any other Vite projects the user may have running. The highest port number is usually the most recently started server.
-2. Use the correct port URL in subsequent `preview_screenshot` calls.
-
-#### Accessories in Preview mode
-
-Preview manages the Go backend and Vite dev server automatically, but does **not** manage podman containers. Before using Preview, ensure all accessory containers are running:
+The `e2e/` directory at the project root contains a minimal `package.json` with `playwright` as its only dependency. On first setup (alongside `mise install` and podman containers):
 
 ```bash
-REPO_NAME="$(basename "$(pwd)")"
-podman start "${REPO_NAME}-db" || true
-podman start "${REPO_NAME}-redis" || true  # if applicable
+bash -c 'cd e2e && mise x -- npm install && mise x -- npx playwright install chromium'
 ```
 
-Check `docs/INFRASTRUCTURE.md` for the full list of accessories. If a container doesn't exist yet, create it first following the Local Services recipes above.
+The `e2e/` directory is completely separate from `frontend/` — the Dockerfile never touches it, so it has no impact on the production image.
 
-#### Environment variables in Preview
+### Taking screenshots
 
-The Go backend command in `.claude/launch.json` must load `.env` so that all service URLs (DATABASE_URL, REDIS_URL, etc.) are available. When generating or updating launch.json, use the same `. .env` pattern as the CLI command, and **always prefix tool commands with `mise x --`**. Preview spawns processes directly without a shell profile, so tools installed by mise are only reachable through `mise x` (which reads `mise.toml` from the project root):
+With the dev servers running (Go backend + Vite), first confirm the actual Vite port — Vite auto-increments when the default (5173) is already in use. Check the Vite startup output for the `Local:` line, or detect it from the OS:
 
-```
-set -a && . .env && set +a && cd backend && DEV_MODE=1 mise x -- go run ./cmd/server
-```
-
-For the frontend entry in launch.json:
-
-```
-cd frontend && mise x -- npm run dev
+```bash
+lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
 ```
 
-This ensures Preview and CLI modes use the same env var source and the same tool resolution, and adding a new accessory only requires updating `.env` — not rewriting launch.json.
+Then take a screenshot using the correct port:
+
+```bash
+bash -c 'cd e2e && mise x -- npx playwright screenshot --viewport-size="1280,720" --full-page http://localhost:5173 /tmp/homepage.png'
+```
+
+If the PRD specifies mobile support, also screenshot at a mobile viewport:
+
+```bash
+bash -c 'cd e2e && mise x -- npx playwright screenshot --viewport-size="375,812" --full-page http://localhost:5173 /tmp/homepage-mobile.png'
+```
+
+For authenticated routes, use the dev login endpoint first. Write a short script in `e2e/` that:
+1. Calls `POST /api/dev/login` to obtain a session cookie
+2. Navigates to the protected route with that cookie
+3. Saves the screenshot
+
+Then read the screenshot image with the Read tool — Claude can see it and judge whether the page looks correct.
+
+### Scope
+
+When performing the visual check:
+
+1. **Key routes** — screenshot the initial view of each important route (home, dashboard, main feature pages).
+2. **Authenticated routes** — use the dev login endpoint (`DEV_MODE=1`) to access pages behind auth.
+3. **Current session's work** — screenshot the pages affected by the changes made in this session.
+4. **Aesthetics** — judge alignment, padding, spacing, readability, and contrast. Flag anything that looks off and fix it before committing.
+
+The visual check is a feedback loop: if something looks wrong, fix the code and re-screenshot until it's right. Only then proceed to commit.
 
 ## Local Development Feedback Loop
 
-> **Preview mode:** If you have access to `preview_*` tools (Claude Code Desktop), Preview manages the dev servers — **do not start them manually**. Use `preview_screenshot`, `preview_snapshot`, and `preview_click` for quick visual checks during development.
->
-> **Windows:** Do NOT use Claude Desktop Preview servers based on `launch.json` file on Windows. Start the Go backend and Vite dev server manually instead.
-
-The core workflow is: **write code and tests in tandem → run the test suite → repeat until everything passes → update docs → commit & push → wrap up session.**
-
-Preview and manual browser checks are useful for quick visual verification during development, but they are not a substitute for the automated test suite. Testing is covered by the **testing** skill's two-layer approach (Go unit/integration tests, Vitest component tests), which runs on all platforms.
+The core workflow is: **write code and tests in tandem → run the test suite → visual check → repeat until everything passes and looks right → update docs → commit & push → wrap up session.**
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -497,17 +500,21 @@ Preview and manual browser checks are useful for quick visual verification durin
 │   Write / Edit Code + Tests (in tandem)              │
 │        │                                             │
 │        ▼                                             │
-│   Start services                                     │
-│     Preview (Desktop, not Windows) ──► automatic     │
-│     CLI / Windows ──► manual (podman, go run, npm)   │
+│   Start services (podman, go run, npm run dev)       │
 │        │                                             │
 │        ▼                                             │
 │   Run tests (see testing skill for details)          │
 │     Layer 1: Go unit/integration tests               │
-│     Layer 2: Vitest component tests + tsc -b          │
+│     Layer 2: Vitest component tests + tsc -b         │
 │        │                                             │
 │        ▼                                             │
 │   All pass? ──No──► Fix & repeat from top            │
+│        │                                             │
+│       Yes                                            │
+│        │                                             │
+│        ▼                                             │
+│   Visual check (screenshots — see section above)     │
+│     Looks right? ──No──► Fix & repeat from top       │
 │        │                                             │
 │       Yes                                            │
 │        │                                             │
@@ -566,7 +573,7 @@ If the application has a user login area, **self sign-in with username and passw
 
 ## Dev Login for Testing
 
-During local development, the agent (Claude Desktop Preview) needs to test pages behind authentication. Magic link and Google Auth flows cannot be completed in automated tests, so the backend must expose a **dev-only login endpoint** that bypasses the real auth flow.
+During local development, the agent needs to test pages behind authentication (via the visual check's Playwright screenshots). Magic link and Google Auth flows cannot be completed in automated tests, so the backend must expose a **dev-only login endpoint** that bypasses the real auth flow.
 
 ### How it works
 
