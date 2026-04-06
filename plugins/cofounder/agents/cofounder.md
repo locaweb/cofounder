@@ -279,7 +279,7 @@ services (e.g., a static site).
 
 | Name | Image | Local Port | Env Var | Type |
 |------|-------|-----------|---------|------|
-| db | supabase/postgres:17.6.1.103 | 5432 | DATABASE_URL | backend |
+| db | supabase/postgres:17.6.1.104 | 5432 | DATABASE_URL | backend |
 | redis | redis:7-alpine | 6379 | REDIS_URL | backend |
 | n8n | n8nio/n8n:latest | 5678 | — | standalone |
 
