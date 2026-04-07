@@ -11,15 +11,7 @@ description: >
 
 # Computer Setup
 
-Install and configure all development prerequisites: package manager, mise
-(tool version manager), podman (container runtime), and GH CLI. Fully
-idempotent — safe to re-run across sessions.
-
-## Overview
-
-This skill detects the current platform (macOS, Linux, or Windows via git bash)
-and walks through the installation of all required tools. Each step checks
-whether the tool is already present before attempting installation.
+Install and configure development prerequisites: package manager, mise, podman, and GH CLI. Idempotent — safe to re-run. Detects the platform and checks for existing tools before installing.
 
 ## Detect Platform
 
@@ -126,41 +118,13 @@ podman machine init
 
 Add `--memory 1024` if the computer has less than 16 GB of RAM.
 
-**IMPORTANT — Rosetta dialog:** The `podman machine start` command below may trigger a macOS system dialog asking to install Rosetta. This dialog can appear hidden behind other windows. Claude cannot interact with it. Tell the user to watch for this dialog on their Desktop **as soon as the command starts running**, and press **Install** if it appears. If the command appears to hang, remind the user to look for the Rosetta dialog — the command will not complete until Rosetta is installed.
+**IMPORTANT — Rosetta dialog:** `podman machine start` may trigger a macOS dialog to install Rosetta, possibly hidden behind other windows. Claude cannot interact with it. Before issuing the command, ask the user to watch for it and press **Install**. The command hangs until Rosetta is installed.
 
 ```bash
 podman machine start
 ```
 
-Run connectivity test:
-
-```bash
-podman run -d --name podman-setup-test-nginx -p 18080:80 docker.io/library/nginx:alpine
-```
-
-Wait a few seconds, then:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/
-```
-
-Expect `200`. Clean up:
-
-```bash
-podman rm -f podman-setup-test-nginx
-```
-
-#### 8. Verify mise works
-
-```bash
-mise x node@24 -- node --version
-```
-
-#### 9. Verify GH CLI
-
-```bash
-gh version
-```
+Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
 
 ---
 
@@ -230,38 +194,9 @@ Phase 2.
 podman version
 ```
 
-Verify that podman is working. On Linux, podman runs natively — no machine
-init/start is needed.
+Verify podman is working. On Linux, podman runs natively — no machine init/start needed.
 
-Run connectivity test:
-
-```bash
-podman run -d --name podman-setup-test-nginx -p 18080:80 docker.io/library/nginx:alpine
-```
-
-Wait a few seconds, then:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/
-```
-
-Expect `200`. Clean up:
-
-```bash
-podman rm -f podman-setup-test-nginx
-```
-
-#### 6. Verify mise works
-
-```bash
-mise x node@24 -- node --version
-```
-
-#### 7. Verify GH CLI
-
-```bash
-gh version
-```
+Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
 
 ---
 
@@ -396,7 +331,13 @@ Add `--memory 1024` if the computer has less than 16 GB of RAM. Then:
 podman machine start
 ```
 
-Run connectivity test:
+Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
+
+---
+
+## Podman Connectivity Test
+
+Run this after podman is set up on any platform:
 
 ```bash
 podman run -d --name podman-setup-test-nginx -p 18080:80 docker.io/library/nginx:alpine
@@ -414,13 +355,13 @@ Expect `200`. Clean up:
 podman rm -f podman-setup-test-nginx
 ```
 
-### 7. Verify mise works
+---
+
+## Verify mise and GH CLI
 
 ```bash
 mise x node@24 -- node --version
 ```
-
-### 8. Verify GH CLI
 
 ```bash
 gh version
@@ -430,36 +371,12 @@ gh version
 
 ## Marketplace Auto-Update
 
-Enable automatic updates for the marketplace this plugin belongs to. This step
-is platform-independent and runs on both macOS and Windows.
+Platform-independent. Find this plugin's marketplace name, then read `~/.claude/plugins/known_marketplaces.json`. If the matching entry lacks `"autoUpdate": true`, add it and write the file back. Preserve all other fields.
 
-### 1. Retrieve the marketplace name
-
-Find the name of the marketplace to which this cofounder plugin belongs. Store
-the result for the next step — referred to below as `<marketplace-name>`.
-
-### 2. Enable auto-update
-
-Read `~/.claude/plugins/known_marketplaces.json` and locate the entry whose key
-matches `<marketplace-name>`. If the entry already has `"autoUpdate": true`, skip
-this step. Otherwise, add `"autoUpdate": true` to that entry and write the file
-back. Preserve all other fields and formatting.
-
-Use the Read tool to inspect the file, then the Edit tool to add the key. For
-example, if the marketplace name is `my-plugins` and the entry looks like:
+Example:
 
 ```json
-"my-plugins": {
-    "source": { ... },
-    "installLocation": "...",
-    "lastUpdated": "..."
-}
-```
-
-Add `"autoUpdate": true` as the last field in that object:
-
-```json
-"my-plugins": {
+"giba-plugins": {
     "source": { ... },
     "installLocation": "...",
     "lastUpdated": "...",

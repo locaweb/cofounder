@@ -320,11 +320,7 @@ GitHub Secrets  -->  Workflow env: block  -->  Shell environment  -->  .kamal/se
 
 The left side of each secrets file line is the **Kamal secret name** (referenced in `env.secret`). The right side is the **shell environment variable name** (which matches the GitHub Secret name). For non-preview environments, the GitHub Secret is suffixed (e.g., `POSTGRES_PASSWORD_PRODUCTION`), so the right side maps to the suffixed name while the left side stays unsuffixed.
 
-**Accessory-to-config sync:** The `accessories` JSON array in the caller workflow's infra job must match the accessories declared in `config/deploy.<env>.yml`. Each accessory needs a corresponding entry in the JSON array with a matching `name`, plus the desired `plan` and `disk_size_gb`. Accessories that use kamal-proxy (i.e., have a `proxy` block in the Kamal config) also need `"ports": "80,443"` to open the firewall for HTTP/HTTPS traffic.
-
-**Forward sync (development → deployment):** When generating the `accessories` JSON for the workflow and the accessory blocks in the Kamal destination config, use `docs/INFRASTRUCTURE.md` as the source of truth for which accessories exist, their images, and their environment variables.
-
-**Reverse sync (deployment → development):** When adding, removing, or changing accessories in the Kamal config or workflow (e.g., the user asks to add Redis during deployment setup, or to remove an accessory that is no longer needed), update `docs/INFRASTRUCTURE.md` to match before the task is complete. The infrastructure manifest and Kamal accessory config must always describe the same set of services.
+**Accessory sync:** The workflow's `accessories` JSON, `config/deploy.<env>.yml`, and `docs/INFRASTRUCTURE.md` must always describe the same set of services. Each accessory needs `name`, `plan`, `disk_size_gb` in the JSON; web-facing ones also need `"ports": "80,443"`. Use `INFRASTRUCTURE.md` as source of truth in both directions — update it whenever accessories change.
 
 **WARNING: `disk_size_gb` is MANDATORY for every accessory.** Even if the accessory does not need persistent storage, you must include `disk_size_gb` with a value in the range 10–4000 GB. Example: `{"name":"nginx","plan":"small","disk_size_gb":10,"ports":"80,443"}`.
 
@@ -387,15 +383,7 @@ For each additional environment:
 
 ## Deployment Feedback Loop
 
-After setup is complete, use this loop to deploy and verify the application.
-
-> **Prerequisite:** Before entering this loop, all changes -- including the Kamal config files, workflow files, and any application code -- must be **committed and pushed** to the remote repository. The deploy is triggered by `git push`. If the code has not been committed and pushed yet, do that first:
->
-> ```bash
-> git add -A && git commit -m "Add deployment config and workflows" && git push
-> ```
->
-> The tech-stack skill normally handles this, but if there was a handoff gap, ensure it happens now before proceeding.
+All changes (Kamal config, workflows, application code) **must** be committed and pushed before entering this loop — deploy is triggered by `git push`.
 
 ```
 +-----------------------------------------------------+
@@ -429,11 +417,7 @@ After setup is complete, use this loop to deploy and verify the application.
 
 ### Workflow monitoring
 
-After push, **before starting to monitor**, give the user a prominent clickable link to the workflow run:
-
-```bash
-gh run list --limit=1 --json databaseId,url -q '.[0].url'
-```
+Give the user a clickable link first: `gh run list --limit=1 --json databaseId,url -q '.[0].url'`.
 
 Present it prominently:
 
@@ -441,49 +425,21 @@ Present it prominently:
 >
 > **\<URL from the command above\>**
 
-Then monitor the run:
+Then monitor with `gh run watch`.
 
-```bash
-gh run watch
-```
-
-If the workflow fails, read the error:
-
-```bash
-gh run view <run-id> --log-failed
-```
-
-Common failure causes:
-- **Missing secrets**: `gh secret list` to verify all required secrets exist
-- **Dockerfile issues**: build failures, wrong port, missing health check
-- **Permission errors**: ensure `permissions: contents: read, packages: write` in the caller workflow
-- **Input errors**: invalid zone, plan name, or type mismatches
-
-Fix the issue, commit, and push. The preview workflow (triggered on push) will start a new run automatically. Continue the cycle until the workflow succeeds.
+On failure: `gh run view <run-id> --log-failed`. Common causes: missing secrets, Dockerfile issues (port/health check), permission errors, invalid inputs. Fix, commit, push — preview auto-triggers on push.
 
 ### Health check verification
 
-- Run `curl -s -o /dev/null -w "%{http_code}" https://<web_ip>.nip.io/up` (get `web_ip` from the workflow run summary)
-- For custom domains: `curl -s -o /dev/null -w "%{http_code}" https://<domain>/up`
-- If the health check returns HTTP 200, the deployment is verified and complete
-- If the health check fails or the app doesn't respond: SSH into the VMs to check logs (see [references/operations.md -- Container Debugging](references/operations.md#container-debugging) for commands), then return to the **tech-stack** skill's Local Development Feedback Loop to diagnose and fix the issue
+`curl -s -o /dev/null -w "%{http_code}" https://<web_ip>.nip.io/up` (or `https://<domain>/up`). HTTP 200 = done. If it fails, SSH debug (see [references/operations.md](references/operations.md)), then return to the tech-stack Local Development Feedback Loop to fix.
 
 ## Modifying Accessories in an Existing Deployment
 
-When adding, removing, or changing an accessory after the initial deployment:
-
-1. **Update `docs/INFRASTRUCTURE.md`** — add or remove the row.
-2. **Update the Kamal destination config** (`config/deploy.<env>.yml`) — add or remove the accessory block. For new accessories, include image, host (ERB), port, cmd, env, and directories. For web-facing accessories, add the `proxy` block with a health check path the image actually exposes (not `/up`).
-3. **Update the workflow** (`.github/workflows/deploy-<env>.yml`) — add or remove the entry in the `accessories` JSON. Remember:
-   - `disk_size_gb` is mandatory for every accessory
-   - Web-facing accessories need `"ports": "80,443"`
-   - The `name` must match the Kamal config
-4. **Update env vars** — if the new accessory introduces an env var:
-   - Clear (no credential): add to `env.clear` in the Kamal config
-   - Secret (has credential): add to `env.secret`, create the GitHub Secret, add to `.kamal/secrets.<env>`, and add to the workflow's `env:` block
-5. **Commit, push, re-deploy.** The workflow provisions the new accessory VM (or deprovisions the removed one) and Kamal applies the config change.
-
-When removing an accessory, also check whether any application code still references its env var and remove the dependency.
+1. Update `docs/INFRASTRUCTURE.md`
+2. Update `config/deploy.<env>.yml` — add/remove accessory block (image, host ERB, port, cmd, env, directories; web-facing: add `proxy` block)
+3. Update workflow `accessories` JSON — `disk_size_gb` mandatory, web-facing need `"ports": "80,443"`, `name` must match Kamal config
+4. Update env vars if needed — clear → `env.clear`; secret → `env.secret` + GitHub Secret + `.kamal/secrets.<env>` + workflow `env:` block
+5. Commit, push, re-deploy. When removing, also remove code references to the accessory's env var.
 
 ## Operations (Post-Deployment)
 
@@ -501,107 +457,31 @@ Quick reference for interacting with deployed infrastructure. See [references/op
 ## Dockerfile Requirements
 
 - Single `Dockerfile` at repository root
-- Web app **must listen on port 80** (hardcoded in platform proxy config)
-- Default `CMD`/entrypoint serves the web application
-- If using workers, the same image must support a separate command passed via `servers.workers.cmd` in `deploy.yml`
-- Health check endpoint at `GET /up` returning HTTP 200 when healthy
-- If connecting to a database, read connection from the `DATABASE_URL` env var (or individual vars like `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` if the framework requires them -- the agent sets these in `deploy.yml` under `env.clear`/`env.secret`). The app must **fail with a clear error** if it needs the database but these variables are missing -- do not silently skip database functionality.
+- Web app **must listen on port 80**
+- Health check at `GET /up` → HTTP 200
+- If using workers, same image must support a separate command via `servers.workers.cmd` in `config/deploy.<env>.yml`
+- Database connection via `DATABASE_URL` env var — **fail hard** if missing
 
-Example Dockerfile for Go+React apps built with the **tech-stack** skill:
-
-```dockerfile
-# Stage 1: Build frontend
-FROM node:24-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
-
-# Stage 2: Build backend
-FROM golang:1-alpine AS backend-build
-WORKDIR /app/backend
-COPY backend/go.mod backend/go.sum ./
-RUN go mod download
-COPY backend/ ./
-RUN CGO_ENABLED=0 go build -o /server ./cmd/server
-
-# Stage 3: Runtime — binary and frontend/dist as siblings under WORKDIR
-FROM alpine:3
-RUN apk add --no-cache ca-certificates
-WORKDIR /app
-COPY --from=backend-build /server ./server
-COPY --from=frontend-build /app/frontend/dist ./frontend/dist
-EXPOSE 80
-ENV PORT=80
-CMD ["./server"]
-```
-
-The runtime stage must place the compiled binary and `frontend/dist/` as siblings under `WORKDIR`. The Go code expects the assets at the relative path `"frontend/dist"` — see the tech-stack skill's Dockerfile section for details.
-
-Example Dockerfile for apps **not** using the tech-stack skill:
-
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 80
-ENV PORT=80
-CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "app:app"]
-```
+For Go+React apps, see the **tech-stack** skill's Dockerfile section. For other stacks, ensure port 80 and the health check endpoint are configured.
 
 ## Database Migrations
 
-The platform runs a single web VM, so running migrations at container startup is the correct approach. This avoids race conditions (no concurrent instances), requires no separate migration container, and keeps migrations synchronized with the deployment lifecycle -- a new code push triggers a redeploy, which restarts the container, which runs migrations before serving traffic.
-
-Include migrations in the container entrypoint, before the web server starts:
-
-```dockerfile
-CMD ["sh", "-c", "python manage.py migrate && exec gunicorn --bind 0.0.0.0:80 --workers 2 app:app"]
-```
-
-Ensure that:
-
-1. **Migration commands run in the entrypoint** -- before the web server process starts. The app should not serve requests until migrations complete.
-2. **All migration dependencies are bundled in the Docker image** -- SQL scripts, migration files, and any libraries used by the migration tool (e.g., `alembic`, `django`, `knex`, `ActiveRecord`) must be installed in the image. Verify that the `COPY` and `RUN pip install` (or equivalent) steps include everything the migration command needs.
+Single web VM → run migrations at container startup (no race conditions). Include migrations in the entrypoint before the web server starts. All migration dependencies must be bundled in the Docker image.
 
 ## Deployment Outputs and URLs
 
-After a deploy workflow completes, extract information from:
+After deploy, information is available from: workflow outputs (`web_ip`, `worker_ips`, `accessory_ips`, `infrastructure_changed`, `scaled_accessories`, `infra_env`), the Actions step summary, and the `provision-output` artifact (90-day retention).
 
-1. **Workflow outputs**: `web_ip`, `worker_ips` (JSON array), `accessory_ips` (JSON object keyed by accessory name), `infrastructure_changed`, `scaled_accessories`, `infra_env`
-2. **GitHub Actions step summary**: visible in the workflow run UI, shows IP table and app URL
-3. **`provision-output` artifact**: JSON file retained for 90 days
-
-### Determining the app URL
-
-- **Without domain**: `https://<web_ip>.nip.io` -- works immediately, no DNS needed, TLS via Let's Encrypt
-- **With domain**: `https://<domain>` -- requires DNS A record pointing to `web_ip`, TLS via Let's Encrypt
-
-Both nip.io and custom domains support TLS. Let's Encrypt HTTP-01 challenge provisions certificates automatically.
+**App URL:** Without domain: `https://<web_ip>.nip.io`. With domain: `https://<domain>` (requires DNS A record). Both get TLS via Let's Encrypt HTTP-01.
 
 ### Choosing the Target Environment for a Domain
 
-When the user asks to configure a custom domain, determine which environment should receive it. **Always ask** -- do not default to the only existing environment without confirming.
+When the user asks to configure a custom domain, **always ask** which environment should receive it — never default silently. Options:
 
-Explain the options in the user's language, using these concepts:
+1. **Preview** — every push goes live immediately. Simple, fast.
+2. **Production** — preview becomes staging; only tagged releases go live. Safer, with a more stable release cycle.
 
-- **Local dev environment**: Runs on the user's own computer. Not visible to anyone else. Good for iterating on new features and bug fixes quickly.
-- **Preview environment**: Runs on the cloud. Visible to anyone with the URL. Typically triggered on every push to the main branch. Good for quick iteration and sharing with testers. If a domain is tied here, every push goes live immediately.
-- **Production environment**: A separate cloud environment, typically triggered on version tags (`v*`). Changes are staged in preview first and only promoted to production when a tag is created. Tie the domain here for a controlled release process.
-
-**Decision point:** If the user has no production environment, ask them:
-
-1. **Tie the domain to Preview** -- for immediate release. Every push goes live. Simple, fast, good for getting started.
-2. **Create a Production environment first** -- for a controlled release process. Preview becomes a staging area; production gets the domain.
-
-Mention that this can be changed later (e.g., moving the domain from preview to production, or adding a new domain to production), so there is no wrong choice to start with.
-
-If a local development environment is not available (the user cannot run the app locally), recommend option 2 more strongly: without local dev, preview is the only place to catch issues before they go live, so it's valuable to keep it as a staging area separate from the public-facing production environment.
-
-Once the user decides, proceed with [DNS Configuration](#dns-configuration-for-custom-domains) for the chosen environment. If a production environment is needed but doesn't exist yet, create it first following [Step 9](#step-9-add-additional-environments-when-ready).
+Mention that this can be changed later. Then proceed with [DNS Configuration](#dns-configuration-for-custom-domains). If production doesn't exist yet, create it via [Step 9](#step-9-add-additional-environments-when-ready).
 
 ### DNS Configuration for Custom Domains
 
@@ -623,9 +503,7 @@ Let's Encrypt HTTP-01 challenge requires the domain to resolve to the server bef
 
 #### Apex domains and www
 
-When the custom domain is an apex/bare domain (e.g., `example.com` rather than a subdomain like `app.example.com`), users commonly expect both `example.com` and `www.example.com` to work. kamal-proxy only routes requests whose `Host` header matches the configured host(s), so `www.example.com` will fail with a TLS error unless explicitly included.
-
-When the user provides an apex domain, **proactively include** the `www` subdomain. Use the `hosts:` array in the proxy config and instruct the user to create **two** DNS A records:
+For apex domains (e.g., `example.com`), **proactively include** `www`. Use the `hosts:` array in the proxy config and instruct the user to create **two** DNS A records:
 
 ```
 Type: A    Name: @      Value: <web_ip>    TTL: 300
@@ -643,8 +521,7 @@ proxy:
 ```
 
 kamal-proxy will provision separate Let's Encrypt certificates for each hostname. Both DNS records must resolve to the server before deployment.
-
-**Canonical hostname and redirect:** `BASE_URL` is always the bare/apex domain (e.g., `https://example.com`). This applies even when the user specifies `www.example.com` as their domain -- recognize the apex (`example.com`) as the canonical hostname. The application **must** redirect `www` requests to the bare domain (HTTP 301) so that only one hostname serves content. This keeps `BASE_URL` unique and avoids issues with OAuth callbacks, cookies, and link sharing referencing inconsistent hostnames. kamal-proxy does not perform host-to-host redirects -- the redirect must be implemented at the application level (e.g., middleware that checks the `Host` header and redirects `www.*` to the bare domain).
+**Canonical redirect:** `BASE_URL` is always the bare domain. The app **must** redirect `www` → bare (HTTP 301) at the application level — kamal-proxy does not do host-to-host redirects. This avoids inconsistent OAuth callbacks, cookies, and links.
 
 ## Workers
 
@@ -728,14 +605,7 @@ See [references/recovery.md](references/recovery.md) for the full procedure, pre
 
 ## Development Without Local Environment
 
-When the developer cannot run the language runtime or database locally, the Deployment Feedback Loop becomes the primary iteration cycle:
-
-1. Commit and push changes
-2. Monitor the workflow run until it succeeds
-3. Run the health check (`curl /up`) to verify
-4. If the health check fails, SSH debug, fix, and repeat from step 1
-
-**Recommendation**: Start with the default `preview` environment triggered on push, without a domain. This gives immediate feedback on every change, with TLS via nip.io. When the app is mature, consider adding a **production** environment (triggered on version tags) for public release -- especially important when no local dev environment is available, since preview is the only place to catch issues before they reach users. See [Choosing the Target Environment for a Domain](#choosing-the-target-environment-for-a-domain) for guidance on where to attach a custom domain.
+Without a local runtime, use the Deployment Feedback Loop as the primary cycle: commit/push → monitor workflow → health check → SSH debug if needed → repeat. Start with preview (push-triggered, no domain, TLS via nip.io). Add production later — especially important without local dev, since preview is the only pre-production check.
 
 ## References
 

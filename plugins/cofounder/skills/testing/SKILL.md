@@ -5,24 +5,23 @@ description: Two-layer automated testing strategy for Go + React web application
 
 # Automated Testing
 
-Tests are written **in tandem with the code they verify** — not as an afterthought, not deferred to a later milestone. When you create a handler, create its test file. When you create an interactive component, create its test file. This keeps tests and code in sync and prevents coverage drift.
+Tests are written **in tandem with the code they verify**. Create handler → create test file. Create interactive component → create test file.
 
 ## The Two Layers
 
-| Layer | What it tests | Requires running services? |
-|-------|--------------|---------------------------|
-| 1. Backend unit/integration | Handlers, database queries, business logic | Database only |
-| 2. Frontend components | UI logic, rendering, user interactions | Nothing — runs in simulated DOM |
+| Layer | What it tests | Requires |
+|-------|--------------|----------|
+| 1. Backend unit/integration | Handlers, queries, logic | Database only |
+| 2. Frontend components | UI logic, rendering, interactions | Nothing (simulated DOM) |
 
-Layer 1 tests the API contract against a real database. Layer 2 tests UI logic, rendering, and user interactions with mocked API calls. Together they cover the full stack — backend correctness and frontend behavior — while running in seconds.
-
+Layer 1 tests the API contract against a real database. Layer 2 tests UI logic, rendering, and user interactions with mocked API calls.
 ## Running commands
 
-All tool invocations must use `mise x --` so that the correct versions from `mise.toml` are used. This applies to every command in every layer — `mise x -- go test`, `mise x -- npx vitest`, etc. Never invoke `go`, `node`, `npm`, or `npx` directly.
+All invocations must use `mise x --` (e.g., `mise x -- go test`, `mise x -- npx vitest`). Never invoke tools directly.
 
 ## Setup Sequence
 
-When starting a new project, set up both layers as the first features are being built. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
+Set up both layers as first features are built. Look up current recommended test runners for the stack. Sections below describe **what** and **how much** to test.
 
 ---
 
@@ -82,7 +81,7 @@ The specific API depends on the test runner and testing library in use. The patt
 
 Choose a test runner compatible with the frontend framework (e.g., Vitest for Vite-based projects) and a DOM testing library that encourages testing from the user's perspective. Configure a simulated DOM environment (jsdom or similar) and add a `test` script to `package.json`. Look up the current recommended setup for the project's toolchain.
 
-**Vitest + Vite config:** When adding Vitest's `test` block to `vite.config.ts`, change the import from `import { defineConfig } from 'vite'` to `import { defineConfig } from 'vitest/config'`. The `vitest/config` module re-exports everything from Vite with the `test` property added to the type — this is the only reliable way to make `tsc -b` accept the `test` block. Do **not** use `/// <reference types="vitest" />` as a substitute; it augments global types but does not fix the `defineConfig` overload signature, and the production build will still fail with TS2769.
+**Vitest + Vite config:** Import `defineConfig` from `'vitest/config'`, not `'vite'`. This is the only way to make `tsc -b` accept the `test` block. Do **not** use `/// <reference types="vitest" />` — it doesn't fix the overload signature and `tsc -b` will fail with TS2769.
 
 ### Retrofitting tests to existing components
 
@@ -92,7 +91,7 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 ### TypeScript type check — required before every commit
 
-Vite's dev server skips type checking for speed, but the production build (`tsc -b && vite build`) does not — so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run the TypeScript compiler before committing:**
+Vite dev server skips type checking; production build does not - so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run before committing:**
 
 ```bash
 bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx tsc -b'
@@ -102,10 +101,5 @@ bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx tsc -b'
 
 ## Coverage Catch-Up
 
-Features may have been added in previous sessions without corresponding tests. After running the full test suite, scan for coverage gaps:
-
-1. **Backend:** List all handler files in `backend/` and check each one has a corresponding `_test.go` file. Flag any handler without tests (except trivial ones like health checks).
-2. **Frontend:** List all components with non-trivial logic (conditional rendering, form handling, event handlers) and check each one has a corresponding `.test.tsx` file.
-
-If gaps are found, report them to the user and offer to add the missing tests. Do not silently skip untested features — the whole point of the test suite is to be a regression safety net, and gaps undermine that.
+After running tests, scan for gaps: backend handlers without `_test.go`, frontend components with logic but no `.test.tsx`. Report gaps to the user and offer to add missing tests.
 
