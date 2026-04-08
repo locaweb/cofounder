@@ -21,7 +21,7 @@ All invocations must use `mise x --` (e.g., `mise x -- go test`, `mise x -- npx 
 
 ## Setup Sequence
 
-Set up both layers as first features are built. Look up current recommended test runners for the stack. Sections below describe **what** and **how much** to test.
+When starting a new project, set up both layers as the first features are being built. For each layer, look up the current recommended test runner and libraries for the project's language and framework, then configure accordingly. The sections below describe **what** to test and **how much** — not which specific library to use.
 
 ---
 
@@ -91,7 +91,7 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 ### TypeScript type check — required before every commit
 
-Vite dev server skips type checking; production build does not - so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run before committing:**
+Vite's dev server skips type checking for speed, but the production build (`tsc -b && vite build`) does not — so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run the TypeScript compiler before committing:**
 
 ```bash
 bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx tsc -b'
