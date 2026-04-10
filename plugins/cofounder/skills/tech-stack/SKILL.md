@@ -311,18 +311,7 @@ Use `mise upgrade`, not `mise install` — `install` skips already-installed ver
 
 ### 1. Start the database and local services
 
-Before starting the container, check if any podman container is already using port 5432:
-
-```bash
-podman ps -a --format '{{.Names}} {{.Ports}}' | grep '5432'
-```
-
-If a container from **another project** is occupying the port, do
-**not** force-stop it. Instead, inform the user:
-
-> "The container `<other_name>` from another project is currently using port 5432. Could you please stop it with `podman stop <other_name>` so we can start this project's database?"
-
-Wait for the user to confirm before proceeding.
+The command below uses the default Postgres port `5432`. If that port is already in use on the host (by another project's container, or another Postgres instance) and the container fails to start, pick any free port, update `DATABASE_URL` in `.env` to use it, and change the `-p` flag to match it. The `env` file is the source of truth.
 
 ```bash
 # Derive the container name from the repo directory
@@ -330,6 +319,7 @@ CONTAINER_NAME="$(basename "$(pwd)")-db"
 
 # Start supabase/postgres container (matching production image)
 # Important: provide only the POSTGRES_PASSWORD environment variable. The database is started with both user and database name preset to `postgres`.
+# Match the port in DATABASE_URL in .env.
 podman run -d \
   --name "$CONTAINER_NAME" \
   -e POSTGRES_PASSWORD=postgres \
@@ -377,7 +367,7 @@ podman start myapp-redis 2>/dev/null || \
 
 #### Port conflict detection
 
-Before starting a container, check `podman ps -a --format '{{.Names}} {{.Ports}}' | grep '<port>'`. If another project's container occupies the port, stop it and notify the user.
+Before starting a container, check `podman ps -a --format '{{.Names}} {{.Ports}}' | grep '<port>'`. If the default port is already in use, pick any free port, update the URL env var in `.env` (e.g., `REDIS_URL`) to use it, and expose that port in the container. The `.env` file is the source of truth.
 
 #### Common recipes
 
