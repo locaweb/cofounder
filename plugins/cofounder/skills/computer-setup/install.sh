@@ -120,6 +120,7 @@ install_linux() {
   install_podman_linux "$distro" "$distro_like"
   install_mise_linux
   install_gh_linux "$distro" "$distro_like"
+  install_playwright_chromium_deps_linux "$distro" "$distro_like"
 }
 
 # Match either ID or any token in ID_LIKE.
@@ -180,6 +181,39 @@ install_mise_linux() {
   info "Installing mise..."
   curl -fsSL https://mise.run | sh
   export PATH="${HOME}/.local/bin:${PATH}"
+}
+
+install_playwright_chromium_deps_linux() {
+  # The tech-stack skill uses Playwright (Chromium headless) for visual checks.
+  # On Linux, Chromium needs a handful of system libraries (libnspr4, libnss3,
+  # libasound2, etc.). We install them here, while sudo is available
+  # interactively, so the agent never has to ask the user for a password later.
+  #
+  # We delegate to `playwright install-deps`, which knows the correct package
+  # list for the current distro/version (Ubuntu 24.04+ uses t64-suffixed names,
+  # for example). That keeps us in sync with whatever Playwright currently
+  # ships, instead of hardcoding a list that drifts over time.
+  local family
+  family=$(distro_family "$1" "$2")
+  if [[ "$family" != "debian" ]]; then
+    warn "Skipping Playwright Chromium dependencies (only auto-supported on Debian/Ubuntu)"
+    warn "  → if visual screenshot checks fail later, install Chromium libs manually"
+    return
+  fi
+  # Cheap idempotency check: if a couple of canary libs from Playwright's list
+  # are already in the linker cache, assume the rest are too.
+  if ldconfig -p 2>/dev/null | grep -q 'libnspr4\.so' \
+     && ldconfig -p 2>/dev/null | grep -q 'libnss3\.so'; then
+    ok "Playwright Chromium dependencies already installed"
+    return
+  fi
+  info "Installing Playwright Chromium system dependencies..."
+  info "  (delegates to Playwright's official install-deps — package list stays current)"
+  # mise was just installed by install_mise_linux above, and that function
+  # exports ~/.local/bin onto PATH for the rest of this script run.
+  # `mise x node@24` fetches a temporary node if it isn't already installed.
+  # `npx --yes` accepts the playwright download prompt non-interactively.
+  mise x node@24 -- npx --yes playwright@latest install-deps chromium
 }
 
 install_gh_linux() {
