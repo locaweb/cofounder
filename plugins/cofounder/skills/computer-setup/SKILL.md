@@ -3,200 +3,78 @@ name: Computer Setup
 description: >
   This skill should be used when the user asks to "set up my computer",
   "install dev tools", "set up mise", "set up podman", "install Homebrew",
-  "install Scoop", "set up development environment", "install node",
-  "install go", or needs to ensure all development prerequisites
-  (Homebrew/Scoop, mise, podman, GH CLI) are installed and configured.
-  Supports macOS, Linux, and Windows.
+  "set up development environment", "install node", "install go", or needs to
+  ensure all development prerequisites (mise, podman, GH CLI) are installed
+  and configured. macOS and Linux use a one-liner installer; Windows still
+  uses inline steps.
 ---
 
 # Computer Setup
 
-Install and configure development prerequisites: package manager, mise, podman, and GH CLI. Idempotent — safe to re-run. Detects the platform and checks for existing tools before installing.
+Make sure the development prerequisites are installed: a package manager,
+mise, podman, and GH CLI. On macOS and Linux this skill points the user at a
+one-liner installer instead of walking them through every step. Idempotent —
+safe to re-run.
 
-## Detect Platform
+## 1. Detect platform
 
 ```bash
 uname -s 2>/dev/null || echo Windows
 ```
 
-- `Darwin` → follow the **macOS** section
-- `Linux` → follow the **Linux** section
-- `MINGW64_NT*` / `MSYS_NT*` or similar → follow the **Windows** section
+- `Darwin` → follow **macOS / Linux (one-liner)**
+- `Linux` → follow **macOS / Linux (one-liner)**
+- `MINGW64_NT*` / `MSYS_NT*` or similar → follow **Windows**
 
 ---
 
-## macOS
+## macOS / Linux (one-liner)
 
-### Phase 1 — Install tools
+### 1. Check whether tools are already installed
 
-#### 1. Install Homebrew
+```bash
+command -v podman && command -v mise && command -v gh
+```
 
-First check whether Homebrew is already installed:
+On macOS, also check Homebrew:
 
 ```bash
 command -v brew
 ```
 
-If `brew` is found, skip to the next step.
+If everything resolves, skip to [Phase 2 — Verify](#phase-2--verify-and-set-up).
 
-If not found, extract the install command from https://brew.sh/ using the
-WebFetch tool, then tell the user to open their **Terminal app** (not Claude)
-and run that command there — it requires `sudo` which is not available inside
-Claude. Ask the user to come back and confirm once the installation finishes.
+### 2. Run the one-liner installer
 
-#### 2. Install Podman
+If anything is missing, tell the user to **open their own terminal** (not
+inside Claude) and run:
 
-```bash
-eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null || true)"
-brew install podman
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/gmautner/marketplace/main/plugins/cofounder/skills/computer-setup/install.sh)"
 ```
 
-This is a no-op if podman is already installed.
+Why their own terminal: the installer needs `sudo` for some steps (Homebrew on
+macOS, package install on Linux). Running it outside Claude lets the user type
+their password directly when prompted.
 
-#### 3. Install mise
+The installer:
 
-```bash
-brew install mise
-```
+- Detects macOS vs Linux (and on Linux, the distro family).
+- On macOS: installs Homebrew if missing, then `podman`, `mise`, `gh`, then
+  `podman machine init` + `podman machine start` (with `--memory 1024` if the
+  computer has less than 16 GB of RAM).
+- On Linux: installs `podman` via the distro package manager, `mise` via
+  `https://mise.run`, and `gh` via the official GitHub CLI repo.
+- Is idempotent — re-running is a no-op for anything already installed.
 
-This is a no-op if mise is already installed.
+After it finishes, ask the user to:
 
-#### 4. Install GH CLI
+1. **Open a new terminal** so the updated PATH is picked up.
+2. `cd` back into the project directory.
+3. Run `claude` again.
 
-```bash
-brew install gh
-```
-
-This is a no-op if gh is already installed.
-
-#### 5. Restart Claude
-
-Ask the user to restart Claude so the new PATH takes effect and the session
-restarts with the cofounder agent as the main thread.
-
-- **Desktop app:** Press **Command+Q** or select **Claude > Sair (Quit)** on the
-  upper left corner of the screen. Tell them to come back to this same chat
-  session after restarting — they can find it by selecting the **Código (Code)**
-  tab and looking for past sessions in the sidebar.
-- **CLI (`claude` command):** Type `/exit` to quit, then close and reopen the
-  terminal so the shell profile is reloaded with the updated PATH. After that,
-  run `claude` again from the same project directory.
-
-### Phase 2 — Verify and set up (after restart)
-
-#### 6. Verify Homebrew
-
-First, try running `brew --version` **without** evaluating `brew shellenv`:
-
-```bash
-brew --version
-```
-
-If this succeeds, Homebrew is already on the PATH — **do not prefix any
-subsequent `brew` commands with the `eval "$(brew shellenv)"` pattern** for the
-remainder of this session.
-
-If the command fails (not found), fall back to the shellenv evaluation:
-
-```bash
-eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv 2>/dev/null || true)"
-brew --version
-```
-
-#### 7. Set up Podman machine
-
-```bash
-podman version
-```
-
-Interpret the output. If it shows client and server versions, podman is ready.
-If it errors about needing a Linux VM:
-
-```bash
-podman machine init
-```
-
-Add `--memory 1024` if the computer has less than 16 GB of RAM.
-
-**IMPORTANT — Rosetta dialog:** `podman machine start` may trigger a macOS dialog to install Rosetta, possibly hidden behind other windows. Claude cannot interact with it. Before issuing the command, ask the user to watch for it and press **Install**. The command hangs until Rosetta is installed.
-
-```bash
-podman machine start
-```
-
-Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
-
----
-
-## Linux
-
-### Phase 1 — Install tools
-
-#### 1. Install Podman
-
-```bash
-command -v podman
-```
-
-If `podman` is found, skip to the next step.
-
-If not found, refer to https://podman.io/docs/installation#installing-on-linux
-using the WebFetch tool and follow the specific instructions for the user's
-Linux distribution. Detect the distro:
-
-```bash
-. /etc/os-release 2>/dev/null && echo "$ID"
-```
-
-Use the matching section from the Podman docs (e.g., Alpine, Arch, CentOS,
-Debian, Fedora, Ubuntu, etc.).
-
-#### 2. Install mise
-
-```bash
-command -v mise
-```
-
-If `mise` is found, skip to the next step.
-
-If not found, install it. Do NOT run any `mise activate` commands.
-
-```bash
-curl https://mise.run | sh
-```
-
-#### 3. Install GH CLI
-
-```bash
-command -v gh
-```
-
-If `gh` is found, skip to the next step.
-
-If not found, refer to https://github.com/cli/cli/blob/trunk/docs/install_linux.md
-using the WebFetch tool (or clone `https://github.com/cli/cli.git` to
-`/tmp/gh-cli-docs` and read `docs/install_linux.md` if WebFetch fails) and
-follow the specific instructions for the user's Linux distribution.
-
-#### 4. Restart Claude
-
-**If any of steps 1-3 performed an install**, ask the user to **exit Claude**
-and **log out from their Linux session** (then log back in). This is needed to
-reload `.bashrc` so the new PATH takes effect. Tell them to come back to this
-same project directory and start a new Claude session. Otherwise skip to
-Phase 2.
-
-### Phase 2 — Verify and set up (after restart)
-
-#### 5. Set up Podman
-
-```bash
-podman version
-```
-
-Verify podman is working. On Linux, podman runs natively — no machine init/start needed.
-
-Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
+The session will resume here and the next steps in the cofounder setup
+sequence will pick up.
 
 ---
 
@@ -308,36 +186,40 @@ Choose **one** of the following based on what happened in the previous steps:
      directory.
 
 3. **If none of the above** (all tools were already installed): no restart is
-   needed — proceed directly to step 6.
+   needed — proceed directly to Phase 2.
 
-### 6. Set up Podman machine
+---
 
-After restart (or if no restart was needed):
+## Phase 2 — Verify and set up
+
+### Verify Podman
 
 ```bash
 podman version
 ```
 
-Interpret the output. If it shows client and server versions, podman is ready.
-If it errors about needing a Linux VM:
+If the output shows both client and server versions, podman is ready.
+On macOS or Windows, if it errors about needing a Linux VM:
 
 ```bash
 podman machine init
 ```
 
-Add `--memory 1024` if the computer has less than 16 GB of RAM. Then:
+Add `--memory 1024` if the computer has less than 16 GB of RAM.
+
+**IMPORTANT — Rosetta dialog (macOS):** `podman machine start` may trigger a
+macOS dialog to install Rosetta, possibly hidden behind other windows. Claude
+cannot interact with it. Before issuing the command, ask the user to watch for
+it and press **Install**. The command hangs until Rosetta is installed.
 
 ```bash
 podman machine start
 ```
 
-Run the [Podman Connectivity Test](#podman-connectivity-test), then [Verify mise and GH CLI](#verify-mise-and-gh-cli).
+> The one-liner installer already runs `init` and `start` on macOS. These
+> steps are only needed if it failed or if the user is on Windows.
 
----
-
-## Podman Connectivity Test
-
-Run this after podman is set up on any platform:
+### Podman Connectivity Test
 
 ```bash
 podman run -d --name podman-setup-test-nginx -p 18080:80 docker.io/library/nginx:alpine
@@ -355,9 +237,7 @@ Expect `200`. Clean up:
 podman rm -f podman-setup-test-nginx
 ```
 
----
-
-## Verify mise and GH CLI
+### Verify mise and GH CLI
 
 ```bash
 mise x node@24 -- node --version
@@ -371,7 +251,10 @@ gh version
 
 ## Marketplace Auto-Update
 
-Platform-independent. Find this plugin's marketplace name, then read `~/.claude/plugins/known_marketplaces.json`. If the matching entry lacks `"autoUpdate": true`, add it and write the file back. Preserve all other fields.
+Platform-independent. Find this plugin's marketplace name, then read
+`~/.claude/plugins/known_marketplaces.json`. If the matching entry lacks
+`"autoUpdate": true`, add it and write the file back. Preserve all other
+fields.
 
 Example:
 
@@ -388,11 +271,24 @@ Example:
 
 ## Troubleshooting
 
-- **Homebrew/mise/podman not found after install**: Restart Claude so the new PATH takes effect. On Linux, also log out and back in to reload `.profile`.
-- **Podman machine fails to start (macOS/Windows)**: Check that virtualization is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting hypervisor (e.g., Docker Desktop) holds the VM socket.
-- **WSL issues on Windows**: "Default Version: 2" does not guarantee WSL2 is working — errors about missing components may follow. If the output mentions "Virtual Machine Platform" or similar, ask the user to run `wsl.exe --install --no-distribution` in PowerShell as Administrator, then reboot. Otherwise, use `wsl --install`.
-- **Connectivity test fails**: The nginx container may need an extra second. Re-run the curl check. If it persists, check firewall rules and that port 18080 is free.
+- **Tools not found after the one-liner ran**: open a brand-new terminal so
+  PATH is reloaded, then run `claude` again. On Linux, shell rc files only
+  reload in new shells.
+- **Podman machine fails to start (macOS/Windows)**: Check that virtualization
+  is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting
+  hypervisor (e.g., Docker Desktop) holds the VM socket.
+- **WSL issues on Windows**: "Default Version: 2" does not guarantee WSL2 is
+  working — errors about missing components may follow. If the output mentions
+  "Virtual Machine Platform" or similar, ask the user to run
+  `wsl.exe --install --no-distribution` in PowerShell as Administrator, then
+  reboot. Otherwise, use `wsl --install`.
+- **Connectivity test fails**: The nginx container may need an extra second.
+  Re-run the curl check. If it persists, check firewall rules and that port
+  18080 is free.
+- **Linux distro not recognized by the installer**: install podman and gh
+  manually using your distro's package manager, then re-run the one-liner —
+  it will detect the existing tools and skip ahead.
 
 ## Bundled Resources
 
-None — all steps are performed inline.
+- `install.sh` — one-liner installer for macOS and Linux.
