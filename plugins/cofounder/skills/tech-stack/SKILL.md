@@ -98,7 +98,7 @@ mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
    GOOGLE_CLIENT_SECRET="REPLACE_WITH_GOOGLE_CLIENT_SECRET"
    SMTP_PASSWORD="REPLACE_WITH_SMTP_APP_PASSWORD"
    ```
-2. Open `.env` in the user's editor using the full absolute path. Pick the
+2. Open `.env` in the user's editor using the full absolute path. Do not offer pasting values in the chat as an alternative. Pick the
    right command for the user's platform — detect WSL on Linux via:
 
    ```bash
@@ -114,7 +114,7 @@ mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
    | WSL on Windows             | `notepad.exe /home/name/project/.env` (WSL maps the path automatically) |
    | Linux (native)             | Ask the user to run `nano <ABSOLUTE_PATH>/.env` in a separate terminal. |
 
-3. Walk them through obtaining each credential (use reference docs where applicable: `references/google-auth.md`, `references/smtp-gateway.md`). Ask them to save and confirm.
+3. Walk them through obtaining each credential (use reference docs where applicable: `references/google-auth.md`, `references/smtp-gateway.md`), and expressly tell them not to paste values into the chat. Ask them to save and confirm.
 4. Validate: read `.env`, check `REPLACE_WITH_` prefixes are gone. **Never output actual secret values.**
 
 `mise.toml` should **not** be gitignored — it is committed to the repo so all developers use the same tool versions.
