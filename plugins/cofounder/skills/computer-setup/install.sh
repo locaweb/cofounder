@@ -190,17 +190,31 @@ install_podman_linux() {
 }
 
 install_mise_linux() {
-  # mise.run installs to ~/.local/bin/mise, which may not be on PATH in a
-  # non-interactive shell — check both the command and the expected binary.
+  # mise.run installs to ~/.local/bin/mise but does NOT touch shell rc files
+  # or PATH — it only prints instructions. We persist the PATH entry to
+  # ~/.bashrc ourselves and source it so it's also valid for the rest of this
+  # script run.
   if have mise || [[ -x "${HOME}/.local/bin/mise" ]]; then
     ok "mise já está instalado"
-    # Make mise available for the rest of this script run
-    export PATH="${HOME}/.local/bin:${PATH}"
+    persist_local_bin_on_path
     return
   fi
   info "Instalando mise..."
   curl -fsSL https://mise.run | sh
-  export PATH="${HOME}/.local/bin:${PATH}"
+  persist_local_bin_on_path
+}
+
+# Append `export PATH="$HOME/.local/bin:$PATH"` to ~/.bashrc (idempotent —
+# skips the append if the line is already there) for future shells, and
+# manually export it for the current script session. We don't `source
+# ~/.bashrc` here because most distro bashrc files short-circuit in
+# non-interactive shells (PS1 / `$-` guards), which would silently skip the
+# new export.
+persist_local_bin_on_path() {
+  local line='export PATH="$HOME/.local/bin:$PATH"'
+  touch ~/.bashrc
+  grep -qsxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
+  export PATH="$HOME/.local/bin:$PATH"
 }
 
 install_playwright_chromium_deps_linux() {
