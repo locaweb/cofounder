@@ -82,15 +82,21 @@ setup_podman_machine_macos() {
   # Init the machine if none exists yet.
   if ! podman machine list --format '{{.Name}}' 2>/dev/null | grep -q .; then
     info "Initializing podman machine..."
-    local -a mem_arg=()
+    # Plain string (not bash array) for compatibility with macOS's bundled
+    # /bin/bash 3.2 — under `set -u`, expanding an empty array errors out
+    # there. The curl-pipe-sh invocation uses /bin/bash directly and ignores
+    # this script's #!/usr/bin/env bash shebang.
+    local mem_arg=""
     local mem_bytes
     mem_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
     # Below 16 GB → ask the VM to use only 1 GB
     if (( mem_bytes > 0 && mem_bytes < 17179869184 )); then
-      mem_arg=(--memory 1024)
+      mem_arg="--memory 1024"
       info "Detected <16 GB of RAM — using --memory 1024"
     fi
-    podman machine init "${mem_arg[@]}"
+    # Intentional unquoted expansion so word-splitting separates the flag
+    # from its value when mem_arg is non-empty, and yields zero args when empty.
+    podman machine init $mem_arg
   fi
 
   warn "macOS may now show a Rosetta install dialog (sometimes hidden behind"
@@ -238,6 +244,8 @@ main() {
   echo
   info "Next steps:"
   echo "  1. Open a new terminal so PATH picks up the new tools."
+  echo "     (You can ignore Homebrew's suggestion to edit ~/.zprofile —"
+  echo "      /etc/paths.d/homebrew already makes brew available in new shells.)"
   echo "  2. cd into your project directory."
   echo "  3. Run: claude"
 }
