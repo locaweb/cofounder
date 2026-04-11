@@ -310,20 +310,18 @@ main() {
   echo
   ok "Tudo pronto."
   echo
-  info "Próximos passos:"
+  info "Próximo passo:"
   if detect_wsl; then
-    echo "  1. Abra um novo terminal Ubuntu (Menu Iniciar → digite Ubuntu → Enter)"
-    echo "     para que o novo PATH seja carregado. Não use PowerShell nem Prompt de Comando."
+    echo "  Abra um novo terminal Ubuntu (Menu Iniciar → digite Ubuntu → Enter)"
+    echo "  para que o novo PATH seja carregado. Não use PowerShell nem Prompt de Comando."
   elif [[ "$os" == "Darwin" ]]; then
-    echo "  1. Abra um novo Terminal (Spotlight com ⌘+Espaço → Terminal → Enter)"
-    echo "     para que o novo PATH seja carregado."
-    echo "     (Pode ignorar a sugestão do Homebrew de editar ~/.zprofile —"
-    echo "      /etc/paths.d/homebrew já deixa o brew disponível em novos shells.)"
+    echo "  Abra um novo Terminal (Spotlight com ⌘+Espaço → Terminal → Enter)"
+    echo "  para que o novo PATH seja carregado."
+    echo "  (Pode ignorar a sugestão do Homebrew de editar ~/.zprofile —"
+    echo "   /etc/paths.d/homebrew já deixa o brew disponível em novos shells.)"
   else
-    echo "  1. Abra um novo terminal para que o novo PATH seja carregado."
+    echo "  Abra um novo terminal para que o novo PATH seja carregado."
   fi
-  echo "  2. Entre na pasta do seu projeto (cd ...)."
-  echo "  3. Execute: claude"
 }
 
 main "$@"
