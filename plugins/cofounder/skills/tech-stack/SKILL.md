@@ -98,13 +98,21 @@ mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
    GOOGLE_CLIENT_SECRET="REPLACE_WITH_GOOGLE_CLIENT_SECRET"
    SMTP_PASSWORD="REPLACE_WITH_SMTP_APP_PASSWORD"
    ```
-2. Open in the user's editor using the full absolute path:
+2. Open `.env` in the user's editor using the full absolute path. Pick the
+   right command for the user's platform — detect WSL on Linux via:
 
-   | Platform | Command |
-   |----------|---------|
-   | macOS    | `open -a TextEdit /Users/name/project/.env` |
-   | Windows  | `start notepad "C:\Users\name\project\.env"` |
-   | Linux    | Tell the user to run `nano /home/name/project/.env` in a separate terminal |
+   ```bash
+   { grep -qi microsoft /proc/version 2>/dev/null \
+     || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; } \
+     && echo WSL
+   ```
+
+   | Platform | Command (the agent runs it directly) |
+   |----------|---------------------------------------|
+   | macOS                      | `open -a TextEdit /Users/name/project/.env` |
+   | Windows (native, git bash) | `start notepad "C:\Users\name\project\.env"` |
+   | WSL on Windows             | `notepad.exe /home/name/project/.env` (WSL maps the path automatically) |
+   | Linux (native)             | Ask the user to run `nano <ABSOLUTE_PATH>/.env` in a separate terminal. |
 
 3. Walk them through obtaining each credential (use reference docs where applicable: `references/google-auth.md`, `references/smtp-gateway.md`). Ask them to save and confirm.
 4. Validate: read `.env`, check `REPLACE_WITH_` prefixes are gone. **Never output actual secret values.**

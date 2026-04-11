@@ -8,7 +8,7 @@ A plugin marketplace for [Claude Code](https://code.claude.com/docs/en/overview)
 
 | Plugin | Description |
 |--------|-------------|
-| [cofounder](plugins/cofounder/) | An AI-powered co-founder that guides you from idea to deployed web app. See the [plugin documentation](plugins/cofounder/) for installation and usage instructions. |
+| [cofounder](plugins/cofounder/) | An AI-powered co-founder that guides you from idea to deployed web app. |
 
 ## License
 

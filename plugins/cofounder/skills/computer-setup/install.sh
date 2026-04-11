@@ -3,13 +3,19 @@
 # cofounder computer-setup installer
 # ----------------------------------
 # Installs the development prerequisites needed by the cofounder plugin:
-#   - macOS: Homebrew, podman, mise, gh, and a running podman machine
-#   - Linux: podman (via the distro package manager), mise, gh
+#   - macOS:    Homebrew, podman, mise, gh, and a running podman machine
+#   - Linux:    podman (via the distro package manager), mise, gh
+#   - WSL:      same as Linux — WSL Ubuntu reports as Linux to uname
 #
 # Idempotent — safe to re-run. Detects existing tools before installing.
 #
-# Usage (run this in YOUR terminal, not inside Claude — sudo prompts work
-# naturally there):
+# All user-facing output messages are in Brazilian Portuguese, since the
+# cofounder plugin's primary audience speaks pt-BR. Code comments stay in
+# English to match the rest of the repo.
+#
+# Usage (run this in YOUR own OS terminal, not inside Claude — sudo prompts
+# work naturally there). On WSL, that means a fresh Ubuntu terminal launched
+# from the Windows Start menu, not PowerShell or Command Prompt:
 #
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/gmautner/marketplace/main/plugins/cofounder/skills/computer-setup/install.sh)"
 #
@@ -37,6 +43,20 @@ err()  { printf '%sxx%s  %s\n' "$C_RED"    "$C_RESET" "$*" >&2; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# True when running inside WSL (Windows Subsystem for Linux). On WSL, the
+# kernel string contains "microsoft" / "Microsoft" / "WSL" — we check both
+# /proc/version and /proc/sys/kernel/osrelease because some WSL builds expose
+# the marker in only one of them.
+detect_wsl() {
+  if [[ -r /proc/version ]] && grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+    return 0
+  fi
+  if [[ -r /proc/sys/kernel/osrelease ]] && grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
 # ---------- macOS ----------
 
 install_macos() {
@@ -49,10 +69,10 @@ install_macos() {
 
 install_homebrew_macos() {
   if have brew; then
-    ok "Homebrew already installed"
+    ok "Homebrew já está instalado"
     return
   fi
-  info "Installing Homebrew (you may be prompted for your password)..."
+  info "Instalando o Homebrew (sua senha pode ser solicitada)..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   # Make brew available for the rest of this script
   if ! have brew; then
@@ -65,23 +85,23 @@ install_homebrew_macos() {
 install_brew_pkg() {
   local pkg="$1"
   if have "$pkg"; then
-    ok "$pkg already installed"
+    ok "$pkg já está instalado"
     return
   fi
-  info "Installing $pkg via Homebrew..."
+  info "Instalando $pkg via Homebrew..."
   brew install "$pkg"
 }
 
 setup_podman_machine_macos() {
   # If podman version shows a server, the machine is already running.
   if podman version 2>/dev/null | grep -qi '^server'; then
-    ok "Podman machine already running"
+    ok "A máquina do Podman já está rodando"
     return
   fi
 
   # Init the machine if none exists yet.
   if ! podman machine list --format '{{.Name}}' 2>/dev/null | grep -q .; then
-    info "Initializing podman machine..."
+    info "Inicializando a máquina do Podman..."
     # Plain string (not bash array) for compatibility with macOS's bundled
     # /bin/bash 3.2 — under `set -u`, expanding an empty array errors out
     # there. The curl-pipe-sh invocation uses /bin/bash directly and ignores
@@ -92,17 +112,17 @@ setup_podman_machine_macos() {
     # Below 16 GB → ask the VM to use only 1 GB
     if (( mem_bytes > 0 && mem_bytes < 17179869184 )); then
       mem_arg="--memory 1024"
-      info "Detected <16 GB of RAM — using --memory 1024"
+      info "Menos de 16 GB de RAM detectados — usando --memory 1024"
     fi
     # Intentional unquoted expansion so word-splitting separates the flag
     # from its value when mem_arg is non-empty, and yields zero args when empty.
     podman machine init $mem_arg
   fi
 
-  warn "macOS may now show a Rosetta install dialog (sometimes hidden behind"
-  warn "other windows). If you see it, click Install and wait for it to finish."
-  info "Starting podman machine..."
-  podman machine start || warn "podman machine start failed — re-run after handling any prompts"
+  warn "O macOS pode exibir agora uma janela para instalar o Rosetta (às vezes"
+  warn "escondida atrás de outras janelas). Se ela aparecer, clique em Instalar e aguarde."
+  info "Iniciando a máquina do Podman..."
+  podman machine start || warn "podman machine start falhou — execute novamente após responder a qualquer prompt"
 }
 
 # ---------- Linux ----------
@@ -138,12 +158,12 @@ distro_family() {
 
 install_podman_linux() {
   if have podman; then
-    ok "podman already installed"
+    ok "podman já está instalado"
     return
   fi
   local family
   family=$(distro_family "$1" "$2")
-  info "Installing podman..."
+  info "Instalando podman..."
   case "$family" in
     debian)
       sudo apt-get update
@@ -162,8 +182,8 @@ install_podman_linux() {
       sudo zypper install -y podman
       ;;
     *)
-      err "Don't know how to install podman on this distro (ID='$1' ID_LIKE='$2')."
-      err "See https://podman.io/docs/installation#installing-on-linux and install manually, then re-run."
+      err "Não sei como instalar o podman nesta distribuição (ID='$1' ID_LIKE='$2')."
+      err "Consulte https://podman.io/docs/installation#installing-on-linux, instale manualmente e execute este script novamente."
       exit 1
       ;;
   esac
@@ -173,12 +193,12 @@ install_mise_linux() {
   # mise.run installs to ~/.local/bin/mise, which may not be on PATH in a
   # non-interactive shell — check both the command and the expected binary.
   if have mise || [[ -x "${HOME}/.local/bin/mise" ]]; then
-    ok "mise already installed"
+    ok "mise já está instalado"
     # Make mise available for the rest of this script run
     export PATH="${HOME}/.local/bin:${PATH}"
     return
   fi
-  info "Installing mise..."
+  info "Instalando mise..."
   curl -fsSL https://mise.run | sh
   export PATH="${HOME}/.local/bin:${PATH}"
 }
@@ -196,19 +216,19 @@ install_playwright_chromium_deps_linux() {
   local family
   family=$(distro_family "$1" "$2")
   if [[ "$family" != "debian" ]]; then
-    warn "Skipping Playwright Chromium dependencies (only auto-supported on Debian/Ubuntu)"
-    warn "  → if visual screenshot checks fail later, install Chromium libs manually"
+    warn "Pulando dependências do Chromium do Playwright (suporte automático apenas em Debian/Ubuntu)"
+    warn "  → se as checagens visuais falharem depois, instale as bibliotecas do Chromium manualmente"
     return
   fi
   # Cheap idempotency check: if a couple of canary libs from Playwright's list
   # are already in the linker cache, assume the rest are too.
   if ldconfig -p 2>/dev/null | grep -q 'libnspr4\.so' \
      && ldconfig -p 2>/dev/null | grep -q 'libnss3\.so'; then
-    ok "Playwright Chromium dependencies already installed"
+    ok "Dependências do Chromium do Playwright já estão instaladas"
     return
   fi
-  info "Installing Playwright Chromium system dependencies..."
-  info "  (delegates to Playwright's official install-deps — package list stays current)"
+  info "Instalando dependências de sistema do Chromium do Playwright..."
+  info "  (usamos o install-deps oficial do Playwright — assim a lista de pacotes fica sempre atualizada)"
   # mise was just installed by install_mise_linux above, and that function
   # exports ~/.local/bin onto PATH for the rest of this script run.
   # `mise x node@24` fetches a temporary node if it isn't already installed.
@@ -218,12 +238,12 @@ install_playwright_chromium_deps_linux() {
 
 install_gh_linux() {
   if have gh; then
-    ok "gh already installed"
+    ok "gh já está instalado"
     return
   fi
   local family
   family=$(distro_family "$1" "$2")
-  info "Installing gh..."
+  info "Instalando gh..."
   case "$family" in
     debian)
       sudo mkdir -p -m 755 /etc/apt/keyrings
@@ -252,8 +272,8 @@ install_gh_linux() {
       sudo zypper install -y gh
       ;;
     *)
-      err "Don't know how to install gh on this distro (ID='$1' ID_LIKE='$2')."
-      err "See https://github.com/cli/cli/blob/trunk/docs/install_linux.md and install manually."
+      err "Não sei como instalar o gh nesta distribuição (ID='$1' ID_LIKE='$2')."
+      err "Consulte https://github.com/cli/cli/blob/trunk/docs/install_linux.md e instale manualmente."
       exit 1
       ;;
   esac
@@ -268,20 +288,28 @@ main() {
     Darwin) install_macos ;;
     Linux)  install_linux ;;
     *)
-      err "Unsupported OS: $os (this installer supports macOS and Linux)"
+      err "Sistema operacional não suportado: $os (este instalador suporta macOS e Linux)"
       exit 1
       ;;
   esac
 
   echo
-  ok "All done."
+  ok "Tudo pronto."
   echo
-  info "Next steps:"
-  echo "  1. Open a new terminal so PATH picks up the new tools."
-  echo "     (You can ignore Homebrew's suggestion to edit ~/.zprofile —"
-  echo "      /etc/paths.d/homebrew already makes brew available in new shells.)"
-  echo "  2. cd into your project directory."
-  echo "  3. Run: claude"
+  info "Próximos passos:"
+  if detect_wsl; then
+    echo "  1. Abra um novo terminal Ubuntu (Menu Iniciar → digite Ubuntu → Enter)"
+    echo "     para que o novo PATH seja carregado. Não use PowerShell nem Prompt de Comando."
+  elif [[ "$os" == "Darwin" ]]; then
+    echo "  1. Abra um novo Terminal (Spotlight com ⌘+Espaço → Terminal → Enter)"
+    echo "     para que o novo PATH seja carregado."
+    echo "     (Pode ignorar a sugestão do Homebrew de editar ~/.zprofile —"
+    echo "      /etc/paths.d/homebrew já deixa o brew disponível em novos shells.)"
+  else
+    echo "  1. Abra um novo terminal para que o novo PATH seja carregado."
+  fi
+  echo "  2. Entre na pasta do seu projeto (cd ...)."
+  echo "  3. Execute: claude"
 }
 
 main "$@"

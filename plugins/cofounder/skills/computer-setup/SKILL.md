@@ -5,8 +5,7 @@ description: >
   "install dev tools", "set up mise", "set up podman", "install Homebrew",
   "set up development environment", "install node", "install go", or needs to
   ensure all development prerequisites (mise, podman, GH CLI) are installed
-  and configured. macOS and Linux use a one-liner installer; Windows still
-  uses inline steps.
+  and configured.
 ---
 
 # Computer Setup
@@ -46,30 +45,45 @@ If everything resolves, skip to [Phase 2 — Verify](#phase-2--verify-and-set-up
 
 ### 2. Run the one-liner installer
 
-If anything is missing, tell the user to **open their own terminal** (not
-inside Claude) and run:
+If anything of the above tools are missing, tell the user to **open a fresh OS terminal** (NOT this Claude session) and
+run:
 
 ```sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/gmautner/marketplace/main/plugins/cofounder/skills/computer-setup/install.sh)"
 ```
 
-Why their own terminal: the installer needs `sudo` for some steps (Homebrew on
-macOS, package install on Linux). Running it outside Claude lets the user type
-their password directly when prompted.
+Why a separate OS terminal: the installer needs `sudo` for some steps
+(Homebrew on macOS, package install on Linux/WSL). Running it outside Claude
+lets the user type their password directly when prompted.
+
+**How to tell the user to open a new terminal** — the wording depends on
+their platform. Detect WSL on Linux with:
+
+```bash
+{ grep -qi microsoft /proc/version 2>/dev/null \
+  || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; } \
+  && echo WSL
+```
+
+| Platform | What to tell the user (translate to their language) |
+|----------|------------------------------------------------------|
+| macOS | Open Spotlight (⌘+Space), type **Terminal**, press Enter. |
+| Linux (native, no WSL) | Open the Terminal app from the application menu (e.g. Ctrl+Alt+T on Ubuntu/GNOME). |
+| WSL on Windows | Open the **Start menu**, type **Ubuntu**, press Enter. This must be a fresh Ubuntu shell — *not* PowerShell or Command Prompt. |
 
 The installer:
 
-- Detects macOS vs Linux (and on Linux, the distro family).
-- On macOS: installs Homebrew if missing, then `podman`, `mise`, `gh`, then
-  `podman machine init` + `podman machine start` (with `--memory 1024` if the
-  computer has less than 16 GB of RAM).
-- On Linux: installs `podman` via the distro package manager, `mise` via
-  `https://mise.run`, and `gh` via the official GitHub CLI repo.
+- Detects OS
+- Installs Homebrew in macOS
+- Installs `podman`, `mise`, `gh`
+- Initializes and starts the podman machine in macOS
 - Is idempotent — re-running is a no-op for anything already installed.
+
 
 After it finishes, ask the user to:
 
-1. **Open a new terminal** so the updated PATH is picked up.
+1. **Open another fresh OS terminal** so the updated PATH is picked up. Use
+   the same per-platform wording from the table above.
 2. `cd` back into the project directory.
 3. Run `claude` again.
 
@@ -271,9 +285,11 @@ Example:
 
 ## Troubleshooting
 
-- **Tools not found after the one-liner ran**: open a brand-new terminal so
-  PATH is reloaded, then run `claude` again. On Linux, shell rc files only
-  reload in new shells.
+- **Tools not found after the one-liner ran**: open a brand-new OS terminal
+  so PATH is reloaded, then run `claude` again. On Linux/WSL, shell rc files
+  only reload in new shells. On WSL specifically, the new terminal must be a
+  fresh **Ubuntu** terminal (Start menu → type **Ubuntu** → Enter), not a
+  reused tab.
 - **Podman machine fails to start (macOS/Windows)**: Check that virtualization
   is enabled (`sysctl kern.hv_support` on macOS). Ensure no conflicting
   hypervisor (e.g., Docker Desktop) holds the VM socket.
