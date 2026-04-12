@@ -310,17 +310,19 @@ main() {
   echo
   ok "Tudo pronto."
   echo
-  info "Próximo passo:"
+  info "Próximos passos:"
   if detect_wsl; then
-    echo "  Abra um novo terminal Ubuntu (Menu Iniciar → digite Ubuntu → Enter)"
-    echo "  para que o novo PATH seja carregado. Não use PowerShell nem Prompt de Comando."
+    echo "  1. Feche este terminal digitando: exit"
+    echo "  2. Abra um novo terminal Ubuntu (Menu Iniciar → digite Ubuntu → Enter)"
+    echo "     Não use PowerShell nem Prompt de Comando."
   elif [[ "$os" == "Darwin" ]]; then
-    echo "  Abra um novo Terminal (Spotlight com ⌘+Espaço → Terminal → Enter)"
-    echo "  para que o novo PATH seja carregado."
+    echo "  1. Encerre o Terminal com ⌘+Q"
+    echo "  2. Abra um novo Terminal (Spotlight com ⌘+Espaço → Terminal → Enter)"
     echo "  (Pode ignorar a sugestão do Homebrew de editar ~/.zprofile —"
     echo "   /etc/paths.d/homebrew já deixa o brew disponível em novos shells.)"
   else
-    echo "  Abra um novo terminal para que o novo PATH seja carregado."
+    echo "  1. Feche este terminal digitando: exit"
+    echo "  2. Abra um novo terminal para que o novo PATH seja carregado."
   fi
 }
 
