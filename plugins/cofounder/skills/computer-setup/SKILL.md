@@ -49,7 +49,7 @@ If anything of the above tools are missing, tell the user to **open a fresh OS t
 run:
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/gmautner/marketplace/main/plugins/cofounder/skills/computer-setup/install.sh)"
+/bin/bash -c "$(curl -fsSL https://cofounder.giba.tech/install.sh)"
 ```
 
 Why a separate OS terminal: the installer needs `sudo` for some steps
@@ -307,4 +307,5 @@ Example:
 
 ## Bundled Resources
 
-- `install.sh` — one-liner installer for macOS and Linux.
+- `scripts/install.sh` — one-liner installer for macOS and Linux. Served via
+  redirect at `https://cofounder.giba.tech/install.sh` (see project CLAUDE.md).

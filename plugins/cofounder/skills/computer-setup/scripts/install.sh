@@ -17,7 +17,7 @@
 # work naturally there). On WSL, that means a fresh Ubuntu terminal launched
 # from the Windows Start menu, not PowerShell or Command Prompt:
 #
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/gmautner/marketplace/main/plugins/cofounder/skills/computer-setup/install.sh)"
+#   /bin/bash -c "$(curl -fsSL https://cofounder.giba.tech/install.sh)"
 #
 # After it finishes, open a new terminal (so PATH picks up the new tools),
 # cd into your project, and run `claude`.
