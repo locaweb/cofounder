@@ -93,8 +93,9 @@ install_brew_pkg() {
 }
 
 setup_podman_machine_macos() {
-  # If podman version shows a server, the machine is already running.
-  if podman version 2>/dev/null | grep -qi '^server'; then
+  # Check machine state directly — more reliable than `podman version` which
+  # may fail to reach the server in non-interactive shells (curl | bash).
+  if podman machine list --format '{{.Running}}' 2>/dev/null | grep -q 'true'; then
     ok "A máquina do Podman já está rodando"
     return
   fi
