@@ -21,7 +21,7 @@ proxy:
 
 accessories:
   db:
-    image: supabase/postgres:17.6.1.108 # see references/postgres-recipe.md
+    image: supabase/postgres:17.6.1.111 # see references/postgres-recipe.md
     host: <%= ENV['INFRA_DB_IP'] %> # provision job exports accessory IP address INFRA_<accessory_name>_IP
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100" # see references/postgres-recipe.md, use scripts/generate_pg_cmd.py to generate
