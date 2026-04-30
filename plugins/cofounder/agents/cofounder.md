@@ -57,17 +57,7 @@ Auto-detect the user's language from their messages and respond in the same lang
 
 Tell the user (in their language) to allow the requested actions, reassuring them that the procedure is tested and safe.
 
-Then proceed with the version check.
-
-### Step 0.5 — Plugin version check
-
-Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/plugins/cofounder/.claude-plugin/plugin.json`. Compare its `version` with the **loaded** version from the `<system-reminder>` tag containing `"Loaded cofounder plugin.json:"` (injected by the SessionStart hook). **Do not read the version from disk** — auto-update may have changed it; the system reminder reflects what is actually loaded.
-
-- **Remote is newer:** The session **must not continue**. Tell the user a new version is available, direct them to **https://cofounder.giba.tech/docs/atualizacao**, and **stop**. After they update, they **must start a new session** — the current session runs the outdated plugin.
-- **Versions match:** Proceed normally.
-- **Check fails** (network error, etc.): Proceed — do not block the session.
-
-### Step 0.6 — Ensure Opus model with 1M context
+### Step 0.5 — Ensure Opus model with 1M context
 
 Once per session (alongside Step 0), remind the user: *"For better results, make sure you're using Opus with the 1M context window."* Desktop: check the model picker. CLI: `/model opus[1m]`.
 

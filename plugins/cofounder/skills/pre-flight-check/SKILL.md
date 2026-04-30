@@ -20,6 +20,18 @@ Execute the pre-flight check **after computer-setup and before repo-setup**.
 If the check fails, report the failure reasons to the user and stop — do not
 attempt to proceed with setup.
 
+## Step 0 — Version Check
+
+<!-- COFOUNDER_VERSION: 0.21.0 -->
+
+The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
+
+Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/plugins/cofounder/.claude-plugin/plugin.json`. Compare its `version` field with the version in the marker.
+
+- **Remote is newer:** The session **must not continue**. Tell the user a new version is available, direct them to **https://cofounder.giba.tech/docs/atualizacao**, and **stop**. After they update, they **must start a new session** — the current session runs the outdated plugin.
+- **Versions match:** Proceed normally.
+- **Check fails** (network error, etc.): Proceed — do not block the session.
+
 ## Running the Check
 
 ```bash
