@@ -22,7 +22,7 @@ attempt to proceed with setup.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.0 -->
+<!-- COFOUNDER_VERSION: 0.21.1 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
