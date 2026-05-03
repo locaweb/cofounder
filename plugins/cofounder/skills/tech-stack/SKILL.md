@@ -119,6 +119,76 @@ mise x -- python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 `mise.toml` should **not** be gitignored — it is committed to the repo so all developers use the same tool versions.
 
+## Project Documentation
+
+Maintain these artifacts in the project's `docs/` directory:
+
+### `docs/PRD.md` — Product Requirements Document
+
+Describes **WHAT** the web app delivers, not how it works. Must be independent from technical implementation.
+
+**Sections:** Overview, Target Users, Core Features, User Flows, Non-Functional Requirements, Out of Scope.
+
+When gathering requirements:
+- Help the user fill in blanks when requirements are vague, incomplete, ambiguous, or contradictory.
+- Suggest ideas the user may not have thought of that make sense given the web app's context.
+- Keep the PRD always up-to-date as requirements evolve.
+
+### `docs/TASKS.md` — Development Task Tracker
+
+Generated from the PRD, reflecting development phases. Tasks must account for the technical context of the available skills.
+
+**Format per task:** Task name | Status (Pending / In Progress / Done / Blocked) | Reason/Notes
+
+Keep up-to-date as work progresses.
+
+### `docs/adr/NNN-topic.md` — Architecture Decision Records
+
+Numbered markdown files for each technical decision.
+
+**Template:**
+```
+# NNN - Title
+
+**Status:** Accepted | Rejected | Superseded by [ADR-NNN]
+
+## Context
+[What situation or requirement prompted this decision]
+
+## Decision
+[What was decided]
+
+## Rationale
+[Why this choice was made]
+
+## Trade-offs
+**Pros:**
+- ...
+
+**Cons:**
+- ...
+
+## Alternatives Considered
+- [Alternative 1]: [Why discarded]
+- [Alternative 2]: [Why discarded]
+```
+
+Focus on **why** a choice was made, what was considered, and what was discarded. No need for deep implementation details — the code itself is the documentation.
+
+### `docs/INFRASTRUCTURE.md` — Service Inventory
+
+Lists every service the app depends on beyond the Go binary. Created when the first accessory is introduced; may be empty for apps with no external services.
+
+**Format:**
+
+| Name | Image | Local Port | Env Var | Type |
+|------|-------|-----------|---------|------|
+| db | supabase/postgres:17.6.1.111 | 5432 | DATABASE_URL | backend |
+| redis | redis:7-alpine | 6379 | REDIS_URL | backend |
+| n8n | n8nio/n8n:latest | 5678 | — | standalone |
+
+**Type:** `backend` = consumed by web/workers via env var. `standalone` = accessed directly by user in browser (no Go integration).
+
 ## Key Decisions
 
 ### Single-binary serving

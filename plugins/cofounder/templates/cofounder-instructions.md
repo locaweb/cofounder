@@ -16,24 +16,24 @@ Tell the user (in their language) to allow the requested actions, reassuring the
 
 Once per session (alongside Step 0), remind the user: *"For better results, make sure you're using Opus with the 1M context window."* Desktop: check the model picker. CLI: `/model opus[1m]`.
 
-### Steps 1-3 — Environment setup
+### Step 1 — Pre-flight check
 
-**These steps are mandatory at the start of every session, even when the user's first message is a specific task or feature request.** Do not skip them. Do not go straight to the user's request. Run all three checks first, then address what the user asked for.
+**Mandatory at the start of every session, even when the user's first message is a specific task or feature request.** Do not skip it. Do not go straight to the user's request.
 
-Run the setup checks **in order** by loading and following each skill. Each is idempotent — safe to re-run:
+Use the Skill tool to invoke `cofounder:pre-flight-check` and follow the instructions. The pre-flight script checks the environment and reports what's needed:
 
-1. Use the Skill tool to invoke `cofounder:computer-setup` and follow the instructions
-2. Use the Skill tool to invoke `cofounder:pre-flight-check` and follow the instructions
-3. Use the Skill tool to invoke `cofounder:repo-setup` and follow the instructions
+- If it prints `NEEDS_COMPUTER_SETUP` → use the Skill tool to invoke `cofounder:computer-setup` and follow its instructions.
+- If it prints `NEEDS_REPO_SETUP` → use the Skill tool to invoke `cofounder:repo-setup` and follow its instructions.
+- If it passes with no flags → the environment is ready.
 
 **Adapt your greeting to the outcome:**
 
-- **If all checks pass with no setup work needed:** The environment is already ready from a previous session. Skip the setup narration entirely and acknowledge the user's request, e.g.: *"Everything is set up. Let me work on that."*
-- **If any setup work is required:** Let the user know what you're doing in plain language, e.g.: *"I'll get your computer ready first, then we'll work on what you asked."* Give friendly status updates as each step completes. If any step requires user action (like GitHub authentication), explain clearly what they need to do and why.
+- **If everything passes with no setup work needed:** Skip the setup narration entirely and acknowledge the user's request, e.g.: *"Everything is set up. Let me work on that."*
+- **If any setup work is required:** Let the user know what you're doing in plain language. Give friendly status updates as each step completes. If any step requires user action (like GitHub authentication), explain clearly what they need to do and why.
 
-### Step 4 — Load the tech-stack skill
+### Step 2 — Load the tech-stack skill
 
-Use the Skill tool to invoke `cofounder:tech-stack` before writing any code. This loads the development workflow, `mise x` conventions, testing workflow, and commit gates. The tech-stack skill must be used for all coding, be it starting a new project or making changes to an existing one.
+Use the Skill tool to invoke `cofounder:tech-stack` before writing any code. This loads the development workflow, coding conventions, project documentation structure, and commit gates.
 
 After loading the tech-stack skill, assess the situation:
 - If the user gave a specific task: proceed to implement it following the Development Workflow below.
@@ -42,81 +42,9 @@ After loading the tech-stack skill, assess the situation:
 
 ---
 
-## Project Management
-
-Maintain the following documentation artifacts in the project's `docs/` directory:
-
-### 1. `docs/PRD.md` — Product Requirements Document
-
-Describes **WHAT** the web app delivers, not how it works. Must be independent from technical implementation.
-
-**Sections:** Overview, Target Users, Core Features, User Flows, Non-Functional Requirements, Out of Scope.
-
-When gathering requirements:
-- Help the user fill in blanks when requirements are vague, incomplete, ambiguous, or contradictory.
-- Suggest ideas the user may not have thought of that make sense given the web app's context.
-- Keep the PRD always up-to-date as requirements evolve.
-
-### 2. `docs/TASKS.md` — Development Task Tracker
-
-Generated from the PRD, reflecting development phases. Tasks must account for the technical context of the available skills.
-
-**Format per task:** Task name | Status (Pending / In Progress / Done / Blocked) | Reason/Notes
-
-Keep up-to-date as work progresses.
-
-### 3. `docs/adr/NNN-topic.md` — Architecture Decision Records
-
-Numbered markdown files for each technical decision.
-
-**Template:**
-```
-# NNN - Title
-
-**Status:** Accepted | Rejected | Superseded by [ADR-NNN]
-
-## Context
-[What situation or requirement prompted this decision]
-
-## Decision
-[What was decided]
-
-## Rationale
-[Why this choice was made]
-
-## Trade-offs
-**Pros:**
-- ...
-
-**Cons:**
-- ...
-
-## Alternatives Considered
-- [Alternative 1]: [Why discarded]
-- [Alternative 2]: [Why discarded]
-```
-
-Focus on **why** a choice was made, what was considered, and what was discarded. No need for deep implementation details — the code itself is the documentation.
-
-### 4. `docs/INFRASTRUCTURE.md` — Service Inventory
-
-Lists every service the app depends on beyond the Go binary. Created when the first accessory is introduced; may be empty for apps with no external services.
-
-**Format:**
-
-| Name | Image | Local Port | Env Var | Type |
-|------|-------|-----------|---------|------|
-| db | supabase/postgres:17.6.1.111 | 5432 | DATABASE_URL | backend |
-| redis | redis:7-alpine | 6379 | REDIS_URL | backend |
-| n8n | n8nio/n8n:latest | 5678 | — | standalone |
-
-**Type:** `backend` = consumed by web/workers via env var. `standalone` = accessed directly by user in browser (no Go integration).
-
----
-
 ## Development Workflow
 
-**Every code change — new features, bug fixes, UI tweaks, refactors — must follow this workflow.** The tech-stack skill (loaded in Step 4 above) defines how to run the dev environment, how to invoke tools (via `mise x`), the testing gates, and the commit flow. If you haven't loaded it yet, load it now before writing any code.
+**Every code change — new features, bug fixes, UI tweaks, refactors — must follow this workflow.** The tech-stack skill (loaded in Step 2 above) defines how to run the dev environment, how to invoke tools (via `mise x`), the testing gates, and the commit flow. If you haven't loaded it yet, load it now before writing any code.
 
 For every code change:
 
@@ -188,37 +116,20 @@ When the user chooses to deploy:
 
 ---
 
-## SSH Key Rotation
-
-Invoke `cofounder:ssh-key-rotation` when:
-
-1. The user asks to rotate/regenerate keys, mentions lost keys, a new computer, or cloned the repo elsewhere.
-2. Before any SSH operation, the expected key is missing on disk (`~/.ssh/<repo-name>` for preview, `~/.ssh/<repo-name>-<env>` for others). Do **not** silently generate a new one — the skill handles the full rotation including server-side update. A locally-generated key alone will not grant access.
-
-**Always warn** that rotation causes downtime and permanently revokes the old key before proceeding. Ask for confirmation.
-
----
-
-## Quick Lookups
-
-For deployment info questions ("what's my URL?", "where is my app?"), invoke `cofounder:app-deploy` — it answers from local config files.
-
----
-
 ## Skill Reference
 
-Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and following the instructions. Available skills:
+Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and following the instructions.
 
 | Skill | Purpose |
 |-------|---------|
 | `computer-setup` | Install dev tools (Homebrew/Scoop, mise, podman, GH CLI) |
-| `pre-flight-check` | Validate environment prerequisites |
+| `pre-flight-check` | Version check, environment validation, git sync |
 | `repo-setup` | Initialize Git repo and GitHub remote |
-| `tech-stack` | Build the app (Go + React + Postgres + accessories) |
+| `tech-stack` | Build the app (Go + React + Postgres + accessories), project docs |
 | `frontend-design` | UI/UX design guidance |
-| `testing` | Two-layer automated test suite (Go unit/integration tests, Vitest component tests). Tests are written in tandem with code. Use this for all "test the app" / "run tests" requests |
-| `app-deploy` | Deploy to Locaweb Cloud, scale VMs and accessories, SSH into servers, check logs, debug containers, connect to databases |
-| `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key) |
+| `testing` | Two-layer automated tests (Go + Vitest). Use for all "test the app" / "run tests" requests |
+| `app-deploy` | Deploy, scale, SSH, logs, databases, custom domains. Also answers "what's my URL?" |
+| `ssh-key-rotation` | Rotate SSH keys when requested or when the local key is missing (e.g. new computer, lost key). Warn about downtime and revocation before proceeding |
 
 ---
 
