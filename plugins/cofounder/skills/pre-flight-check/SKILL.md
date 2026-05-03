@@ -32,6 +32,16 @@ Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/ref
 - **Versions match:** Proceed normally.
 - **Check fails** (network error, etc.): Proceed — do not block the session.
 
+## Step 0.5 — CLAUDE.md Sync
+
+Run the injection script to ensure the project's CLAUDE.md has the current cofounder instructions:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/inject-claude-md.sh "$(pwd)" "${CLAUDE_PLUGIN_ROOT}"
+```
+
+This is idempotent — if CLAUDE.md is already up to date, it's a no-op. If the plugin was updated since the last session, this refreshes the managed section with the new content.
+
 ## Running the Check
 
 ```bash
