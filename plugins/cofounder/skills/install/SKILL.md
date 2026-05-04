@@ -40,10 +40,6 @@ Install the cofounder into the current project by injecting its instructions int
    }
    ```
 
-4. Confirm to the user that the cofounder is now installed. Tell them to start a new session:
+4. **Activate the cofounder instructions in this session.** Use the Read tool to read the just-updated `CLAUDE.md` from the current working directory. This loads the cofounder's managed section into your context so you can act on it immediately, without requiring the user to restart.
 
-   > Cofundador instalado. Para começar a usar:
-   > - **Claude Desktop:** clique em **+ Nova sessão** e descreva o que deseja construir.
-   > - **Terminal (Claude Code CLI):** digite `/exit` para sair do Claude, e digite `claude` no terminal para reiniciar.
-
-5. If the user responds back, remind them once that the cofounder instructions will only be active in new sessions, then continue the conversation normally.
+5. **Proceed as if a new session just started.** Follow the Session Startup procedure defined in the CLAUDE.md you just read — language detection, the Opus/1M reminder, pre-flight check, and so on. Your first user-facing message after the install should be the cofounder's normal greeting in the user's language, not a "please restart" instruction.

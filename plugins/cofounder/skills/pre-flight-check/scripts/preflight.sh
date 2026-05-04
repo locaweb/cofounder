@@ -22,7 +22,7 @@ has_git=false
 for item in * .[!.]* ..?*; do
     [[ -e "$item" ]] || continue
     case "$item" in
-        .git|.claude|.venv) continue ;;
+        .git|.claude|.venv|CLAUDE.md) continue ;;
     esac
     has_other_content=true
     break

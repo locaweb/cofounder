@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.2 -->
+<!-- COFOUNDER_VERSION: 0.21.3 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
@@ -57,7 +57,7 @@ Running from the user's home folder (`~`) risks polluting it with project files.
 
 When **both** of these conditions are true simultaneously, the check fails:
 
-- The directory contains files or folders other than `.claude` and `.venv`
+- The directory contains files or folders other than `.claude`, `.venv`, and `CLAUDE.md`
 - No local git repository has been initialized (`.git/` does not exist)
 
 This prevents accidentally initializing a project on top of untracked existing
