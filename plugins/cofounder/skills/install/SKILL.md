@@ -1,12 +1,13 @@
 ---
-description: Instala o cofundador no projeto atual, injetando as instruções no CLAUDE.md e configurando o ambiente.
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Glob
+name: Install Cofounder
+description: >
+  This skill should be used when the user asks to "install the cofounder",
+  "set up the cofounder in this project", "instalar o cofundador", or invokes
+  `/cofounder:install`. It injects the cofounder instructions into the
+  project's CLAUDE.md and configures `.claude/settings.json`.
 ---
+
+# Install Cofounder
 
 Install the cofounder into the current project by injecting its instructions into CLAUDE.md and configuring project settings.
 
