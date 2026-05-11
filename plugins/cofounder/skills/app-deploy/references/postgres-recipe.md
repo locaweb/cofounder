@@ -24,7 +24,7 @@ The full accessory definition goes in the environment-specific config (`config/d
 # config/deploy.preview.yml
 accessories:
   db:
-    image: supabase/postgres:17.6.1.113
+    image: supabase/postgres:17.6.1.121
     host: <%= ENV['INFRA_DB_IP'] %>
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB -c effective_cache_size=3GB -c work_mem=10MB -c maintenance_work_mem=256MB -c max_connections=100"
