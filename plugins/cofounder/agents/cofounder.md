@@ -151,7 +151,7 @@ Lists every service the app depends on beyond the Go binary. Created when the fi
 
 | Name | Image | Local Port | Env Var | Type |
 |------|-------|-----------|---------|------|
-| db | supabase/postgres:17.6.1.121 | 5432 | DATABASE_URL | backend |
+| db | supabase/postgres:17.6.1.122 | 5432 | DATABASE_URL | backend |
 | redis | redis:7-alpine | 6379 | REDIS_URL | backend |
 | n8n | n8nio/n8n:latest | 5678 | — | standalone |
 
