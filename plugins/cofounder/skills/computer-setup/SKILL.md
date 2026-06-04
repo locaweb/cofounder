@@ -1,5 +1,5 @@
 ---
-name: Computer Setup
+name: computer-setup
 description: >
   This skill should be used when the user asks to "set up my computer",
   "install dev tools", "set up mise", "set up podman", "install Homebrew",

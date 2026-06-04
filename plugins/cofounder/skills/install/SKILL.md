@@ -1,5 +1,5 @@
 ---
-name: Install Cofounder
+name: install
 description: >
   This skill should be used when the user asks to "install the cofounder",
   "set up the cofounder in this project", "instalar o cofundador", or invokes

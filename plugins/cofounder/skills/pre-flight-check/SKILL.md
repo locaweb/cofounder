@@ -1,5 +1,5 @@
 ---
-name: Pre-Flight Check
+name: pre-flight-check
 description: >
   This skill should be used at the very start of every session and when the
   user asks to "check my environment", "run a pre-flight check", "validate
@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.8 -->
+<!-- COFOUNDER_VERSION: 0.21.9 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
