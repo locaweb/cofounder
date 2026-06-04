@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.4 -->
+<!-- COFOUNDER_VERSION: 0.21.5 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
@@ -25,15 +25,15 @@ Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/ref
 - **Versions match:** Proceed normally.
 - **Check fails** (network error, etc.): Proceed — do not block the session.
 
-## Step 0.5 — CLAUDE.md Sync
+## Step 0.5 — AGENTS.md Sync
 
-Run the injection script to ensure the project's CLAUDE.md has the current cofounder instructions:
+Run the injection script to ensure the project's AGENTS.md has the current cofounder instructions:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/inject-claude-md.sh "$(pwd)" "${CLAUDE_PLUGIN_ROOT}"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/inject-agents-md.sh "$(pwd)" "${CLAUDE_PLUGIN_ROOT}"
 ```
 
-This is idempotent — if CLAUDE.md is already up to date, it's a no-op. If the plugin was updated since the last session, this refreshes the managed section with the new content.
+This is idempotent — if AGENTS.md is already up to date, it's a no-op. If the plugin was updated since the last session, this refreshes the managed section with the new content. It also keeps a managed `@AGENTS.md` reference in `CLAUDE.md` so Claude loads the instructions.
 
 ## Running the Check
 
@@ -57,7 +57,7 @@ Running from the user's home folder (`~`) risks polluting it with project files.
 
 When **both** of these conditions are true simultaneously, the check fails:
 
-- The directory contains files or folders other than `.claude`, `.venv`, and `CLAUDE.md`
+- The directory contains files or folders other than `.claude`, `.venv`, `CLAUDE.md`, and `AGENTS.md`
 - No local git repository has been initialized (`.git/` does not exist)
 
 This prevents accidentally initializing a project on top of untracked existing
