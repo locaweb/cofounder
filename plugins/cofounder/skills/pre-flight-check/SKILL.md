@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.7 -->
+<!-- COFOUNDER_VERSION: 0.21.8 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
@@ -25,15 +25,7 @@ Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/ref
 - **Versions match:** Proceed normally.
 - **Check fails** (network error, etc.): Proceed — do not block the session.
 
-## Step 0.5 — AGENTS.md Sync
-
-Run the injection script to ensure the project's AGENTS.md has the current cofounder instructions:
-
-```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/inject-agents-md.sh "$(pwd)" "${CLAUDE_PLUGIN_ROOT}"
-```
-
-This is idempotent — if AGENTS.md is already up to date, it's a no-op. If the plugin was updated since the last session, this refreshes the managed section with the new content. It also keeps a managed `@AGENTS.md` reference in `CLAUDE.md` so Claude loads the instructions.
+> **Note:** `AGENTS.md` (and its `@AGENTS.md` reference in `CLAUDE.md`) is kept in sync automatically by the plugin's `SessionStart` hook at the start of every session — there is no sync step to run here.
 
 ## Running the Check
 
