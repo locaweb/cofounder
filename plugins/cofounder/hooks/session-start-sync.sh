@@ -54,6 +54,6 @@ fi
 # 3. Activate for the current session. stdout from a SessionStart hook is added to
 #    the session context, so a one-line pointer guarantees activation even on the
 #    very session that just bootstrapped the files above.
-echo "[cofounder] This is a cofounder project. Read AGENTS.md in the project root and follow it as your operating instructions for this session."
+echo "[Cofounder] This is a cofounder project. Read AGENTS.md in the project root and follow it as your operating instructions for this session."
 
 exit 0
