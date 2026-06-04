@@ -22,7 +22,7 @@ has_git=false
 for item in * .[!.]* ..?*; do
     [[ -e "$item" ]] || continue
     case "$item" in
-        .git|.claude|.venv) continue ;;
+        .git|.claude|.venv|CLAUDE.md|AGENTS.md) continue ;;
     esac
     has_other_content=true
     break
@@ -99,6 +99,24 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
     fi
 
     echo "SYNC: Repository is up to date."
+fi
+
+# 4. Check dev tools — report if any are missing so the caller can load computer-setup
+missing_tools=()
+command -v podman >/dev/null 2>&1 || missing_tools+=("podman")
+command -v mise   >/dev/null 2>&1 || missing_tools+=("mise")
+command -v gh     >/dev/null 2>&1 || missing_tools+=("gh")
+if [[ ${#missing_tools[@]} -gt 0 ]]; then
+    echo "NEEDS_COMPUTER_SETUP: missing ${missing_tools[*]}"
+fi
+
+# 5. Check git remote — report if none configured so the caller can load repo-setup
+if $has_git; then
+    if [[ -z "$(git remote 2>/dev/null)" ]]; then
+        echo "NEEDS_REPO_SETUP: git repo exists but no remote configured"
+    fi
+else
+    echo "NEEDS_REPO_SETUP: no git repository"
 fi
 
 echo "PREFLIGHT_PASSED"

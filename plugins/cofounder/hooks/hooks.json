@@ -1,14 +1,13 @@
 {
-  "description": "Prevents cofounder skills from being used without the cofounder agent active.",
+  "description": "Keeps cofounder projects' AGENTS.md/CLAUDE.md in sync on every session start and migrates legacy agent-key installs to the injection model.",
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-agent.sh",
-            "timeout": 5
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start-sync.sh",
+            "timeout": 15
           }
         ]
       }

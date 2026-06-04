@@ -1,5 +1,5 @@
 ---
-name: Repository Setup
+name: repo-setup
 description: >
   This skill should be used when the user asks to "set up a repo", "create a GitHub repo",
   "initialize git", "create a remote repository", "push to GitHub", "log in to GitHub",
