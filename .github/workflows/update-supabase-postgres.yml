@@ -30,7 +30,7 @@ jobs:
         id: current
         run: |
           version=$(grep -oP "supabase/postgres:\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" \
-            plugins/cofounder/skills/app-deploy/references/postgres-recipe.md)
+            skills/app-deploy/references/postgres-recipe.md)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Current pinned version: **$version**" >> "$GITHUB_STEP_SUMMARY"
 
@@ -75,13 +75,13 @@ jobs:
           current="${{ steps.current.outputs.version }}"
           latest="${{ steps.latest.outputs.version }}"
 
-          grep -rl "supabase/postgres:${current}" plugins/cofounder/ \
+          grep -rl "supabase/postgres:${current}" skills/ \
             | xargs sed -i "s|supabase/postgres:${current}|supabase/postgres:${latest}|g"
 
       - name: Bump plugin version
         if: steps.compare.outputs.update == 'true'
         run: |
-          plugin_json="plugins/cofounder/.claude-plugin/plugin.json"
+          plugin_json=".claude-plugin/plugin.json"
           current_ver=$(jq -r '.version' "$plugin_json")
           # Increment patch version
           new_ver=$(echo "$current_ver" | awk -F. '{printf "%s.%s.%s", $1, $2, $3+1}')
@@ -100,7 +100,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin --delete "$branch" 2>/dev/null || true
           git checkout -b "$branch"
-          git add plugins/cofounder/
+          git add skills/ .claude-plugin/plugin.json
           git commit -m "Bump supabase/postgres ${current} -> ${latest}"
           git push -u origin "$branch"
 
@@ -114,7 +114,7 @@ jobs:
           | **Current** | \`${current}\` |
           | **New** | \`${latest}\` |
 
-          Updated all files under \`plugins/cofounder/\` referencing the old tag, plus patch version bump in \`plugin.json\`.
+          Updated all files under \`skills/\` referencing the old tag, plus patch version bump in \`plugin.json\`.
 
           > Staying within major version 17, so this is a safe patch/minor bump.
           EOF

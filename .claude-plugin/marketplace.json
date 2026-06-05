@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "cofounder",
-      "source": "./plugins/cofounder/",
+      "source": "./",
       "description": "Um cofundador que ajuda a desenvolver e publicar aplicações web."
     }
   ]
