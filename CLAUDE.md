@@ -6,5 +6,5 @@ IMPORTANT: The `.claude/settings.json` file (which contains agent definitions an
 
 ## install.sh redirect
 
-The computer-setup installer lives at `plugins/cofounder/skills/computer-setup/scripts/install.sh` in this repo. The cofounder-site app (`~/cofounder-site`, deployed at `cofounder.giba.tech`) serves a 302 redirect from `https://cofounder.giba.tech/install.sh` to the raw GitHub URL of this file. When changing the script's path or filename, update the redirect target in the cofounder-site Go backend (`backend/cmd/server/main.go`) to match.
+The computer-setup installer lives at `skills/computer-setup/scripts/install.sh` in this repo. The cofounder-site app (`~/cofounder-site`, deployed at `cofounder.giba.tech`) serves a 302 redirect from `https://cofounder.giba.tech/install.sh` to the raw GitHub URL of this file. When changing the script's path or filename, update the redirect target in the cofounder-site Go backend (`backend/cmd/server/main.go`) to match.
 

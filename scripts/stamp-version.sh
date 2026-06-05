@@ -4,9 +4,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGIN_DIR="$REPO_DIR/plugins/cofounder"
-VERSION=$(jq -r .version "$PLUGIN_DIR/.claude-plugin/plugin.json")
-SKILL="$PLUGIN_DIR/skills/pre-flight-check/SKILL.md"
+VERSION=$(jq -r .version "$REPO_DIR/.claude-plugin/plugin.json")
+SKILL="$REPO_DIR/skills/pre-flight-check/SKILL.md"
 
 sed -i '' "s/COFOUNDER_VERSION: .*/COFOUNDER_VERSION: $VERSION -->/" "$SKILL"
 

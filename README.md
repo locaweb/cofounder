@@ -8,7 +8,7 @@ Um marketplace de plugins para o [Claude Code](https://code.claude.com/docs/pt/o
 
 | Plugin | Descrição |
 |--------|-----------|
-| [cofounder](plugins/cofounder/) | Um cofundador movido por IA que guia você da ideia ao app publicado na internet. |
+| [cofounder](skills/) | Um cofundador movido por IA que guia você da ideia ao app publicado na internet. |
 
 ## Licença
 
