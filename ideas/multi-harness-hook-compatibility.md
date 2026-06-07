@@ -455,3 +455,90 @@ fetch dates noted.
 > Claude/Codex/Gemini/Cursor rows predate this doc; re-check the live pages
 > (especially Gemini's timeout unit and Cursor's exact `sessionStart` schema)
 > when implementing §5.
+
+---
+
+## 9. Rollout plan (phased, with progress tracking)
+
+Live clients today are **all Claude**, so this rolls out incrementally: one
+behaviour-neutral foundation change first, then one harness at a time, in the
+order **Cursor → Codex → Copilot → Gemini → Hermes**. **Each phase is merged to
+`main` and tested before the next begins.** Phase 0 must not change observable
+Claude behaviour; every later phase is purely additive — a new per-harness config
+file — and leaves the Claude runtime path untouched.
+
+Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Update these boxes as work
+lands so progress survives across sessions. Work happens on
+`feat/multi-harness-hooks`; each phase lands on `main` via its own focused merge.
+
+### Phase 0 — Universal foundation (Claude-neutral) — `[ ]`
+
+Goal: remove the hard dependency on Claude-specific env vars so the same scripts
+and skills run under any harness, **without changing what Claude does**. This is
+the §5.1 recipe applied across the bundled scripts.
+
+- [ ] Make `hooks/session-start-sync.sh` self-locating: derive the plugin root
+      from `${BASH_SOURCE[0]}`, honouring `CLAUDE_PLUGIN_ROOT` first when set (so
+      Claude/Codex stay byte-identical). Replace the `${CLAUDE_PLUGIN_ROOT:?…}`
+      hard-require. (§5.1)
+- [ ] Confirm project-dir sourcing is already harness-neutral
+      (`PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"` — no change now; stdin `cwd`
+      is added in Phase 5 for Hermes).
+- [ ] Make `scripts/inject-agents-md.sh` self-locating so the plugin root no
+      longer has to be passed as `$2` (skills currently call it with
+      `"${CLAUDE_PLUGIN_ROOT}"`); keep `$2` honoured when present.
+- [ ] Verify `preflight.sh` and `repo-init.sh` need no root passed in (they only
+      need to be invoked); adjust only if they read `CLAUDE_PLUGIN_ROOT`.
+- [ ] Update the three skills (`pre-flight-check`, `install`, `repo-setup`) so
+      their bash commands locate the bundled script via the harness-provided
+      skill directory instead of the Claude-only `${CLAUDE_PLUGIN_ROOT}`
+      substitution. Decide the exact resolution mechanism per harness (§6).
+- [ ] Prove Claude-neutral: confirm runtime behaviour matches `main` and run a
+      real Claude session (SessionStart hook fires, pre-flight passes, install
+      works).
+- [ ] **Merge to `main`; verify with a live Claude client before Phase 1.**
+
+### Phase 1 — Cursor — `[ ]`
+
+- [ ] Add `.cursor/hooks.json` (§5.4): `version:1`, `sessionStart`, flat entries,
+      seconds timeout; locate the script via `$CURSOR_PROJECT_DIR` / self-location.
+- [ ] Decide ship-in-plugin vs write-at-install (§6).
+- [ ] Confirm Cursor injects `sessionStart` stdout as context (activation pointer).
+- [ ] Test under Cursor; **merge to `main`.**
+
+### Phase 2 — Codex — `[ ]`
+
+- [ ] Confirm Codex loads the shared `hooks/hooks.json` and the self-locating
+      script resolves with or without `CLAUDE_PLUGIN_ROOT` (§4.2, §5.2).
+- [ ] Confirm the top-level `description` key is ignored by Codex.
+- [ ] Test under Codex; **merge to `main`** (expected near-zero code change).
+
+### Phase 3 — Copilot — `[ ]`
+
+- [ ] Add `.github/hooks/cofounder.json` (§5.6): `version:1`, `sessionStart`,
+      `bash`+`powershell`, `timeoutSec`, `cwd:"."`.
+- [ ] Resolve the script path (repo-relative, or inject via the in-config `env`).
+- [ ] Decide Windows scope (powershell wrapper vs bash-only) (§6).
+- [ ] Confirm `sessionStart` stdout-as-context behaviour (§6).
+- [ ] Test under Copilot; **merge to `main`.**
+
+### Phase 4 — Gemini — `[ ]`
+
+- [ ] Add the `hooks` block to `.gemini/settings.json` (§5.3): timeout in **ms**.
+- [ ] (Re)create `gemini-extension.json` at the root **from this spec, not copied**
+      from `feat/gemini-extension`, and have `stamp-version.sh` sync its version.
+- [ ] Confirm the Gemini extension install layout and command path against the
+      official Gemini docs (§8).
+- [ ] Test under Gemini; **merge to `main`.**
+
+### Phase 5 — Hermes — `[ ]`
+
+- [ ] Add a stdin branch to `session-start-sync.sh`: read the project dir from the
+      stdin JSON `cwd` when env/`PWD` don't apply (§5.5).
+- [ ] Write the `hooks: { on_session_start: [...] }` block into
+      `~/.hermes/config.yaml` at install time; absolute script path; seconds.
+- [ ] Resolve config-name ambiguity (`config.yaml` vs `cli-config.yaml`) and `~`
+      expansion (§6).
+- [ ] Decide activation-pointer handling (file-only side-effects vs a
+      `pre_llm_call` `{"context": …}` shim) (§6).
+- [ ] Test under Hermes; **merge to `main`.**
