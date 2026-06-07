@@ -471,31 +471,46 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Update these boxes as wor
 lands so progress survives across sessions. Work happens on
 `feat/multi-harness-hooks`; each phase lands on `main` via its own focused merge.
 
-### Phase 0 — Universal foundation (Claude-neutral) — `[ ]`
+### Phase 0 — Universal foundation (Claude-neutral) — `[~]`
 
 Goal: remove the hard dependency on Claude-specific env vars so the same scripts
 and skills run under any harness, **without changing what Claude does**. This is
 the §5.1 recipe applied across the bundled scripts.
 
-- [ ] Make `hooks/session-start-sync.sh` self-locating: derive the plugin root
-      from `${BASH_SOURCE[0]}`, honouring `CLAUDE_PLUGIN_ROOT` first when set (so
-      Claude/Codex stay byte-identical). Replace the `${CLAUDE_PLUGIN_ROOT:?…}`
+Resolution mechanism chosen (supersedes parts of §5.1/§6):
+
+- **Real script files self-locate via `${BASH_SOURCE[0]}` — universally, with NO
+  harness var.** Bash always sets `BASH_SOURCE` to the executing file's own path,
+  so the hook and bundled scripts find the plugin root the same way under every
+  harness. We do **not** prefer `CLAUDE_PLUGIN_ROOT` (nor rely on Codex's compat
+  aliases) — `BASH_SOURCE` is the single mechanism, Claude included.
+- **Skills can't self-locate (an inline `SKILL.md` command has no `BASH_SOURCE`
+  anchor and runs with cwd = project).** All target harnesses implement the agent
+  skills standard and read `SKILL.md`, so instead of any `${VAR}` substitution the
+  `SKILL.md` gives the executable as a path **relative to the `SKILL.md`'s own
+  directory** and leaves it to the agent to resolve and run it (the agent already
+  knows where it loaded the skill from). Harness-agnostic by construction.
+
+- [x] Make `hooks/session-start-sync.sh` self-locating via `${BASH_SOURCE[0]}`
+      with no harness-var dependency at all. Replaced the `${CLAUDE_PLUGIN_ROOT:?…}`
       hard-require. (§5.1)
-- [ ] Confirm project-dir sourcing is already harness-neutral
+- [x] Confirm project-dir sourcing is already harness-neutral
       (`PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"` — no change now; stdin `cwd`
       is added in Phase 5 for Hermes).
-- [ ] Make `scripts/inject-agents-md.sh` self-locating so the plugin root no
-      longer has to be passed as `$2` (skills currently call it with
-      `"${CLAUDE_PLUGIN_ROOT}"`); keep `$2` honoured when present.
-- [ ] Verify `preflight.sh` and `repo-init.sh` need no root passed in (they only
-      need to be invoked); adjust only if they read `CLAUDE_PLUGIN_ROOT`.
-- [ ] Update the three skills (`pre-flight-check`, `install`, `repo-setup`) so
-      their bash commands locate the bundled script via the harness-provided
-      skill directory instead of the Claude-only `${CLAUDE_PLUGIN_ROOT}`
-      substitution. Decide the exact resolution mechanism per harness (§6).
-- [ ] Prove Claude-neutral: confirm runtime behaviour matches `main` and run a
-      real Claude session (SessionStart hook fires, pre-flight passes, install
-      works).
+- [x] Make `scripts/inject-agents-md.sh` self-locating via `${BASH_SOURCE[0]}`;
+      `$2` still honoured as an explicit override when present.
+- [x] Verify `preflight.sh` and `repo-init.sh` need no root passed in (they only
+      need to be invoked); neither references `CLAUDE_PLUGIN_ROOT`, so no change.
+- [x] Update the three skills (`pre-flight-check`, `install`, `repo-setup`) to
+      reference their bundled script by a path **relative to the `SKILL.md`** and
+      let the agent locate/run it — no `${VAR}` substitution. `pre-flight-check`
+      and `repo-setup` use `scripts/<name>.sh`; `install` uses the shared
+      plugin-root script `../../scripts/inject-agents-md.sh` (and drops the
+      now-redundant root argument).
+- [x] Prove Claude-neutral: verified the self-locating scripts produce identical
+      results with no env vars set at all (AGENTS.md re-stamp, CLAUDE.md
+      `@AGENTS.md` ref, non-cofounder projects stay silent). Live Claude
+      SessionStart/pre-flight/install run still pending.
 - [ ] **Merge to `main`; verify with a live Claude client before Phase 1.**
 
 ### Phase 1 — Cursor — `[ ]`

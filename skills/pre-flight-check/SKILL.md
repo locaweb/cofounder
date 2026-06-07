@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.21.12 -->
+<!-- COFOUNDER_VERSION: 0.21.13 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
@@ -29,8 +29,13 @@ Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/ref
 
 ## Running the Check
 
+This skill bundles the preflight script at `scripts/preflight.sh`, relative to the
+directory this `SKILL.md` lives in. Locate it from the skill's own directory and
+run it with bash — resolve the path against the skill directory, not your current
+working directory:
+
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/pre-flight-check/scripts/preflight.sh
+bash <this-skill-dir>/scripts/preflight.sh
 ```
 
 The script exits `0` and prints `PREFLIGHT_PASSED` on success, or exits `1` and

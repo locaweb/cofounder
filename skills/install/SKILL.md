@@ -19,9 +19,13 @@ Install the cofounder into the current project by injecting its instructions int
 
    Then stop — do not continue with the remaining steps.
 
-2. **Inject cofounder instructions into AGENTS.md.** Run the injection script:
+2. **Inject cofounder instructions into AGENTS.md.** Run the injection script. It
+   is bundled at `../../scripts/inject-agents-md.sh`, relative to the directory this
+   `SKILL.md` lives in (a shared script at the plugin root, also used by the
+   SessionStart hook). Locate it from the skill's own directory and run it,
+   passing the project root as the only argument:
    ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/scripts/inject-agents-md.sh "$(pwd)" "${CLAUDE_PLUGIN_ROOT}"
+   bash <this-skill-dir>/../../scripts/inject-agents-md.sh "$(pwd)"
    ```
    This creates or updates `AGENTS.md` with the cofounder's managed section between `<!-- cofounder:begin -->` and `<!-- cofounder:end -->` markers, and adds a managed `@AGENTS.md` reference to `CLAUDE.md` so Claude (which does not read `AGENTS.md` natively) loads it.
 

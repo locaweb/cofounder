@@ -77,10 +77,12 @@ If no remote is configured, ask the user for:
   working directory) as the default. Do not suggest other alternatives.
 - **Visibility** — `private` (default) or `public`.
 
-Then run the init script:
+Then run the init script. It is bundled with this skill at `scripts/repo-init.sh`,
+relative to the directory this `SKILL.md` lives in — locate it from the skill's own
+directory (not your current working directory) and run it with bash:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/repo-setup/scripts/repo-init.sh <repo-name> [private|public]
+bash <this-skill-dir>/scripts/repo-init.sh <repo-name> [private|public]
 ```
 
 The script will:
