@@ -471,7 +471,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Update these boxes as wor
 lands so progress survives across sessions. Work happens on
 `feat/multi-harness-hooks`; each phase lands on `main` via its own focused merge.
 
-### Phase 0 — Universal foundation (Claude-neutral) — `[~]`
+### Phase 0 — Universal foundation (Claude-neutral) — `[x]`
 
 Goal: remove the hard dependency on Claude-specific env vars so the same scripts
 and skills run under any harness, **without changing what Claude does**. This is
@@ -517,7 +517,8 @@ Resolution mechanism chosen (supersedes parts of §5.1/§6):
       locators resolved under the installed layout — `install` ran
       `../../scripts/inject-agents-md.sh`, `pre-flight-check` ran
       `scripts/preflight.sh` (NEEDS_REPO_SETUP + PREFLIGHT_PASSED).
-- [ ] **Merge to `main` before Phase 1.** (Live-client verification done above.)
+- [x] **Merge to `main` before Phase 1.** (Live-client verification done above.)
+      Landed on `main` as merge commit `7127904`, published version 0.21.13.
 
 > **Known gap surfaced during Phase 0 (not yet planned):** the install skill
 > writes `.claude/settings.json` (model pin + permission allowlist + acceptEdits),
