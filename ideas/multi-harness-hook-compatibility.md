@@ -509,9 +509,24 @@ Resolution mechanism chosen (supersedes parts of §5.1/§6):
       now-redundant root argument).
 - [x] Prove Claude-neutral: verified the self-locating scripts produce identical
       results with no env vars set at all (AGENTS.md re-stamp, CLAUDE.md
-      `@AGENTS.md` ref, non-cofounder projects stay silent). Live Claude
-      SessionStart/pre-flight/install run still pending.
-- [ ] **Merge to `main`; verify with a live Claude client before Phase 1.**
+      `@AGENTS.md` ref, non-cofounder projects stay silent). **Live-verified** by
+      installing the branch as a local dev marketplace (detached worktree,
+      version 0.21.13) in a real Claude session: (1) SessionStart hook fired and
+      re-stamped a stale 0.0.0 project to 0.21.13, added the CLAUDE.md ref,
+      preserved user content, and migrated the legacy `agent` key; (2) both skill
+      locators resolved under the installed layout — `install` ran
+      `../../scripts/inject-agents-md.sh`, `pre-flight-check` ran
+      `scripts/preflight.sh` (NEEDS_REPO_SETUP + PREFLIGHT_PASSED).
+- [ ] **Merge to `main` before Phase 1.** (Live-client verification done above.)
+
+> **Known gap surfaced during Phase 0 (not yet planned):** the install skill
+> writes `.claude/settings.json` (model pin + permission allowlist + acceptEdits),
+> which is Claude-Code-only — other harnesses ignore it. The cross-harness
+> `AGENTS.md` "ask the user to allow actions" instruction is the working fallback;
+> a per-harness project-config equivalent (Cursor/Gemini/Codex/…) is a future
+> enhancement, parallel to the per-harness hook configs. (Also: `.claude/settings.json`
+> is a protected path — under Claude *auto mode* the install's write is routed to
+> the classifier and may be blocked; default mode prompts normally.)
 
 ### Phase 1 — Cursor — `[ ]`
 
