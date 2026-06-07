@@ -73,8 +73,7 @@ If `origin` is already set, the repo is fully configured — **do not ask the
 user for a name or visibility, and skip the init script entirely.**
 
 If no remote is configured, ask the user for:
-- **Repository name** — suggest the current folder name (basename of the
-  working directory) as the default. Do not suggest other alternatives.
+- **Repository name** — default: the current folder name.
 - **Visibility** — `private` (default) or `public`.
 
 Then run the init script. It is bundled with this skill at `scripts/repo-init.sh`,
