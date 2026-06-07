@@ -17,7 +17,13 @@
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?CLAUDE_PLUGIN_ROOT required}"
+
+# Resolve the plugin root from the script's own on-disk location. This is a single
+# universal mechanism that works identically under every harness (Claude, Codex,
+# Gemini, Cursor, Hermes, Copilot) and depends on NO harness-provided env var — not
+# even Claude's own CLAUDE_PLUGIN_ROOT, nor Codex's compat aliases.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SETTINGS="$PROJECT_DIR/.claude/settings.json"
 AGENTS_MD="$PROJECT_DIR/AGENTS.md"

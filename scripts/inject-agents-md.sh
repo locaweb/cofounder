@@ -3,12 +3,17 @@
 # and a reference to AGENTS.md into CLAUDE.md so Claude (which does not read AGENTS.md
 # natively) picks them up via the @import syntax. AGENTS.md is the generic instruction
 # file recognized by other harnesses (Gemini, Cursor, etc.).
-# Usage: inject-agents-md.sh <project-root> <plugin-root>
+# Usage: inject-agents-md.sh <project-root> [plugin-root]
 # Idempotent — safe to run every session.
 set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
-PLUGIN_ROOT="${2:?plugin root required}"
+
+# Self-locate the plugin root from the script's own on-disk location — a single
+# universal mechanism that works under every harness without any harness-provided
+# env var. An explicit $2 still overrides it (back-compat for direct callers).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="${2:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 AGENTS_MD="$PROJECT_ROOT/AGENTS.md"
 CLAUDE_MD="$PROJECT_ROOT/CLAUDE.md"
