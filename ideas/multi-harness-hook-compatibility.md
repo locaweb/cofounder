@@ -537,12 +537,41 @@ Resolution mechanism chosen (supersedes parts of §5.1/§6):
 - [ ] Confirm Cursor injects `sessionStart` stdout as context (activation pointer).
 - [ ] Test under Cursor; **merge to `main`.**
 
-### Phase 2 — Codex — `[ ]`
+### Phase 2 — Codex — `[~]`
 
-- [ ] Confirm Codex loads the shared `hooks/hooks.json` and the self-locating
-      script resolves with or without `CLAUDE_PLUGIN_ROOT` (§4.2, §5.2).
-- [ ] Confirm the top-level `description` key is ignored by Codex.
-- [ ] Test under Codex; **merge to `main`** (expected near-zero code change).
+Reconciled with the official Codex plugin docs
+(<https://developers.openai.com/codex/plugins/build>): Codex reuses Claude's
+exact `hooks/hooks.json` (same nested shape, `SessionStart` casing, shell
+expansion, seconds timeout) **but only loads the repo as a plugin via its own
+required manifest `.codex-plugin/plugin.json`**, which is what declares
+`"hooks": "./hooks/hooks.json"` and grants the `CLAUDE_PLUGIN_ROOT` /
+`CLAUDE_PLUGIN_DATA` compat aliases (native vars: `PLUGIN_ROOT`/`PLUGIN_DATA`).
+So the work is the manifest, not the hook — the hook and script are unchanged.
+
+- [x] Add `.codex-plugin/plugin.json` (mirrors the canonical manifest; declares
+      `"skills": "./skills/"` and `"hooks": "./hooks/hooks.json"`). This is the
+      necessary+sufficient artifact for the SessionStart hook to fire under Codex.
+- [x] Extend `scripts/stamp-version.sh` to sync the version into the Codex
+      manifest (jq sets `.version`, preserving the component-path keys — can't
+      `cp` the canonical over it like the legacy shim).
+- [x] `hooks/hooks.json` unchanged — Codex sets `CLAUDE_PLUGIN_ROOT` (alias) so
+      `${CLAUDE_PLUGIN_ROOT}` expands; the Phase 0 `BASH_SOURCE` self-location is
+      the backstop if it doesn't (§4.2, §5.2).
+- [x] Add Codex's **native** marketplace manifest `.agents/plugins/marketplace.json`
+      (rather than leaning on Codex's backward-compat read of
+      `.claude-plugin/marketplace.json`). Native schema: structured `source`
+      object + `policy` block; the cofounder plugin lives at the repo root so
+      `"source": { "source": "local", "path": "./" }`. Keeps the Claude
+      `.claude-plugin/marketplace.json` in place (Claude Code still needs it) —
+      both coexist. Install path: `codex plugin marketplace add gmautner/marketplace`
+      then install `cofounder` from the `/plugins` browser.
+- [ ] Confirm the top-level `description` key in `hooks/hooks.json` is ignored by
+      Codex (its example omits it). Harmless annotation; verify on first run.
+- [ ] Verify on first `marketplace add`: (a) a `local` source `path: "./"` (plugin
+      at marketplace root) resolves — docs only show subdir paths like
+      `./plugins/<name>`; (b) `policy.authentication: "ON_INSTALL"` is right for a
+      no-auth plugin (docs only documented `ON_INSTALL`).
+- [ ] Test under Codex; **merge to `main`.**
 
 ### Phase 3 — Copilot — `[ ]`
 

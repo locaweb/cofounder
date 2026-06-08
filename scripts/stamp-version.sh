@@ -23,3 +23,15 @@ if [ -f "$LEGACY_SHIM" ]; then
   cp "$PLUGIN_JSON" "$LEGACY_SHIM"
   echo "Synced legacy shim at plugins/cofounder/.claude-plugin/plugin.json"
 fi
+
+# Codex plugin manifest. Codex loads the cofounder as a plugin via its own
+# .codex-plugin/plugin.json (parallel to .claude-plugin/plugin.json); that
+# manifest declares ./hooks/hooks.json and grants the CLAUDE_PLUGIN_ROOT alias.
+# It carries extra keys (skills/hooks paths) so we can't cp the canonical over
+# it — update only the version field and leave the rest intact.
+CODEX_MANIFEST="$REPO_DIR/.codex-plugin/plugin.json"
+if [ -f "$CODEX_MANIFEST" ]; then
+  tmp=$(mktemp)
+  jq --arg v "$VERSION" '.version = $v' "$CODEX_MANIFEST" > "$tmp" && mv "$tmp" "$CODEX_MANIFEST"
+  echo "Synced Codex manifest version at .codex-plugin/plugin.json"
+fi
