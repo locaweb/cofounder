@@ -86,6 +86,10 @@ jobs:
           # Increment patch version
           new_ver=$(echo "$current_ver" | awk -F. '{printf "%s.%s.%s", $1, $2, $3+1}')
           jq --arg v "$new_ver" '.version = $v' "$plugin_json" > tmp.json && mv tmp.json "$plugin_json"
+          # Propagate the new version to the legacy shim and the pre-flight
+          # COFOUNDER_VERSION marker, otherwise clients see a stale version and
+          # the pre-flight check falsely reports an update is available.
+          bash scripts/stamp-version.sh
 
       - name: Create PR
         if: steps.compare.outputs.update == 'true'
@@ -100,7 +104,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin --delete "$branch" 2>/dev/null || true
           git checkout -b "$branch"
-          git add skills/ .claude-plugin/plugin.json
+          git add skills/ .claude-plugin/plugin.json plugins/cofounder/.claude-plugin/plugin.json
           git commit -m "Bump supabase/postgres ${current} -> ${latest}"
           git push -u origin "$branch"
 
