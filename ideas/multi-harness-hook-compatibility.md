@@ -565,22 +565,21 @@ So the work is the manifest, not the hook — the hook and script are unchanged.
 - [x] `hooks/hooks.json` unchanged — Codex sets `CLAUDE_PLUGIN_ROOT` (alias) so
       `${CLAUDE_PLUGIN_ROOT}` expands; the Phase 0 `BASH_SOURCE` self-location is
       the backstop if it doesn't (§4.2, §5.2).
-- [x] **Marketplace discovery: use `.claude-plugin/marketplace.json` with the
-      string `"source": "./"`** — NOT a native `.agents/plugins/marketplace.json`.
-      First attempt added `.agents/plugins/marketplace.json` with a structured
-      `{ "source": "local", "path": "./" }`; Codex listed the marketplace and the
-      plugin validated, but `codex plugin list` never showed it: the structured
-      `local` source expects a plugin **subdirectory** (`./plugins/<name>`) and
-      does not resolve a plugin at the marketplace root. The official reference
-      **Shopify/Shopify-AI-Toolkit** (root-level multi-harness layout:
-      `.codex-plugin/`, `.cursor-plugin/`, `.hermes-plugin/`, `gemini-extension.json`,
-      `hooks/` + `skills/` at root) has **no `.agents/` manifest at all** — Codex
-      discovers its root plugin from `.claude-plugin/marketplace.json` whose entry
-      is `"source": "./"` (string). So for a root-level plugin, that file is the
-      first-class Codex discovery path (not merely a deprecated shim); the
-      structured `.agents/` form is only for the `plugins/<name>/` subdir layout.
-      Removed `.agents/`; kept `.claude-plugin/marketplace.json` (`source: "./"`),
-      which Claude already uses — one file serves both.
+- [x] **Marketplace discovery: native `.agents/plugins/marketplace.json` with a
+      `url` source (no path).** Two marketplace files coexist — Claude reads
+      `.claude-plugin/marketplace.json` (`"source": "./"`, unchanged); Codex reads
+      the native `.agents/plugins/marketplace.json`. The key fix (live-tested by
+      the user): a **`local` source with `path: "./"` does NOT resolve a
+      root-level plugin** — `local`/`path` is for the `plugins/<name>/` subdir
+      layout — but a **`url` source pointing at the repo root works**:
+      ```json
+      "source": { "source": "url", "url": "https://github.com/gmautner/marketplace" }
+      ```
+      Codex then lists `cofounder@giba-plugins` and installs it from the repo root
+      (`.../plugins/cache/giba-plugins/cofounder/<version>`). This keeps the
+      root-level single-extension layout (required by Gemini, [[project-root-level-layout]])
+      while using Codex's native catalog rather than the legacy `.claude-plugin`
+      compat read.
 - [ ] Confirm the top-level `description` key in `hooks/hooks.json` is ignored by
       Codex (its example omits it). Harmless annotation; verify when the hook
       fires (plugin-manifest validation does not touch the hook file).

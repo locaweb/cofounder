@@ -1,0 +1,20 @@
+{
+  "name": "giba-plugins",
+  "interface": {
+    "displayName": "Giba Plugins"
+  },
+  "plugins": [
+    {
+      "name": "cofounder",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/gmautner/marketplace"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
