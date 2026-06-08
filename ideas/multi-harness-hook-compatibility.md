@@ -548,9 +548,17 @@ required manifest `.codex-plugin/plugin.json`**, which is what declares
 `CLAUDE_PLUGIN_DATA` compat aliases (native vars: `PLUGIN_ROOT`/`PLUGIN_DATA`).
 So the work is the manifest, not the hook — the hook and script are unchanged.
 
-- [x] Add `.codex-plugin/plugin.json` (mirrors the canonical manifest; declares
-      `"skills": "./skills/"` and `"hooks": "./hooks/hooks.json"`). This is the
-      necessary+sufficient artifact for the SessionStart hook to fire under Codex.
+- [x] Add `.codex-plugin/plugin.json`. **Validated against Codex's own
+      `validate_plugin.py`** (`~/.codex/skills/.system/plugin-creator/scripts/`),
+      which corrected the doc-derived guess: the manifest has a **fixed
+      allowed-key set** (`id,name,version,description,skills,apps,mcpServers,
+      interface,author,homepage,repository,license,keywords`) — **`hooks` is NOT
+      a manifest field**; Codex auto-discovers `hooks/hooks.json` at the default
+      location, so it must be omitted. `author` (object, `name` required) and
+      `interface` (`displayName,shortDescription,longDescription,developerName,
+      category` non-empty + `capabilities` string-array + `defaultPrompt`) are
+      **required**. `skills: "./skills/"` is accepted and the existing
+      Claude-format SKILL.md skills pass skill-manifest validation unchanged.
 - [x] Extend `scripts/stamp-version.sh` to sync the version into the Codex
       manifest (jq sets `.version`, preserving the component-path keys — can't
       `cp` the canonical over it like the legacy shim).
@@ -561,17 +569,21 @@ So the work is the manifest, not the hook — the hook and script are unchanged.
       (rather than leaning on Codex's backward-compat read of
       `.claude-plugin/marketplace.json`). Native schema: structured `source`
       object + `policy` block; the cofounder plugin lives at the repo root so
-      `"source": { "source": "local", "path": "./" }`. Keeps the Claude
-      `.claude-plugin/marketplace.json` in place (Claude Code still needs it) —
-      both coexist. Install path: `codex plugin marketplace add gmautner/marketplace`
-      then install `cofounder` from the `/plugins` browser.
+      `"source": { "source": "local", "path": "./" }`. **Confirmed live**:
+      `codex plugin marketplace add gmautner/marketplace` discovered this manifest
+      from GitHub and the `local` `path: "./"` source resolved the root-level
+      plugin (Codex found and validated `.codex-plugin/plugin.json`). Keeps the
+      Claude `.claude-plugin/marketplace.json` in place (Claude Code still needs
+      it) — both coexist. Install: add the marketplace, then install `cofounder`
+      from the `/plugins` browser.
 - [ ] Confirm the top-level `description` key in `hooks/hooks.json` is ignored by
-      Codex (its example omits it). Harmless annotation; verify on first run.
-- [ ] Verify on first `marketplace add`: (a) a `local` source `path: "./"` (plugin
-      at marketplace root) resolves — docs only show subdir paths like
-      `./plugins/<name>`; (b) `policy.authentication: "ON_INSTALL"` is right for a
-      no-auth plugin (docs only documented `ON_INSTALL`).
-- [ ] Test under Codex; **merge to `main`.**
+      Codex (its example omits it). Harmless annotation; verify when the hook
+      fires (plugin-manifest validation does not touch the hook file).
+- [ ] Confirm the SessionStart hook actually **fires** under Codex (validation +
+      install now pass; `codex plugin list` should show `cofounder` after
+      `codex plugin marketplace upgrade`).
+- [x] Landed on `main` (validated with Codex's `validate_plugin.py`); published
+      version **0.22.0** (minor — Codex is a significant capability addition).
 
 ### Phase 3 — Copilot — `[ ]`
 

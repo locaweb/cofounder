@@ -1,7 +1,20 @@
 {
   "name": "cofounder",
+  "version": "0.22.0",
   "description": "Um cofundador que ajuda a desenvolver e publicar aplicações web.",
-  "version": "0.21.17",
+  "author": {
+    "name": "Gilberto Mautner"
+  },
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "interface": {
+    "displayName": "Cofounder",
+    "shortDescription": "Ajuda a desenvolver e publicar aplicações web.",
+    "longDescription": "Um cofundador que ajuda a desenvolver, validar e publicar aplicações web.",
+    "developerName": "Gilberto Mautner",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Ajude a desenvolver, validar e publicar esta aplicação web."
+    ]
+  }
 }
