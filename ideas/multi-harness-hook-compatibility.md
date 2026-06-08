@@ -575,8 +575,11 @@ So the work is the manifest, not the hook — the hook and script are unchanged.
       ```json
       "source": { "source": "url", "url": "https://github.com/gmautner/marketplace" }
       ```
-      Codex then lists `cofounder@giba-plugins` and installs it from the repo root
-      (`.../plugins/cache/giba-plugins/cofounder/<version>`). This keeps the
+      Codex then lists `cofounder@cofounder` and installs it from the repo root
+      (`.../plugins/cache/cofounder/cofounder/<version>`). The Codex catalog is
+      named `cofounder` (`.agents/` `name`); Claude's `.claude-plugin/marketplace.json`
+      stays `giba-plugins` (live Claude clients reference `cofounder@giba-plugins`).
+      This keeps the
       root-level single-extension layout (required by Gemini, [[project-root-level-layout]])
       while using Codex's native catalog rather than the legacy `.claude-plugin`
       compat read.

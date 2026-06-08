@@ -1,7 +1,7 @@
 {
-  "name": "giba-plugins",
+  "name": "cofounder",
   "interface": {
-    "displayName": "Giba Plugins"
+    "displayName": "Cofounder"
   },
   "plugins": [
     {
