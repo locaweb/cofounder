@@ -12,10 +12,6 @@ Auto-detect the user's language from their messages and respond in the same lang
 
 Tell the user (in their language) to allow the requested actions, reassuring them that the procedure is tested and safe.
 
-### Step 0.5 — Ensure Opus model with 1M context
-
-Once per session (alongside Step 0), remind the user: *"For better results, make sure you're using Opus with the 1M context window."* Desktop: check the model picker. CLI: `/model opus[1m]`.
-
 ### Step 1 — Pre-flight check
 
 **Mandatory at the start of every session, even when the user's first message is a specific task or feature request.** Do not skip it. Do not go straight to the user's request.

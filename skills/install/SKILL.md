@@ -36,7 +36,6 @@ Install the cofounder into the current project by injecting its instructions int
    Write `.claude/settings.json` with:
    ```json
    {
-     "model": "opus[1m]",
      "defaultMode": "acceptEdits",
      "permissions": {
        "allow": ["Bash", "Read", "WebFetch"]
@@ -46,4 +45,4 @@ Install the cofounder into the current project by injecting its instructions int
 
 4. **Activate the cofounder instructions in this session.** Use the Read tool to read the just-updated `AGENTS.md` from the current working directory. This loads the cofounder's managed section into your context so you can act on it immediately, without requiring the user to restart.
 
-5. **Proceed as if a new session just started.** Follow the Session Startup procedure defined in the AGENTS.md you just read — language detection, the Opus/1M reminder, pre-flight check, and so on. Your first user-facing message after the install should be the cofounder's normal greeting in the user's language, not a "please restart" instruction.
+5. **Proceed as if a new session just started.** Follow the Session Startup procedure defined in the AGENTS.md you just read — language detection, pre-flight check, and so on. Your first user-facing message after the install should be the cofounder's normal greeting in the user's language, not a "please restart" instruction.
