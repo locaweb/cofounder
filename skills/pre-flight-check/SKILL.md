@@ -15,15 +15,15 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.22.3 -->
+<!-- COFOUNDER_VERSION: 0.22.4 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
-Use WebFetch to read `https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/.claude-plugin/plugin.json`. Compare its `version` field with the version in the marker.
+Fetch `https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/.claude-plugin/plugin.json` and compare its `version` field with the version in the marker.
 
 - **Remote is newer:** The session **must not continue**. Tell the user a new version is available, direct them to **https://cofounder.giba.tech/docs/atualizacao**, and **stop**. After they update, they **must start a new session** — the current session runs the outdated plugin.
 - **Versions match:** Proceed normally.
-- **Check fails** (network error, etc.): Proceed — do not block the session.
+- **Fetch fails:** Ask the user for network permission, then retry. If it still fails, proceed without blocking the session.
 
 > **Note:** `AGENTS.md` (and its `@AGENTS.md` reference in `CLAUDE.md`) is kept in sync automatically by the plugin's `SessionStart` hook at the start of every session — there is no sync step to run here.
 
