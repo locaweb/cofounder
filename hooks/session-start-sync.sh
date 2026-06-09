@@ -57,9 +57,15 @@ if [ -f "$SETTINGS" ] && command -v jq >/dev/null 2>&1 && jq -e 'has("agent")' "
   fi
 fi
 
-# 3. Activate for the current session. stdout from a SessionStart hook is added to
-#    the session context, so a one-line pointer guarantees activation even on the
-#    very session that just bootstrapped the files above.
-echo "[Cofounder] This is a cofounder project. Read AGENTS.md in the project root and follow it as your operating instructions for this session."
+# 3. Activate for the current session. stdout from a SessionStart hook is injected
+#    into the session context, guaranteeing activation even on the very session
+#    that just bootstrapped the files above. Emit the structured JSON envelope:
+#    Claude Code and Codex both support `hookSpecificOutput.additionalContext` for
+#    SessionStart, and Codex *requires* JSON here — it rejects bare plain-text
+#    stdout as "invalid session start JSON output". This line is the hook's entire
+#    stdout (steps 1 and 2 above redirect theirs away), so it stays valid JSON.
+cat <<'JSON'
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"[Cofounder] This is a cofounder project. Read AGENTS.md in the project root and follow it as your operating instructions for this session."}}
+JSON
 
 exit 0
