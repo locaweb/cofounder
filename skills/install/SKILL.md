@@ -36,6 +36,7 @@ Install the cofounder into the current project by injecting its instructions int
    Write `.claude/settings.json` with:
    ```json
    {
+     "model": "opus[1m]",
      "defaultMode": "acceptEdits",
      "permissions": {
        "allow": ["Bash", "Read", "WebFetch"]
