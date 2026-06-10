@@ -27,7 +27,7 @@ Install the cofounder into the current project by injecting its instructions int
    ```bash
    bash <this-skill-dir>/../../scripts/inject-agents-md.sh "$(pwd)"
    ```
-   This creates or updates `AGENTS.md` with the cofounder's managed section between `<!-- cofounder:begin -->` and `<!-- cofounder:end -->` markers, and adds a managed `@AGENTS.md` reference to `CLAUDE.md` so Claude (which does not read `AGENTS.md` natively) loads it.
+   This creates or updates `AGENTS.md` with a managed section between `<!-- cofounder:begin -->` and `<!-- cofounder:end -->` markers. That section is a short, static pointer to the `cofounder:playbook` skill (which holds the actual operating instructions and is kept current by the plugin update mechanism). It also adds a managed `@AGENTS.md` reference to `CLAUDE.md` so Claude (which does not read `AGENTS.md` natively) loads it.
 
 3. **Configure `.claude/settings.json`.** Check if it already exists.
    - If it exists, read it and merge the keys below (preserve any other existing keys). **Remove the `"agent"` key if present** — it is no longer used.
@@ -44,6 +44,6 @@ Install the cofounder into the current project by injecting its instructions int
    }
    ```
 
-4. **Activate the cofounder instructions in this session.** Use the Read tool to read the just-updated `AGENTS.md` from the current working directory. This loads the cofounder's managed section into your context so you can act on it immediately, without requiring the user to restart.
+4. **Activate the cofounder instructions in this session.** Use the Skill tool to invoke `cofounder:playbook`. This loads the cofounder's operating instructions into your context so you can act on them immediately, without requiring the user to restart.
 
-5. **Proceed as if a new session just started.** Follow the Session Startup procedure defined in the AGENTS.md you just read — language detection, pre-flight check, and so on. Your first user-facing message after the install should be the cofounder's normal greeting in the user's language, not a "please restart" instruction.
+5. **Proceed as if a new session just started.** Follow the Session Startup procedure defined in the `cofounder:playbook` skill you just loaded — language detection, pre-flight check, and so on. Your first user-facing message after the install should be the cofounder's normal greeting in the user's language.

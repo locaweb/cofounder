@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.22.7 -->
+<!-- COFOUNDER_VERSION: 0.22.8 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder plugin.
 
@@ -25,7 +25,7 @@ Fetch `https://raw.githubusercontent.com/gmautner/marketplace/refs/heads/main/.c
 - **Versions match:** Proceed normally.
 - **Fetch fails:** Ask the user for network permission, then retry. If it still fails, proceed without blocking the session.
 
-> **Note:** `AGENTS.md` (and its `@AGENTS.md` reference in `CLAUDE.md`) is kept in sync automatically by the plugin's `SessionStart` hook at the start of every session — there is no sync step to run here.
+> **Note:** `AGENTS.md` (and its `@AGENTS.md` reference in `CLAUDE.md`) carries a static pointer to the `cofounder:playbook` skill, written once by `cofounder:install` — there is no sync step to run here. The actual operating instructions live in the playbook skill and are refreshed by the plugin update mechanism.
 
 ## Running the Check
 
