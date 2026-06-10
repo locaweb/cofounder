@@ -127,7 +127,7 @@ Execute skills by using the Skill tool to invoke `cofounder:<skill-name>` and fo
 
 | Skill | Purpose |
 |-------|---------|
-| `computer-setup` | Install dev tools (Homebrew/Scoop, mise, podman, GH CLI) |
+| `computer-setup` | Install dev tools (Homebrew/winget, mise, podman, GH CLI) |
 | `pre-flight-check` | Version check, environment validation, git sync |
 | `repo-setup` | Initialize Git repo and GitHub remote |
 | `tech-stack` | Build the app (Go + React + Postgres + accessories), project docs |
