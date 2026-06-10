@@ -58,6 +58,11 @@ has_any_marker() {
 # Stage 2 → Stage 3: replace the fat versioned block with the static pointer. The
 # inject is idempotent and matches the begin-marker prefix, so it rewrites the old
 # block in place. No stdout (this session already has the inline instructions).
+#
+# The `|| true` here is deliberate and safe: if the inject fails, the project keeps
+# its working (if stale) fat block and simply retries on the next session — there is
+# nothing to surface and nothing breaks. This is the opposite of the Stage-1 branch
+# below, where a failed inject IS consequential and must not be swallowed.
 if has_versioned_marker; then
   bash "$PLUGIN_ROOT/scripts/inject-agents-md.sh" "$PROJECT_DIR" "$PLUGIN_ROOT" >/dev/null 2>&1 || true
   exit 0
@@ -76,10 +81,23 @@ fi
 
 # Stage 1 legacy rescue.
 
-# 1. Bootstrap AGENTS.md + the @AGENTS.md reference in CLAUDE.md. Never block the session.
-bash "$PLUGIN_ROOT/scripts/inject-agents-md.sh" "$PROJECT_DIR" "$PLUGIN_ROOT" >/dev/null 2>&1 || true
+# 1. Bootstrap AGENTS.md + the @AGENTS.md reference in CLAUDE.md. Here the inject is
+#    the load-bearing migration action, NOT a best-effort sync — so its failure must
+#    not be swallowed with `|| true`. If it fails (e.g. the script is missing under a
+#    concurrent plugin update): there is no AGENTS.md for the activation pointer in
+#    step 3 to point at, and removing the agent key in step 2 would strip the only
+#    remaining signal that this is a cofounder project, so the next session could no
+#    longer detect it for retry. Leave the project untouched in its Stage-1 state and
+#    surface the problem instead of silently lying about a file that was never written.
+#    Still exit 0 — a SessionStart hook must not block the session.
+if ! bash "$PLUGIN_ROOT/scripts/inject-agents-md.sh" "$PROJECT_DIR" "$PLUGIN_ROOT" >/dev/null 2>&1; then
+  cat <<'JSON'
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"[Cofounder] This is a cofounder project, but its AGENTS.md could not be created automatically (the setup step failed). Ask the user to run /cofounder:install to finish configuring the project, and do not assume the cofounder is already set up."}}
+JSON
+  exit 0
+fi
 
-# 2. Drop the obsolete "agent" key from settings.json.
+# 2. Drop the obsolete "agent" key from settings.json (only now that inject succeeded).
 if command -v jq >/dev/null 2>&1 && jq -e 'has("agent")' "$SETTINGS" >/dev/null 2>&1; then
   tmp=$(mktemp)
   if jq 'del(.agent)' "$SETTINGS" > "$tmp" 2>/dev/null; then
