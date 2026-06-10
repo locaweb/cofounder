@@ -4,16 +4,26 @@
 # The cofounder's operating instructions live in the `cofounder:playbook` skill
 # (auto-refreshed by the plugin update mechanism), and the project's AGENTS.md
 # carries a static, unversioned pointer to it that `cofounder:install` writes once.
-# So there is nothing to re-render per session for a normally-installed project —
-# Claude loads it via the @AGENTS.md import in CLAUDE.md, Codex reads AGENTS.md
-# natively, and this hook stays completely silent.
+# So for a project already on that pointer there is nothing to do — Claude loads it
+# via the @AGENTS.md import in CLAUDE.md, Codex reads AGENTS.md natively, and this
+# hook stays completely silent.
 #
-# Its ONLY remaining job is a one-time rescue of legacy projects: those installed
-# before the injection model, which activated via a `.claude/settings.json`
-# "agent": "cofounder:cofounder" key (now removed) and have no AGENTS.md/CLAUDE.md
-# markers. For exactly those, this hook bootstraps the instruction files, drops the
-# obsolete agent key, and emits a one-time activation pointer for the current
-# session. Once migrated (markers present), it does nothing ever again.
+# Its job is to migrate projects from earlier install generations onto the pointer,
+# each migration being one-time (afterwards the project matches the silent case):
+#
+#   Stage 1 — Legacy agent-key: installed before the injection model, activated via
+#             a `.claude/settings.json` "agent": "cofounder:cofounder" key (now gone)
+#             and with no AGENTS.md/CLAUDE.md markers. Rescue = inject the files,
+#             drop the obsolete key, and emit a one-time activation pointer for this
+#             session (its CLAUDE.md did not exist when the harness loaded context).
+#
+#   Stage 2 — Fat versioned block: AGENTS.md/CLAUDE.md carry the old managed block
+#             whose begin marker is stamped `COFOUNDER_VERSION: x.y.z` and which
+#             inlined the full instructions. Convert = re-inject, replacing the fat
+#             block with the static pointer. No echo: CLAUDE.md already exists, so
+#             this session already loaded the (complete, if stale) inline copy.
+#
+#   Stage 3 — Static pointer: bare `<!-- cofounder:begin -->` marker. Nothing to do.
 set -euo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -29,18 +39,42 @@ SETTINGS="$PROJECT_DIR/.claude/settings.json"
 AGENTS_MD="$PROJECT_DIR/AGENTS.md"
 CLAUDE_MD="$PROJECT_DIR/CLAUDE.md"
 
-# Already migrated (new injection model): managed markers present in either
-# instruction file. Static content + native loading — nothing to do, stay silent.
-for f in "$AGENTS_MD" "$CLAUDE_MD"; do
-  [ -f "$f" ] && grep -q '<!-- cofounder:begin' "$f" 2>/dev/null && exit 0
-done
+# A versioned begin marker (`COFOUNDER_VERSION: ...`) means a Stage-2 fat block.
+has_versioned_marker() {
+  for f in "$AGENTS_MD" "$CLAUDE_MD"; do
+    [ -f "$f" ] && grep -q '<!-- cofounder:begin COFOUNDER_VERSION' "$f" 2>/dev/null && return 0
+  done
+  return 1
+}
 
-# Not migrated and no legacy agent key → not a cofounder project. Stay silent.
+# Any begin marker at all (bare pointer or versioned).
+has_any_marker() {
+  for f in "$AGENTS_MD" "$CLAUDE_MD"; do
+    [ -f "$f" ] && grep -q '<!-- cofounder:begin' "$f" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+# Stage 2 → Stage 3: replace the fat versioned block with the static pointer. The
+# inject is idempotent and matches the begin-marker prefix, so it rewrites the old
+# block in place. No stdout (this session already has the inline instructions).
+if has_versioned_marker; then
+  bash "$PLUGIN_ROOT/scripts/inject-agents-md.sh" "$PROJECT_DIR" "$PLUGIN_ROOT" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+# Stage 3: already on the static pointer — nothing to do, stay silent.
+if has_any_marker; then
+  exit 0
+fi
+
+# No markers. Either a Stage-1 legacy project (has the agent key) or not a cofounder
+# project at all. If there is no legacy agent key, stay silent.
 if ! { [ -f "$SETTINGS" ] && grep -q '"agent"[[:space:]]*:[[:space:]]*"cofounder' "$SETTINGS" 2>/dev/null; }; then
   exit 0
 fi
 
-# Legacy, unmigrated project: perform the one-time rescue.
+# Stage 1 legacy rescue.
 
 # 1. Bootstrap AGENTS.md + the @AGENTS.md reference in CLAUDE.md. Never block the session.
 bash "$PLUGIN_ROOT/scripts/inject-agents-md.sh" "$PROJECT_DIR" "$PLUGIN_ROOT" >/dev/null 2>&1 || true
