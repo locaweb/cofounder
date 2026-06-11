@@ -369,9 +369,7 @@ jq = "1"
 python.compile = false
 ```
 
-The `python.compile = false` setting is required: it restricts Python to precompiled binaries. Without it, when a new CPython patch is published but its precompiled build is not yet available, mise falls back to compiling Python from source — which fails on machines without build dependencies. With the setting, mise resolves `3.14` to the newest *precompiled* patch instead.
-
-If an existing project's `mise.toml` lacks the `[settings]` section, add it.
+`python.compile = false` is required — it pins Python to the newest *precompiled* patch instead of compiling from source (which fails without build deps). Add the `[settings]` section to existing projects' `mise.toml` if missing.
 
 Then trust and install the tools:
 
