@@ -369,7 +369,7 @@ jq = "1"
 python.compile = false
 ```
 
-`python.compile = false` is required — it pins Python to the newest *precompiled* patch instead of compiling from source (which fails without build deps). Add the `[settings]` section to existing projects' `mise.toml` if missing.
+`python.compile = false` is required — it pins Python to the newest *precompiled* patch instead of compiling from source (which fails without build deps).
 
 Then trust and install the tools:
 
@@ -386,20 +386,21 @@ All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go
 
 **Run on every session** (this is not part of service startup — it is a standalone step that must execute every time this skill is loaded).
 
-First update mise itself:
+1. Ensure `mise.toml` has the `[settings]` section above; add it if missing.
+2. Update mise itself:
 
-```bash
-# macOS:
-brew upgrade mise
-# Linux, WSL, Windows:
-mise self-update -y
-```
+   ```bash
+   # macOS:
+   brew upgrade mise
+   # Linux, WSL, Windows:
+   mise self-update -y
+   ```
 
-Then upgrade the project tools:
+3. Upgrade the project tools:
 
-```bash
-mise upgrade
-```
+   ```bash
+   mise upgrade
+   ```
 
 Use `mise upgrade`, not `mise install` — `install` skips already-installed versions; `upgrade` checks for newer patches.
 
