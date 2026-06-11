@@ -386,17 +386,14 @@ All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go
 
 **Run on every session** (this is not part of service startup — it is a standalone step that must execute every time this skill is loaded).
 
-First update mise itself. The command depends on how mise was installed (per **computer-setup**):
+First update mise itself:
 
 ```bash
-# macOS (mise installed via Homebrew — Homebrew builds disable self-update):
+# macOS:
 brew upgrade mise
-
-# Linux, WSL, and Windows (mise installed via mise.run or winget):
+# Linux, WSL, Windows:
 mise self-update -y
 ```
-
-Both commands are idempotent — when mise is already current they print a notice and exit 0.
 
 Then upgrade the project tools:
 
