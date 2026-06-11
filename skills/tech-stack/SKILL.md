@@ -364,7 +364,14 @@ sqlc = "1"
 python = "3.14"
 node = "24"
 jq = "1"
+
+[settings]
+python.compile = false
 ```
+
+The `python.compile = false` setting is required: it restricts Python to precompiled binaries. Without it, when a new CPython patch is published but its precompiled build is not yet available, mise falls back to compiling Python from source — which fails on machines without build dependencies. With the setting, mise resolves `3.14` to the newest *precompiled* patch instead.
+
+If an existing project's `mise.toml` lacks the `[settings]` section, add it.
 
 Then trust and install the tools:
 
@@ -379,7 +386,21 @@ All tool invocations in this skill use the `mise x` command (e.g., `mise x -- go
 
 ### Upgrade tools
 
-**Run on every session** (this is not part of service startup — it is a standalone step that must execute every time this skill is loaded):
+**Run on every session** (this is not part of service startup — it is a standalone step that must execute every time this skill is loaded).
+
+First update mise itself. The command depends on how mise was installed (per **computer-setup**):
+
+```bash
+# macOS (mise installed via Homebrew — Homebrew builds disable self-update):
+brew upgrade mise
+
+# Linux, WSL, and Windows (mise installed via mise.run or winget):
+mise self-update -y
+```
+
+Both commands are idempotent — when mise is already current they print a notice and exit 0.
+
+Then upgrade the project tools:
 
 ```bash
 mise upgrade
