@@ -149,7 +149,10 @@ builder:
   arch: amd64
   cache:
     type: gha
-    options: mode=max
+    # ignore-error=true: GitHub's cache v2 backend (Azure) fails intermittently
+    # ("error writing layer blob: not_found", moby/buildkit#5790); without this
+    # flag a cache hiccup aborts an otherwise-successful deploy.
+    options: mode=max,ignore-error=true
 
 env:
   clear:
