@@ -419,7 +419,7 @@ podman run -d \
   --name "$CONTAINER_NAME" \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  supabase/postgres:17.6.1.133
+  supabase/postgres:17.6.1.136
 
 # Verify it's ready (uses container exec instead of pg_isready)
 podman exec "$CONTAINER_NAME" pg_isready -U postgres
