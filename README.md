@@ -12,4 +12,4 @@ Um marketplace de plugins para o [Claude Code](https://code.claude.com/docs/pt/o
 
 ## Licença
 
-Apache 2.0 — veja [LICENSE](LICENSE).
+Functional Source License (FSL-1.1-ALv2) — veja [LICENSE](LICENSE).
