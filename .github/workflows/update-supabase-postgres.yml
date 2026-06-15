@@ -104,7 +104,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git push origin --delete "$branch" 2>/dev/null || true
           git checkout -b "$branch"
-          git add skills/ .claude-plugin/plugin.json plugins/cofounder/.claude-plugin/plugin.json
+          git add skills/ .claude-plugin/plugin.json plugins/cofounder/.claude-plugin/plugin.json .codex-plugin/plugin.json
           git commit -m "Bump supabase/postgres ${current} -> ${latest}"
           git push -u origin "$branch"
 

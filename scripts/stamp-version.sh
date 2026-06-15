@@ -9,7 +9,10 @@ PLUGIN_JSON="$REPO_DIR/.claude-plugin/plugin.json"
 VERSION=$(jq -r .version "$PLUGIN_JSON")
 SKILL="$REPO_DIR/skills/pre-flight-check/SKILL.md"
 
-sed -i '' "s/COFOUNDER_VERSION: .*/COFOUNDER_VERSION: $VERSION -->/" "$SKILL"
+# Portable in-place edit: BSD sed (macOS) and GNU sed (Linux CI) disagree on
+# the -i flag's syntax, so write through a temp file instead.
+tmp=$(mktemp)
+sed "s/COFOUNDER_VERSION: .*/COFOUNDER_VERSION: $VERSION -->/" "$SKILL" > "$tmp" && mv "$tmp" "$SKILL"
 
 echo "Stamped version $VERSION into $(basename "$SKILL")"
 
