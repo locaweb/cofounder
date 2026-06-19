@@ -55,6 +55,11 @@ setup_project() {
   local p; p="$(mktemp -d "$BASE/cofoundertest.XXXXXX")"
   ( cd "$p" && bash "$INSTALL_SH" ) >"$p/.bootstrap.log" 2>&1
   if [[ -n "$prd" ]]; then mkdir -p "$p/docs"; cp "$prd" "$p/docs/PRD.md"; fi
+  # Keep test-harness artifacts out of the project's git, so the cofounder's
+  # pre-flight auto-sync (git add -A) never commits them and the agent doesn't
+  # notice/react to them. Stays at known paths so watch-run.sh still works.
+  printf '%s\n' .transcript.jsonl .transcript.jsonl.err .bootstrap.log \
+                .judge.log .gobuild.log .tsc.log >> "$p/.gitignore"
   local bare="$p.git"; git init --bare -q -b main "$bare"
   ( cd "$p" && git init -b main -q && git add -A && git commit -qm init \
       && git remote add origin "$bare" && git push -u origin main -q ) >>"$p/.bootstrap.log" 2>&1
