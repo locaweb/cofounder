@@ -136,3 +136,70 @@ each minute and a `DONE` line at the end. `watch-run.sh` auto-discovers the newe
   subagents: add `Bash(tests/agent/test-agent.sh:*)` to `.claude/settings.local.json`.
 - Wiring the other harnesses = filling in the stubs in `run-agent.sh`.
 
+## Status & what's left (pick up here)
+
+Snapshot for resuming in a fresh session. Everything below is on `main`.
+
+### Implemented (all green, local)
+
+| Layer | Command | Asserts |
+| ----- | ------- | ------- |
+| Step 1 — install.sh Linux/WSL | `tests/install/test-install.sh` | 27 |
+| Step 2 — preflight.sh + repo-init.sh | `tests/scripts/test-scripts.sh` | 29 |
+| Step 4 — a2 (session start) | `tests/agent/test-agent.sh a2 [harness] [runs]` | 4 |
+| Step 4 — e2e (scaffold A4+A5) | `tests/agent/test-agent.sh e2e` | 6 |
+| Step 4 — deploy (app-deploy config) | `tests/agent/test-agent.sh deploy` | 16 |
+
+Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
+(a2 passes on both); **codex**/**gemini** are stubs.
+
+### Skill coverage
+
+- ✓ computer-setup (Linux), pre-flight-check, playbook, tech-stack, testing
+- ◑ repo-setup (guard branches only — real `gh repo create` not tested)
+- ◑ app-deploy (config generation tested; **live deploy not tested**)
+- ◑ frontend-design (exercised in e2e, no design-quality assertion)
+- ⬜ computer-setup **macOS** leg (Step 3)
+- ⬜ ssh-key-rotation
+
+### Remaining work, roughly ordered
+
+1. **Step 3 — install.sh macOS leg.** Needs a *clean* Mac (a `tart` VM or a
+   spare/factory-reset machine). Port the Step 1 scenarios (A0 tooling: Homebrew
+   + `podman machine` init/memory/Rosetta; A1 bootstrap) to run there. Can't run
+   in a container.
+2. **Wire codex + gemini** in `run-agent.sh` (stubs today): `codex exec "<p>"`
+   and `gemini -p "<p>" --yolo --output-format json`. Then run `a2`/`e2e`/`deploy`
+   across them. Note: the judge distiller greps Claude/OpenCode JSON shapes
+   (`"text"`/`"name"`) — re-check it against codex/gemini transcript formats.
+3. **repo-setup real path** — `gh repo create` + push, against a dedicated test
+   GitHub org (so it doesn't touch a real account). Today only the offline
+   guard branches are covered.
+4. **frontend-design** — add a design-quality check (e.g. an LLM-judge over a
+   Playwright screenshot for obvious breakage), since e2e only exercises it.
+5. **Real-infra (gated)** — app-deploy **live deploy** (A7/A8) + **ssh-key-rotation**.
+   Need a Locaweb Cloud test account, unique `ci-<id>` env names, and
+   **guaranteed teardown** (`always()`) + a nightly orphan sweeper. See
+   `ideas/test-plan.md` §4.6.
+6. **(optional) deterministic test asserts** — make e2e run `go test`/`vitest`
+   itself against the live DB instead of trusting the agent's "tests pass"
+   narration. Deferred (current approach accepted).
+
+### Gotchas already paid for (don't rediscover)
+
+- Agent runner needs the `Bash(tests/agent/test-agent.sh:*)` allow rule in
+  `.claude/settings.local.json` (it spawns `bypassPermissions` subagents); adding
+  it must be done by the user (the classifier blocks self-modification).
+- This machine has **GNU coreutils** on PATH: `stat` is GNU (`-c %Y`, not `-f %m`),
+  and `timeout`/`gtimeout` exist. `xargs -r` is *not* supported by BSD xargs.
+- macOS mktemp dirs sit ~depth 5 under `/var/folders` (don't `-maxdepth 4`), and
+  the Monitor shell doesn't export `TMPDIR`.
+- The judge digest **drops file contents and tool args** (only narration + tool
+  names + signal counts survive). Never put a fact in the judge rubric that (a) is
+  already covered by a deterministic assert, or (b) only exists inside written
+  files — the judge can't see it. See the `deploy` rubric note.
+- Test-harness artifacts are gitignored inside throwaway projects so the
+  cofounder's pre-flight auto-sync doesn't commit them.
+- Real `skills/` changes need a `plugin.json` patch bump + `scripts/stamp-version.sh`
+  (test-only changes don't).
+
