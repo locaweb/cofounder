@@ -6,30 +6,50 @@
 # matrix shows "not yet wired" instead of silently passing.
 #
 # Usage:
-#   run-agent.sh --harness claude --cwd <dir> --prompt "<text>" --out <file>
+#   run-agent.sh --harness claude --cwd <dir> --prompt "<text>" --out <file> \
+#                [--timeout <seconds>]
 #
 # Writes the transcript to --out (stream-json JSONL for Claude); stderr to
 # <out>.err. Exits with the agent's exit code (3 = harness stub).
 set -uo pipefail
 
-HARNESS="" CWD="." OUT="/dev/stdout" PROMPT=""
+HARNESS="" CWD="." OUT="/dev/stdout" PROMPT="" TIMEOUT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --harness) HARNESS="$2"; shift 2 ;;
     --cwd)     CWD="$2";     shift 2 ;;
     --out)     OUT="$2";     shift 2 ;;
     --prompt)  PROMPT="$2";  shift 2 ;;
+    --timeout) TIMEOUT="$2"; shift 2 ;;
     *) echo "run-agent: unknown arg: $1" >&2; exit 2 ;;
   esac
 done
 [[ -n "$HARNESS" ]] || { echo "run-agent: --harness required" >&2; exit 2; }
 [[ -n "$PROMPT"  ]] || { echo "run-agent: --prompt required"  >&2; exit 2; }
 
+# Run an EXTERNAL command with an optional timeout. 0 = no limit. Prefer a real
+# timeout binary (clean process-group kill); fall back to a watchdog otherwise.
+run_with_timeout() {
+  local secs="$1"; shift
+  if [[ "$secs" -le 0 ]]; then "$@"; return $?; fi
+  local tbin=""
+  command -v timeout  >/dev/null 2>&1 && tbin=timeout
+  [[ -z "$tbin" ]] && command -v gtimeout >/dev/null 2>&1 && tbin=gtimeout
+  if [[ -n "$tbin" ]]; then "$tbin" -k 10 "$secs" "$@"; return $?; fi
+  "$@" &
+  local pid=$!
+  ( sleep "$secs"; kill -TERM "$pid" 2>/dev/null; sleep 10; kill -KILL "$pid" 2>/dev/null ) &
+  local w=$!
+  wait "$pid"; local rc=$?
+  kill "$w" 2>/dev/null; wait "$w" 2>/dev/null
+  return "$rc"
+}
+
 case "$HARNESS" in
   claude)
-    ( cd "$CWD" && claude -p "$PROMPT" \
-        --output-format stream-json --verbose \
-        --permission-mode bypassPermissions ) >"$OUT" 2>"${OUT}.err"
+    ( cd "$CWD" && run_with_timeout "$TIMEOUT" \
+        claude -p "$PROMPT" --output-format stream-json --verbose \
+               --permission-mode bypassPermissions ) >"$OUT" 2>"${OUT}.err"
     ;;
   codex)    echo "run-agent: codex not wired yet (codex exec ...)" >&2; exit 3 ;;
   gemini)   echo "run-agent: gemini not wired yet (gemini -p --yolo ...)" >&2; exit 3 ;;

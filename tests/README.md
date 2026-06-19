@@ -56,19 +56,29 @@ fast, no container, no agent:
 ## Step 4 — run it
 
 ```bash
-tests/agent/test-agent.sh        # one run
-tests/agent/test-agent.sh 5      # pass-rate over 5 runs
+tests/agent/test-agent.sh              # a2 (session start), 1 run
+tests/agent/test-agent.sh a2 5         # a2, pass-rate over 5 runs
+tests/agent/test-agent.sh e2e          # e2e scaffold from a fixed PRD, 1 run
+tests/agent/test-agent.sh e2e 3        # e2e, pass-rate over 3 runs
 ```
 
-Drives a **headless agent** on this machine through scenario **A2** (session
-start on a neutral greeting). Per run it bootstraps a throwaway cofounder
+Drives a **headless agent** on this machine. Per run it bootstraps a throwaway cofounder
 project (real `install.sh`) with a local bare git remote — so pre-flight syncs
-cleanly and does **not** trigger repo-setup (no GitHub side effects) — then:
+cleanly and does **not** trigger repo-setup (no GitHub side effects).
 
-- **deterministic asserts** on the transcript: non-empty, `[Cofounder]` tag,
+**a2 (session start)** — neutral greeting:
+- deterministic asserts on the transcript: non-empty, `[Cofounder]` tag,
   pre-flight ran;
-- **LLM judge** (`judge.sh`) for what greps can't prove: pre-flight ran *first*,
+- LLM judge (`judge.sh`) for what greps can't prove: pre-flight ran *first*,
   persona + user's language (pt), and "asked what to build" (no PRD invented).
+
+**e2e (scaffold)** — A4+A5, from the fixed PRD at `fixtures/prd-tasks.md`:
+- deterministic asserts: `backend/`+`frontend/` exist, `go build ./...` compiles,
+  `tsc -b` passes (the robust, hermetic backbone);
+- LLM judge: implemented per PRD, ran Go + frontend tests *green*, followed stack
+  conventions (sqlc/migrations/mise), and did **not** deploy;
+- starts a podman DB container during the run; cleaned up (container + stray
+  processes) after each run. Long (several minutes) and token-heavy.
 
 Pieces (the reusable core for all future agent tests):
 - `run-agent.sh` — harness adapter. Claude wired (`claude -p --output-format
