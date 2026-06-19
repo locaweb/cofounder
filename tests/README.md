@@ -87,7 +87,29 @@ Pieces (the reusable core for all future agent tests):
 - `judge.sh` — LLM-as-judge, runs in a neutral cwd, emits `PASS`/`FAIL`.
 - `test-agent.sh` — the A2 scenario + pass-rate loop.
 
-Notes:
+### Watching a long run (per-minute progress)
+
+The `e2e` scaffold takes several minutes. To follow it live instead of staring at
+a blank terminal, run the test in the background and tail progress with
+`watch-run.sh`, which prints a one-line snapshot per minute (transcript event
+count, backend/frontend presence, DB status, the agent's latest action) and exits
+when the run finishes.
+
+Standalone:
+
+```bash
+tests/agent/test-agent.sh e2e > /tmp/e2e.out 2>&1 &
+tests/agent/watch-run.sh /tmp/e2e.out
+```
+
+From Claude Code, the reproducible pattern is: launch the run with the Bash tool's
+`run_in_background`, then point the **Monitor** tool at
+`tests/agent/watch-run.sh <the run's output file>` — you get a chat notification
+each minute and a `DONE` line at the end. `watch-run.sh` auto-discovers the newest
+`cofoundertest.*` project and is macOS-safe (no `xargs -r`).
+
+### Other notes
+
 - **Spends tokens** (one agent run + one judge call per iteration) and is
   **non-deterministic** — hence the pass-rate loop rather than a single gate.
 - Needs a Bash allow rule for the runner, since it spawns `bypassPermissions`
