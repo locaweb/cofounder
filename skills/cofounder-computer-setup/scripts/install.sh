@@ -55,10 +55,12 @@ err()  { printf '%sxx%s  %s\n' "$C_RED"    "$C_RESET" "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # ---------- install state (drives the closing "próximos passos" message) ----------
-# NEED_RESTART: set when a core tool is missing from the *inherited* (parent
-# shell) PATH at startup — once we install it, the parent shell won't see it
-# until a new terminal is opened. IN_PROJECT: whether we configured a project
-# (ran inside a project dir) vs. ran in $HOME for machine setup only.
+# NEED_RESTART: set by any install step that ACTUALLY installs a tool — that
+# tool won't be on the parent shell's PATH until a new terminal is opened
+# (Homebrew in particular requires this). Generalist on purpose: if anything
+# was newly installed, suggest a restart rather than guessing which tools need
+# one. IN_PROJECT: whether we configured a project (ran inside a project dir)
+# vs. ran in $HOME for machine setup only.
 NEED_RESTART=0
 IN_PROJECT=0
 
@@ -93,6 +95,7 @@ install_homebrew_macos() {
   fi
   info "Instalando o Homebrew (sua senha pode ser solicitada)..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  NEED_RESTART=1
   # Make brew available for the rest of this script
   if ! have brew; then
     eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null \
@@ -109,6 +112,7 @@ install_brew_pkg() {
   fi
   info "Instalando $pkg via Homebrew..."
   brew install "$pkg"
+  NEED_RESTART=1
 }
 
 setup_podman_machine_macos() {
@@ -207,6 +211,7 @@ install_podman_linux() {
       exit 1
       ;;
   esac
+  NEED_RESTART=1
 }
 
 install_mise_linux() {
@@ -221,6 +226,7 @@ install_mise_linux() {
   fi
   info "Instalando mise..."
   curl -fsSL https://mise.run | sh
+  NEED_RESTART=1
   persist_local_bin_on_path
 }
 
@@ -311,6 +317,7 @@ install_gh_linux() {
       exit 1
       ;;
   esac
+  NEED_RESTART=1
 }
 
 # ---------- project bootstrap ----------
@@ -474,15 +481,6 @@ print_next_steps() {
 main() {
   local os
   os="$(uname -s)"
-
-  # Snapshot the inherited PATH *before* installing anything: any core tool
-  # missing now won't reach the parent shell until a new terminal is opened,
-  # which is exactly what NEED_RESTART signals to print_next_steps.
-  if have mise && have podman && have gh; then
-    NEED_RESTART=0
-  else
-    NEED_RESTART=1
-  fi
 
   case "$os" in
     Darwin) install_macos ;;
