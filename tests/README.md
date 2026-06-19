@@ -56,11 +56,15 @@ fast, no container, no agent:
 ## Step 4 — run it
 
 ```bash
-tests/agent/test-agent.sh              # a2 (session start), 1 run
-tests/agent/test-agent.sh a2 5         # a2, pass-rate over 5 runs
-tests/agent/test-agent.sh e2e          # e2e scaffold from a fixed PRD, 1 run
-tests/agent/test-agent.sh e2e 3        # e2e, pass-rate over 3 runs
+tests/agent/test-agent.sh                 # a2 (session start), claude, 1 run
+tests/agent/test-agent.sh a2 5            # a2, pass-rate over 5 runs
+tests/agent/test-agent.sh a2 opencode     # a2 under OpenCode
+tests/agent/test-agent.sh e2e             # e2e scaffold from a fixed PRD
+tests/agent/test-agent.sh deploy          # app-deploy config generation (no real infra)
 ```
+
+Args are positional: `test-agent.sh [scenario] [harness] [runs]` — scenario
+`a2|e2e|deploy`, harness `claude|codex|gemini|opencode`.
 
 Drives a **headless agent** on this machine. Per run it bootstraps a throwaway cofounder
 project (real `install.sh`) with a local bare git remote — so pre-flight syncs
@@ -79,6 +83,19 @@ cleanly and does **not** trigger repo-setup (no GitHub side effects).
   conventions (sqlc/migrations/mise), and did **not** deploy;
 - starts a podman DB container during the run; cleaned up (container + stray
   processes) after each run. Long (several minutes) and token-heavy.
+
+**deploy (config-structure)** — app-deploy coverage **without real infra**, from
+the pre-built-app fixture at `fixtures/deploy-app/`:
+- drives the agent to generate the *preview* deploy config files only (Kamal
+  config + secrets templates + GitHub Actions workflow) with placeholder creds;
+- deterministic asserts on the generated files: `forward_headers: false`,
+  `app_port: 80`, `/up`, `proxy ssl: true`, `nip.io` host, `provision.yml@v1`
+  two-job workflow, `.kamal/secrets*` present;
+- LLM judge: used placeholders, did **not** actually provision/deploy/create
+  secrets/generate SSH keys;
+- safe by construction: the project's remote is a local bare repo (no GitHub
+  Actions), and provision/kamal would fail without real credentials. The live
+  deploy itself stays gated behind a Locaweb test account (not covered here).
 
 Pieces (the reusable core for all future agent tests):
 - `run-agent.sh` — harness adapter. **Claude** (`claude -p --output-format

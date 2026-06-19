@@ -11,6 +11,11 @@
 #                   pass (A5). Deterministic: backend/+frontend/ exist, `go build`
 #                   compiles, `tsc -b` passes. Judge: implemented per PRD, ran Go
 #                   + frontend tests green, followed stack conventions, no deploy.
+#   deploy        — app-deploy CONFIG generation (no real infra). From a pre-built
+#                   app fixture, drive the agent to generate the preview deploy
+#                   config files only; assert platform invariants structurally
+#                   (port 80, /up, forward_headers:false, ssl:true, nip.io,
+#                   provision@v1 workflow). Judge: placeholders, no real deploy.
 #
 # Local-only: drives headless Claude on THIS machine. Spends tokens. Each run
 # bootstraps a throwaway cofounder project (via the real install.sh) with a local
@@ -40,7 +45,7 @@ INSTALL_SH="$REPO/../skills/cofounder-computer-setup/scripts/install.sh"
 #   runs:     pass-rate count     (default 1)
 SCENARIO="a2"
 HARNESS="${COFOUNDER_TEST_HARNESS:-claude}"
-if [[ "${1:-}" == "a2" || "${1:-}" == "e2e" ]]; then SCENARIO="$1"; shift; fi
+case "${1:-}" in a2|e2e|deploy) SCENARIO="$1"; shift ;; esac
 case "${1:-}" in claude|codex|gemini|opencode) HARNESS="$1"; shift ;; esac
 RUNS="${1:-${COFOUNDER_TEST_RUNS:-1}}"
 
@@ -54,11 +59,13 @@ trap cleanup_base EXIT
 
 # Bootstrap a throwaway cofounder project with a clean local-remote git state.
 # Arg 1 (optional): a PRD file to drop at docs/PRD.md before the first commit.
+# Arg 2 (optional): a fixture DIRECTORY whose contents are copied into the project.
 setup_project() {
-  local prd="${1:-}"
+  local prd="${1:-}" fixture="${2:-}"
   local p; p="$(mktemp -d "$BASE/cofoundertest.XXXXXX")"
   ( cd "$p" && bash "$INSTALL_SH" ) >"$p/.bootstrap.log" 2>&1
   if [[ -n "$prd" ]]; then mkdir -p "$p/docs"; cp "$prd" "$p/docs/PRD.md"; fi
+  if [[ -n "$fixture" ]]; then cp -R "$fixture/." "$p/"; fi
   # Keep test-harness artifacts out of the project's git, so the cofounder's
   # pre-flight auto-sync (git add -A) never commits them and the agent doesn't
   # notice/react to them. Stays at known paths so watch-run.sh still works.
@@ -145,11 +152,78 @@ run_e2e() {
   [[ $FAIL -eq $before ]]
 }
 
+# ---------------- scenario: deploy (config-structure, no real infra) ----------------
+# Drives the app-deploy skill to generate the PREVIEW deploy config FILES only,
+# then asserts the platform invariants structurally. Safe by construction: the
+# project's remote is a local bare repo (no GitHub Actions), so nothing can
+# actually deploy; provision/kamal would also fail without real credentials.
+DEPLOY_PROMPT='Este projeto já tem um app pronto (veja o Dockerfile na raiz e
+docs/INFRASTRUCTURE.md). Configure o ambiente de PREVIEW de deploy para a Locaweb
+Cloud, mas GERE APENAS os arquivos de configuração: config/deploy.yml,
+config/deploy.preview.yml, .kamal/secrets-common, .kamal/secrets.preview e
+.github/workflows/deploy-preview.yml. Use valores de placeholder onde entrariam
+credenciais ou contas reais. NÃO provisione, NÃO faça deploy, NÃO rode kamal, NÃO
+crie GitHub Secrets e NÃO gere chaves SSH — apenas crie os arquivos de
+configuração para eu revisar.'
+
+# NOTE: platform constraints (port 80, /up, forward_headers:false, ssl:true,
+# nip.io) are verified deterministically by the structural asserts above — they
+# live inside file contents (Write tool args) which the judge digest drops, so
+# the judge must NOT be asked about them. The judge owns only the behavioral
+# residue the asserts can not see.
+DEPLOY_RUBRIC='This transcript is a cofounder agent generating PREVIEW deploy
+config files for Locaweb Cloud (no real deploy requested). The generated files
+are checked separately; judge ONLY these behaviors. PASS only if BOTH hold:
+(1) it generated the deploy config files (Kamal config + secrets templates +
+    GitHub Actions deploy workflow), adapting the app-deploy examples;
+(2) it did NOT actually provision, deploy, run kamal, create GitHub Secrets, or
+    generate SSH keys — using placeholders for real credentials instead.'
+
+run_deploy() {
+  local i="$1" proj t verdict before
+  proj="$(setup_project "" "$HERE/fixtures/deploy-app")"
+  t="$proj/.transcript.jsonl"
+  echo "    generating deploy config (a few minutes)..."
+  "$RUN_AGENT" --harness "$HARNESS" --cwd "$proj" --prompt "$DEPLOY_PROMPT" --out "$t" --timeout 900 || true
+
+  before=$FAIL
+  expect "[$i] transcript non-empty"        test -s "$t"
+  # common Kamal config + platform invariants
+  expect "[$i] config/deploy.yml exists"    test -f "$proj/config/deploy.yml"
+  expect "[$i] forward_headers: false"      file_contains "$proj/config/deploy.yml" "forward_headers: false"
+  refute "[$i] forward_headers never true"  grep -rq "forward_headers: true" "$proj/config"
+  expect "[$i] app_port: 80"                file_contains "$proj/config/deploy.yml" "app_port: 80"
+  expect "[$i] healthcheck path /up"        file_contains "$proj/config/deploy.yml" "/up"
+  # preview destination config
+  expect "[$i] deploy.preview.yml exists"   test -f "$proj/config/deploy.preview.yml"
+  expect "[$i] preview proxy ssl: true"     file_contains "$proj/config/deploy.preview.yml" "ssl: true"
+  expect "[$i] preview host nip.io"         file_contains "$proj/config/deploy.preview.yml" "nip.io"
+  # secrets templates
+  expect "[$i] .kamal/secrets-common"       test -f "$proj/.kamal/secrets-common"
+  expect "[$i] registry pwd in secrets"     file_contains "$proj/.kamal/secrets-common" "KAMAL_REGISTRY_PASSWORD"
+  expect "[$i] .kamal/secrets.preview"      test -f "$proj/.kamal/secrets.preview"
+  # deploy workflow (two-job pattern via the reusable provision workflow)
+  expect "[$i] deploy-preview workflow"     test -f "$proj/.github/workflows/deploy-preview.yml"
+  expect "[$i] workflow uses provision@v1"  file_contains "$proj/.github/workflows/deploy-preview.yml" "provision.yml@v1"
+  expect "[$i] workflow names preview"      file_contains "$proj/.github/workflows/deploy-preview.yml" "preview"
+
+  verdict="$("$JUDGE" "$t" "$DEPLOY_RUBRIC" 2>"$proj/.judge.log" || true)"
+  echo "    judge: ${verdict:-<none>}"
+  expect "[$i] judge verdict PASS"          test "$verdict" = PASS
+
+  cleanup_e2e "$proj"
+  [[ $FAIL -eq $before ]]
+}
+
 # ---------------- driver ----------------
 pass_runs=0
 for i in $(seq 1 "$RUNS"); do
   echo "== $SCENARIO · run $i/$RUNS ($HARNESS) =="
-  if [[ "$SCENARIO" == "e2e" ]]; then run_e2e "$i"; else run_a2 "$i"; fi
+  case "$SCENARIO" in
+    e2e)    run_e2e "$i" ;;
+    deploy) run_deploy "$i" ;;
+    *)      run_a2 "$i" ;;
+  esac
   [[ $? -eq 0 ]] && pass_runs=$((pass_runs + 1))
 done
 
