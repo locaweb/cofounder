@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.23.3 -->
+<!-- COFOUNDER_VERSION: 0.23.4 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder skills.
 
@@ -27,7 +27,7 @@ Fetch `https://raw.githubusercontent.com/locaweb/cofounder/refs/heads/main/.clau
   mise x node@lts -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
   ```
 
-  (Re-running `/bin/bash -c "$(curl -fsSL https://cofounder.giba.tech/install.sh)"` does the same thing and also refreshes the dev tools.) Then tell the user the cofounder was updated and that they **must start a new session** to load it — the current session still runs the outdated skills — and **stop**.
+  (Re-running `/bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"` does the same thing and also refreshes the dev tools.) Then tell the user the cofounder was updated and that they **must start a new session** to load it — the current session still runs the outdated skills — and **stop**.
 - **Versions match:** Proceed normally.
 - **Fetch fails:** Ask the user for network permission, then retry. If it still fails, proceed without blocking the session.
 

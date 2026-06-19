@@ -28,7 +28,7 @@
 # from the Windows Start menu, not PowerShell or Command Prompt. Run it from
 # inside the project directory you want to set up:
 #
-#   /bin/bash -c "$(curl -fsSL https://cofounder.giba.tech/install.sh)"
+#   /bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"
 #
 # After it finishes, open a new terminal (so PATH picks up the new tools),
 # cd into your project, and open your agent (e.g. run `claude`).
@@ -323,7 +323,7 @@ install_gh_linux() {
 # ---------- project bootstrap ----------
 
 COFOUNDER_REPO="locaweb/cofounder"
-COFOUNDER_INSTALL_URL="https://cofounder.giba.tech/install.sh"
+COFOUNDER_INSTALL_URL="https://cofounder.locaweb.com.br/install.sh"
 
 BEGIN_MARKER="<!-- cofounder:begin -->"
 END_MARKER="<!-- cofounder:end -->"

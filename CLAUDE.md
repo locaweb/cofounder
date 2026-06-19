@@ -8,5 +8,5 @@ IMPORTANT: The `.claude/settings.json` file (which contains agent definitions an
 
 `skills/cofounder-computer-setup/scripts/install.sh` is the single onboarding script: it installs the dev tools **and** bootstraps a project (installs the skills via `npx skills add locaweb/cofounder`, writes the AGENTS.md pointer / CLAUDE.md `@import`, pins `.claude/settings.json` when Claude is detected, appends `.gitignore`). It is idempotent and run **before** the agent session opens. Note: `.claude/settings.json` is written *before* `npx skills add` so the installer's project-level symlink into `.claude/skills/` materializes (the npx-skills CLI only symlinks there when `.claude/` already exists).
 
-The cofounder-site app (`~/cofounder-site`, deployed at `cofounder.giba.tech`) serves a 302 redirect from `https://cofounder.giba.tech/install.sh` to the raw GitHub URL of this file. When changing the script's path or filename, update the redirect target in the cofounder-site Go backend (`backend/cmd/server/main.go`) to match.
+The cofounder-site app (`~/cofounder-site`, deployed at `cofounder.locaweb.com.br`) serves a 302 redirect from `https://cofounder.locaweb.com.br/install.sh` to the raw GitHub URL of this file. When changing the script's path or filename, update the redirect target in the cofounder-site Go backend (`backend/cmd/server/main.go`) to match.
 
