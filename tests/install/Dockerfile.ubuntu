@@ -1,0 +1,21 @@
+# Clean Ubuntu image for testing install.sh's Linux/WSL leg.
+# Mirrors a fresh WSL Ubuntu: a normal user with passwordless sudo, no dev
+# tools pre-installed (podman/mise/gh absent), so install.sh runs its real
+# "clean machine" path.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git sudo \
+ && rm -rf /var/lib/apt/lists/*
+
+# Non-root user with passwordless sudo (install.sh calls `sudo apt-get …`).
+# Keep DEBIAN_FRONTEND across sudo so package installs never block on prompts.
+RUN useradd -m -s /bin/bash tester \
+ && echo 'tester ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tester \
+ && echo 'Defaults env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/tester \
+ && chmod 0440 /etc/sudoers.d/tester
+
+USER tester
+WORKDIR /home/tester
