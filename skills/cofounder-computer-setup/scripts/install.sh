@@ -460,15 +460,15 @@ print_next_steps() {
   if [[ "$IN_PROJECT" == "1" ]]; then
     if [[ "$NEED_RESTART" == "1" ]]; then
       ok   "Projeto configurado."
-      warn "Abra um NOVO terminal (para carregar as ferramentas recém-instaladas),"
-      warn "volte para esta pasta e inicie seu agente de IA para começar."
+      warn "Feche o terminal (digite 'exit') e abra um novo para carregar as"
+      warn "ferramentas, volte para esta pasta e inicie seu agente de IA para começar."
     else
       ok "Projeto configurado! Inicie seu agente de IA nesta pasta para começar."
     fi
   else
     ok "Ferramentas prontas."
     if [[ "$NEED_RESTART" == "1" ]]; then
-      warn "Abra um NOVO terminal para carregá-las antes de continuar."
+      warn "Feche o terminal (digite 'exit') e abra um novo para carregá-las antes de continuar."
     fi
     info "Para configurar seu primeiro projeto, em um terminal:"
     info "  mkdir ~/meu-app && cd ~/meu-app"
