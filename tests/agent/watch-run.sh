@@ -37,7 +37,9 @@ find_proj() {
     case "$d" in *.git) continue ;; esac
     t=$(mtime "$d"); [ -z "$t" ] && continue
     if [ "$t" -gt "$bestt" ]; then bestt="$t"; best="$d"; fi
-  done < <(find "${TMPDIR:-/tmp}" /var/folders -maxdepth 4 -type d -name 'cofoundertest.*' 2>/dev/null)
+    # macOS puts mktemp dirs deep under /var/folders (~depth 5); don't rely on
+    # TMPDIR being exported in the monitor's shell. maxdepth 8 covers both.
+  done < <(find /var/folders /tmp -maxdepth 8 -type d -name 'cofoundertest.*' 2>/dev/null)
   printf '%s' "$best"
 }
 
