@@ -1,5 +1,12 @@
 # Multi-Harness Hook Compatibility (Claude, Codex, Gemini, Cursor, Hermes, Copilot)
 
+> **⚠️ SUPERSEDED (2026-06) by the npx-skills architecture.** The cofounder no
+> longer ships as a plugin with SessionStart hooks. Distribution, updates, and
+> per-project activation are handled by `npx skills` plus an `AGENTS.md`
+> pointer, all wired up by the consolidated `install.sh`. There are no more
+> per-harness hook configs. This document is kept only as historical context for
+> how the hook-based approach was designed.
+
 Spec for making the cofounder `SessionStart` hook work across Claude Code,
 OpenAI Codex, Google Gemini CLI, Cursor, Nous Research Hermes, and GitHub Copilot.
 
