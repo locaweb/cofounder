@@ -60,6 +60,19 @@ expect "PREFLIGHT_PASSED"             file_contains "$LOG/s3.log" "PREFLIGHT_PAS
 refute "no EXISTING_CONTENT error"    file_contains "$LOG/s3.log" "EXISTING_CONTENT_NO_GIT"
 expect "NEEDS_REPO_SETUP (no git)"    file_contains "$LOG/s3.log" "NEEDS_REPO_SETUP: no git repository"
 
+echo "== preflight: freshly-installed project, no git (real install.sh output set) =="
+# Mirrors exactly what install.sh writes before `git init` (.agents, .claude,
+# .hermes, AGENTS.md, CLAUDE.md, .gitignore, skills-lock.json). Regression for the
+# OpenCode report where these tripped EXISTING_CONTENT_NO_GIT.
+d="$BASE/s3b"; mkdir -p "$d/.agents/skills" "$d/.claude/skills" "$d/.hermes/skills"
+echo '{}' >"$d/.claude/settings.json"; echo y >"$d/AGENTS.md"; echo z >"$d/CLAUDE.md"
+printf '.claude/skills/\n.agents/skills/\n.hermes/skills/\nskills-lock.json\n' >"$d/.gitignore"
+echo '{}' >"$d/skills-lock.json"
+pf s3b "$d" "$FAKEHOME" "$PATH"
+expect "PREFLIGHT_PASSED"             file_contains "$LOG/s3b.log" "PREFLIGHT_PASSED"
+refute "no EXISTING_CONTENT error"    file_contains "$LOG/s3b.log" "EXISTING_CONTENT_NO_GIT"
+expect "NEEDS_REPO_SETUP (no git)"    file_contains "$LOG/s3b.log" "NEEDS_REPO_SETUP: no git repository"
+
 echo "== preflight: empty dir, no git =="
 d="$BASE/s4"; mkdir -p "$d"
 pf s4 "$d" "$FAKEHOME" "$PATH"

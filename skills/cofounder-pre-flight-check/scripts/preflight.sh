@@ -22,7 +22,11 @@ has_git=false
 for item in * .[!.]* ..?*; do
     [[ -e "$item" ]] || continue
     case "$item" in
-        .git|.claude|.venv|CLAUDE.md|AGENTS.md) continue ;;
+        # Exempt git, common local dirs, and everything the cofounder installer
+        # itself writes into a fresh project (so a just-installed, not-yet-git
+        # project doesn't trip this guard): .agents/.claude/.hermes skill stores,
+        # the AGENTS.md/CLAUDE.md pointers, .gitignore, and the npx skills lock.
+        .git|.claude|.agents|.hermes|.venv|CLAUDE.md|AGENTS.md|.gitignore|skills-lock.json) continue ;;
     esac
     has_other_content=true
     break
