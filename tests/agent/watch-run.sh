@@ -28,7 +28,9 @@ OUT="${1:?usage: watch-run.sh <runner-output-file> [project-dir] [interval]}"
 PROJ="${2:-}"
 INT="${3:-60}"
 
-mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null; }
+# GNU stat (coreutils) uses -c %Y; BSD/macOS stat uses -f %m. Try GNU first
+# because `stat -f` on GNU silently succeeds with the wrong output.
+mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }
 
 # Newest cofoundertest.* project dir (skipping the bare .git remote).
 find_proj() {
