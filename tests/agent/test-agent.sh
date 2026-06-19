@@ -44,7 +44,9 @@ export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.com
 export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.com
 
 BASE="$(mktemp -d)"
-trap 'rm -rf "$BASE"' EXIT
+# Keep the throwaway projects on failure so they can be inspected; clean on success.
+cleanup_base() { if [[ "$FAIL" -gt 0 ]]; then echo "kept for debugging: $BASE" >&2; else rm -rf "$BASE"; fi; }
+trap cleanup_base EXIT
 
 # Bootstrap a throwaway cofounder project with a clean local-remote git state.
 # Arg 1 (optional): a PRD file to drop at docs/PRD.md before the first commit.
@@ -121,7 +123,9 @@ run_e2e() {
   expect "[$i] transcript non-empty"  test -s "$t"
   expect "[$i] backend/ created"      test -d "$proj/backend"
   expect "[$i] frontend/ created"     test -d "$proj/frontend"
-  expect "[$i] go build compiles"     bash -c "cd '$proj' && mise x -- go build ./... >'$proj/.gobuild.log' 2>&1"
+  # The Go module lives in backend/ per the tech-stack layout (fall back to root).
+  local gomod_dir; gomod_dir=$([ -f "$proj/backend/go.mod" ] && echo "$proj/backend" || echo "$proj")
+  expect "[$i] go build compiles"     bash -c "cd '$gomod_dir' && mise x -- go build ./... >'$proj/.gobuild.log' 2>&1"
   expect "[$i] tsc -b passes"         bash -c "cd '$proj/frontend' && mise x -- npx tsc -b >'$proj/.tsc.log' 2>&1"
 
   verdict="$("$JUDGE" "$t" "$E2E_RUBRIC" 2>"$proj/.judge.log" || true)"
