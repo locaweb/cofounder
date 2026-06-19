@@ -9,8 +9,8 @@ We climb the ladder one rung at a time, cheapest/most-deterministic first:
 | ---- | ---- | ----- | ------ |
 | **1** | `install.sh` Linux/WSL leg in clean podman containers (A0 tooling + A1 bootstrap + idempotency) | podman (local) | ✅ here |
 | **2** | `preflight.sh` + `repo-init.sh` guard/sync branches in temp dirs | local | ✅ here |
+| **4** | single-skill headless agent runs + LLM judge (harness adapter) | Claude CLI (local) | ✅ here |
 | 3 | `install.sh` macOS leg | a clean Mac (tart/spare machine) | todo |
-| 4 | single-skill headless agent runs + LLM judge | agent CLIs | todo |
 
 ## Step 1 — run it
 
@@ -51,5 +51,36 @@ fast, no container, no agent:
   + dirty auto-commit/push), dev-tool detection, remote detection.
 - **`repo-init.sh`** — offline guard branches (missing name, invalid visibility,
   not authenticated). The real `gh repo create` path is real-infra and is
-  deferred to a dedicated test org (Step 4 / later).
+  deferred to a dedicated test org (later).
+
+## Step 4 — run it
+
+```bash
+tests/agent/test-agent.sh        # one run
+tests/agent/test-agent.sh 5      # pass-rate over 5 runs
+```
+
+Drives a **headless agent** on this machine through scenario **A2** (session
+start on a neutral greeting). Per run it bootstraps a throwaway cofounder
+project (real `install.sh`) with a local bare git remote — so pre-flight syncs
+cleanly and does **not** trigger repo-setup (no GitHub side effects) — then:
+
+- **deterministic asserts** on the transcript: non-empty, `[Cofounder]` tag,
+  pre-flight ran;
+- **LLM judge** (`judge.sh`) for what greps can't prove: pre-flight ran *first*,
+  persona + user's language (pt), and "asked what to build" (no PRD invented).
+
+Pieces (the reusable core for all future agent tests):
+- `run-agent.sh` — harness adapter. Claude wired (`claude -p --output-format
+  stream-json --permission-mode bypassPermissions`); codex/gemini/opencode are
+  explicit stubs.
+- `judge.sh` — LLM-as-judge, runs in a neutral cwd, emits `PASS`/`FAIL`.
+- `test-agent.sh` — the A2 scenario + pass-rate loop.
+
+Notes:
+- **Spends tokens** (one agent run + one judge call per iteration) and is
+  **non-deterministic** — hence the pass-rate loop rather than a single gate.
+- Needs a Bash allow rule for the runner, since it spawns `bypassPermissions`
+  subagents: add `Bash(tests/agent/test-agent.sh:*)` to `.claude/settings.local.json`.
+- Wiring the other harnesses = filling in the stubs in `run-agent.sh`.
 
