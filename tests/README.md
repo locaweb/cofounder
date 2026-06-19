@@ -8,7 +8,7 @@ We climb the ladder one rung at a time, cheapest/most-deterministic first:
 | Step | What | Needs | Status |
 | ---- | ---- | ----- | ------ |
 | **1** | `install.sh` Linux/WSL leg in clean podman containers (A0 tooling + A1 bootstrap + idempotency) | podman (local) | ✅ here |
-| 2 | `preflight.sh` / `repo-init.sh` / `inject-agents-md.sh` in temp dirs | local | todo |
+| **2** | `preflight.sh` + `repo-init.sh` guard/sync branches in temp dirs | local | ✅ here |
 | 3 | `install.sh` macOS leg | a clean Mac (tart/spare machine) | todo |
 | 4 | single-skill headless agent runs + LLM judge | agent CLIs | todo |
 
@@ -36,3 +36,20 @@ Notes:
 - `ENGINE=docker tests/install/test-install.sh` to use Docker instead of podman.
 - macOS-only behavior (Homebrew, `podman machine`) is **not** covered here — that
   is Step 3, on a real clean Mac.
+
+## Step 2 — run it
+
+```bash
+tests/scripts/test-scripts.sh
+```
+
+Drives the bundled shell scripts in throwaway temp dirs on the host — offline,
+fast, no container, no agent:
+
+- **`preflight.sh`** — home-dir guard, existing-content guard, exempt content,
+  empty/no-git, git-repo-no-remote, git-sync against a local bare remote (clean
+  + dirty auto-commit/push), dev-tool detection, remote detection.
+- **`repo-init.sh`** — offline guard branches (missing name, invalid visibility,
+  not authenticated). The real `gh repo create` path is real-infra and is
+  deferred to a dedicated test org (Step 4 / later).
+
