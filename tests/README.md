@@ -81,9 +81,12 @@ cleanly and does **not** trigger repo-setup (no GitHub side effects).
   processes) after each run. Long (several minutes) and token-heavy.
 
 Pieces (the reusable core for all future agent tests):
-- `run-agent.sh` — harness adapter. Claude wired (`claude -p --output-format
-  stream-json --permission-mode bypassPermissions`); codex/gemini/opencode are
-  explicit stubs.
+- `run-agent.sh` — harness adapter. **Claude** (`claude -p --output-format
+  stream-json --permission-mode bypassPermissions`) and **OpenCode** (`opencode
+  run --format json --dangerously-skip-permissions`, model = configured default
+  or `$COFOUNDER_TEST_OPENCODE_MODEL`) wired; codex/gemini are stubs.
+- Pick the harness positionally: `tests/agent/test-agent.sh a2 opencode`
+  (so it stays under the one Bash allow rule — no env-var prefix).
 - `judge.sh` — LLM-as-judge, runs in a neutral cwd, emits `PASS`/`FAIL`.
 - `test-agent.sh` — the A2 scenario + pass-rate loop.
 

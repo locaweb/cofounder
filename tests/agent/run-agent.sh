@@ -53,6 +53,13 @@ case "$HARNESS" in
     ;;
   codex)    echo "run-agent: codex not wired yet (codex exec ...)" >&2; exit 3 ;;
   gemini)   echo "run-agent: gemini not wired yet (gemini -p --yolo ...)" >&2; exit 3 ;;
-  opencode) echo "run-agent: opencode not wired yet (opencode run ...)" >&2; exit 3 ;;
+  opencode)
+    # --format json => raw JSON events (text + tool calls, like Claude's
+    # stream-json); --dangerously-skip-permissions for headless autonomy.
+    # Model: configured default unless COFOUNDER_TEST_OPENCODE_MODEL is set.
+    oc=(opencode run "$PROMPT" --format json --dangerously-skip-permissions)
+    [ -n "${COFOUNDER_TEST_OPENCODE_MODEL:-}" ] && oc+=(-m "$COFOUNDER_TEST_OPENCODE_MODEL")
+    ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${oc[@]}" ) >"$OUT" 2>"${OUT}.err"
+    ;;
   *) echo "run-agent: unknown harness '$HARNESS'" >&2; exit 2 ;;
 esac

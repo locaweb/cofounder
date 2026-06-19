@@ -33,11 +33,15 @@ source "$REPO/lib/assert.sh"
 RUN_AGENT="$HERE/run-agent.sh"
 JUDGE="$HERE/judge.sh"
 INSTALL_SH="$REPO/../skills/cofounder-computer-setup/scripts/install.sh"
-HARNESS="${COFOUNDER_TEST_HARNESS:-claude}"
-
-# Arg parsing: optional scenario name, then optional run count.
+# Arg parsing (all positional so it stays under one Bash allow rule):
+#   test-agent.sh [scenario] [harness] [runs]
+#   scenario: a2 | e2e            (default a2)
+#   harness:  claude|codex|gemini|opencode  (default claude / $COFOUNDER_TEST_HARNESS)
+#   runs:     pass-rate count     (default 1)
 SCENARIO="a2"
+HARNESS="${COFOUNDER_TEST_HARNESS:-claude}"
 if [[ "${1:-}" == "a2" || "${1:-}" == "e2e" ]]; then SCENARIO="$1"; shift; fi
+case "${1:-}" in claude|codex|gemini|opencode) HARNESS="$1"; shift ;; esac
 RUNS="${1:-${COFOUNDER_TEST_RUNS:-1}}"
 
 export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.com
