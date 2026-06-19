@@ -54,6 +54,14 @@ err()  { printf '%sxx%s  %s\n' "$C_RED"    "$C_RESET" "$*" >&2; }
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# ---------- install state (drives the closing "próximos passos" message) ----------
+# NEED_RESTART: set when a core tool is missing from the *inherited* (parent
+# shell) PATH at startup — once we install it, the parent shell won't see it
+# until a new terminal is opened. IN_PROJECT: whether we configured a project
+# (ran inside a project dir) vs. ran in $HOME for machine setup only.
+NEED_RESTART=0
+IN_PROJECT=0
+
 # True when running inside WSL (Windows Subsystem for Linux). On WSL, the
 # kernel string contains "microsoft" / "Microsoft" / "WSL" — we check both
 # /proc/version and /proc/sys/kernel/osrelease because some WSL builds expose
@@ -384,12 +392,14 @@ append_gitignore() {
 }
 
 project_bootstrap() {
-  # Home-dir guard: never inject the cofounder into $HOME (would activate it globally).
+  # Home-dir guard: never inject the cofounder into $HOME (would activate it
+  # globally). This is a machine-setup-only run; print_next_steps explains what
+  # to do next.
   if [[ "$PWD" == "$HOME" ]]; then
-    warn "Pulando a configuração do projeto: o instalador está rodando na pasta home."
-    warn "Entre no diretório do seu projeto (ex.: 'mkdir ~/meu-app && cd ~/meu-app') e rode o instalador de novo."
+    IN_PROJECT=0
     return
   fi
+  IN_PROJECT=1
 
   info "Configurando o cofounder neste projeto..."
 
@@ -428,8 +438,35 @@ project_bootstrap() {
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
 
   append_gitignore
+  ok "Skills e configuração do projeto instaladas."
+}
 
-  ok "Projeto configurado. Abra seu agente neste diretório para começar."
+# ---------- next steps ----------
+
+# Context-aware closing message. The installer runs as a child process and
+# can't mutate the parent shell's PATH, so when it just installed tools it tells
+# the user to open a new terminal — but ONLY when that's actually needed
+# (NEED_RESTART). Wording stays harness-agnostic ("seu agente de IA"): the
+# harness (Claude Code, etc.) is installed separately and the set will grow.
+print_next_steps() {
+  echo
+  if [[ "$IN_PROJECT" == "1" ]]; then
+    if [[ "$NEED_RESTART" == "1" ]]; then
+      ok   "Projeto configurado."
+      warn "Abra um NOVO terminal (para carregar as ferramentas recém-instaladas),"
+      warn "volte para esta pasta e inicie seu agente de IA para começar."
+    else
+      ok "Projeto configurado! Inicie seu agente de IA nesta pasta para começar."
+    fi
+  else
+    ok "Ferramentas prontas."
+    if [[ "$NEED_RESTART" == "1" ]]; then
+      warn "Abra um NOVO terminal para carregá-las antes de continuar."
+    fi
+    info "Para configurar seu primeiro projeto, em um terminal:"
+    info "  mkdir ~/meu-app && cd ~/meu-app"
+    info "  e rode este mesmo comando dentro da pasta do projeto."
+  fi
 }
 
 # ---------- main ----------
@@ -437,6 +474,16 @@ project_bootstrap() {
 main() {
   local os
   os="$(uname -s)"
+
+  # Snapshot the inherited PATH *before* installing anything: any core tool
+  # missing now won't reach the parent shell until a new terminal is opened,
+  # which is exactly what NEED_RESTART signals to print_next_steps.
+  if have mise && have podman && have gh; then
+    NEED_RESTART=0
+  else
+    NEED_RESTART=1
+  fi
+
   case "$os" in
     Darwin) install_macos ;;
     Linux)  install_linux ;;
@@ -449,8 +496,7 @@ main() {
   echo
   project_bootstrap
 
-  echo
-  ok "Tudo pronto."
+  print_next_steps
 }
 
 main "$@"
