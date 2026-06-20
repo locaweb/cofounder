@@ -439,7 +439,7 @@ project_bootstrap() {
 
   # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
   # whose gitignored skills are absent and the installer hasn't been re-run yet).
-  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. If the cofounder skills are not installed in this project, first run \`/bin/bash -c \"\$(curl -fsSL $COFOUNDER_INSTALL_URL)\"\` to install them. Then use the Skill tool to invoke the \`cofounder-playbook\` skill and follow it as your operating instructions for the entire session."
+  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`/bin/bash -c \"\$(curl -fsSL $COFOUNDER_INSTALL_URL)\"\`, then invoke the playbook.)"
 
   # CLAUDE.md: @import so Claude (which doesn't read AGENTS.md natively) loads it.
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
