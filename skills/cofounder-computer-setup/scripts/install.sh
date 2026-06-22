@@ -111,7 +111,10 @@ install_brew_pkg() {
     return
   fi
   info "Instalando $pkg via Homebrew..."
-  brew install "$pkg"
+  # HOMEBREW_NO_ASK: skip the dependency-confirmation prompt ("Do you want to
+  # proceed? [y/n]") that recent Homebrew shows when a formula pulls deps — it
+  # has no default, so Enter yields "Invalid input" and confuses non-tech users.
+  HOMEBREW_NO_ASK=1 brew install "$pkg"
   NEED_RESTART=1
 }
 
