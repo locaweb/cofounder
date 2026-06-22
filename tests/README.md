@@ -124,18 +124,37 @@ the pre-built-app fixture at `fixtures/deploy-app/`:
   deploy itself stays gated behind a Locaweb test account (not covered here).
 
 Pieces (the reusable core for all future agent tests):
-- `run-agent.sh` — harness adapter. **Claude** (`claude -p --output-format
-  stream-json --permission-mode bypassPermissions`), **OpenCode** (`opencode
-  run --format json --dangerously-skip-permissions`, model = configured default
-  or `$COFOUNDER_TEST_OPENCODE_MODEL`), and **Codex** (`codex exec --json
-  --dangerously-bypass-approvals-and-sandbox`, model = `$COFOUNDER_TEST_CODEX_MODEL`)
-  wired. A **gemini** arm exists but the old `gemini` CLI's free tier is
-  discontinued (auth-dead); its successor **agy** (Antigravity) is a separate
-  task — see the pickup brief below.
+- `run-agent.sh` — harness adapter. Wired: **Claude** (`claude -p
+  --output-format stream-json --permission-mode bypassPermissions`), **OpenCode**
+  (`opencode run --format json --dangerously-skip-permissions`, model =
+  `$COFOUNDER_TEST_OPENCODE_MODEL`), **Codex** (`codex exec --json
+  --dangerously-bypass-approvals-and-sandbox`, model = `$COFOUNDER_TEST_CODEX_MODEL`),
+  and **agy** (Antigravity — gemini's successor; `agy -p
+  --dangerously-skip-permissions`, model = `$COFOUNDER_TEST_AGY_MODEL`). A
+  **gemini** arm exists but the old `gemini` CLI's free tier is discontinued
+  (auth-dead) — use `agy` instead.
+- agy has no JSON output, so the adapter reconstructs a stream-json transcript
+  via `agy-transcript.py` (see "agy" note below).
 - Pick the harness positionally: `tests/agent/test-agent.sh a2 opencode`
   (so it stays under the one Bash allow rule — no env-var prefix).
 - `judge.sh` — LLM-as-judge, runs in a neutral cwd, emits `PASS`/`FAIL`.
+- `agy-transcript.py` — rebuilds a stream-json transcript for agy from its
+  SQLite trajectory store + printed prose (see the "agy" note below).
 - `test-agent.sh` — the A2 scenario + pass-rate loop.
+
+**agy (Antigravity) specifics.** agy reads project context from `AGENTS.md` and
+loads per-workspace skills from `.agents/skills/` — which `install.sh` already
+populates (its `npx skills --agent universal` target writes there), so the
+cofounder runs under agy with **no installer change**. The wrinkle is output:
+`agy -p` prints only the final prose and writes its real tool trace (skill
+loads, shell commands) to a per-conversation SQLite "trajectory store" at
+`~/.gemini/antigravity-cli/conversations/<id>.db` (protobuf blobs). The adapter
+captures the prose, finds the DB this run created (new-since-snapshot, else
+newest), and `agy-transcript.py` emits a synthetic stream-json transcript —
+`{"text":…}` for prose, `{"name":…,"command":…}` for each command / skill view —
+so the existing asserts and `distill()` work unchanged. (Those conversation DBs
+are global and accumulate; they're outside the project so they don't dirty its
+git, but nothing prunes them.)
 
 ### Watching a long run (per-minute progress)
 
@@ -164,7 +183,8 @@ each minute and a `DONE` line at the end. `watch-run.sh` auto-discovers the newe
   **non-deterministic** — hence the pass-rate loop rather than a single gate.
 - Needs a Bash allow rule for the runner, since it spawns `bypassPermissions`
   subagents: add `Bash(tests/agent/test-agent.sh:*)` to `.claude/settings.local.json`.
-- Wiring the other harnesses = filling in the stubs in `run-agent.sh`.
+- Adding a harness = a new case arm in `run-agent.sh` (+ its token in
+  `test-agent.sh`'s harness arg-parse). claude/opencode/codex/agy are wired.
 
 ## Status & what's left (pick up here)
 
@@ -181,10 +201,10 @@ Snapshot for resuming in a fresh session. Everything below is on `main`.
 | Step 4 — deploy (app-deploy config) | `tests/agent/test-agent.sh deploy` | 16 |
 | Step 3 — install.sh macOS | `bash tests/install/test-install-macos.sh` (on a clean Mac) | ~25 |
 
-Harness adapter (`run-agent.sh`): **claude** + **opencode** + **codex** wired and
-validated (a2 passes on all three; codex a2 = **5/5** runs green). **gemini** is
-auth-dead (free CLI tier discontinued); **agy** (its Antigravity successor) is a
-separate task — see the pickup brief.
+Harness adapter (`run-agent.sh`): **claude** + **opencode** + **codex** + **agy**
+wired and validated (a2 passes on all; codex a2 = **5/5**, agy a2 = **5/5** runs
+green). **gemini** is auth-dead (free CLI tier discontinued) — use **agy** (its
+Antigravity successor) instead.
 
 ### Skill coverage
 
@@ -204,9 +224,10 @@ separate task — see the pickup brief.
    Surfaced + fixed a brew UX bug (the `[y/n]` dependency prompt has no default —
    now suppressed with `HOMEBREW_NO_ASK=1`). Still unexercised: universal-only A1
    branch and Intel `/usr/local` prefix.
-2. **Add agy (Antigravity) as a harness.** ← **NEXT TASK** — see the pickup
-   brief below. (Codex is done: wired + a2 5/5. The old `gemini` CLI is auth-dead
-   — Google discontinued its free individual tier; its successor is `agy`.)
+2. **Harness adapter — codex + agy DONE** (a2 5/5 each; see the reference note
+   below). Remaining harness work, all optional: run `e2e`/`deploy` under
+   codex/agy to record their pass-rates (only a2 is recorded). The old `gemini`
+   CLI is auth-dead — superseded by `agy`. ← **NEXT TASK is now #3.**
 3. **repo-setup real path** — `gh repo create` + push, against a dedicated test
    GitHub org (so it doesn't touch a real account). Today only the offline
    guard branches are covered.
@@ -220,60 +241,51 @@ separate task — see the pickup brief.
    itself against the live DB instead of trusting the agent's "tests pass"
    narration. Deferred (current approach accepted).
 
-### Codex — DONE (reference for how a harness gets wired)
+### Codex + agy — DONE (reference for how a new harness gets wired)
 
-Wired at `run-agent.sh` (codex arm): `codex exec --json
+Both validated at **a2 = 5/5 runs green**. Two different output contracts:
+
+**codex** (`run-agent.sh` codex arm): `codex exec --json
 --dangerously-bypass-approvals-and-sandbox "$PROMPT"` (+ optional
-`-m $COFOUNDER_TEST_CODEX_MODEL`). Validated: **a2 = 5/5 runs green** under codex.
-Shapes learned (JSONL on stdout): assistant text = `{"type":"agent_message",
-"text":"..."}` (the existing `"text":"..."` distill grep catches it); actions =
-`{"type":"command_execution","command":"..."}` — codex has **no** `"name"` tool
-key, so `judge.sh` `distill()` gained a **"Commands run"** section grepping
-`"command":"..."`. The raw-file test-signal grep already scans codex's
-`aggregated_output`, so e2e/deploy signals work unchanged. e2e/deploy under codex
-are wired but not yet pass-rate'd (only a2 was run).
+`-m $COFOUNDER_TEST_CODEX_MODEL`). Emits JSONL on stdout: assistant text =
+`{"type":"agent_message","text":"..."}` (the existing `"text":"..."` distill grep
+catches it); actions = `{"type":"command_execution","command":"..."}` — codex has
+**no** `"name"` tool key, so `judge.sh` `distill()` gained a **"Commands run"**
+section grepping `"command":"..."`. The raw-file test-signal grep already scans
+codex's `aggregated_output`, so e2e/deploy signals work unchanged.
 
-### Pickup brief — add agy (Antigravity) as a harness (the next task)
+**agy** (Antigravity, gemini's successor; `run-agent.sh` agy arm): `agy -p
+"$PROMPT" --dangerously-skip-permissions` (+ optional `--model
+$COFOUNDER_TEST_AGY_MODEL`). The interesting one — **no JSON output at all**:
+- agy reads `AGENTS.md` and loads per-workspace skills from `.agents/skills/`,
+  which `install.sh` already populates (its `npx skills --agent universal`
+  target). So the cofounder runs under agy with **no installer change** — verified
+  the agent loads `cofounder-playbook`/`-pre-flight-check` and runs `preflight.sh`
+  first. (The empty global `~/.gemini/skills` is a red herring — project installs
+  use `.agents/skills/`.)
+- `agy -p` prints only the final prose; the real tool trace lives in a per-
+  conversation **SQLite trajectory store** at
+  `~/.gemini/antigravity-cli/conversations/<id>.db` (`steps.step_payload`,
+  protobuf blobs — string-extractable: `"CommandLine":...`, `.agents/skills/...
+  SKILL.md` paths, etc.).
+- `agy-transcript.py` reconstructs a **synthetic stream-json** transcript the
+  existing asserts/`distill()` consume unchanged: tool/command/skill events from
+  the DB + the prose as narration. The adapter snapshots the conversation dir
+  before the run and picks the new DB (else newest).
+- **Two traps already paid for** (both about matching the Claude shape `distill()`
+  expects): (1) emit **compact** JSON (`separators=(",",":")`) — `distill` greps
+  `"text":"..."` with no space after the colon, so `json.dumps` defaults produce
+  an empty digest → judge fails on everything. (2) Emit **one text event per
+  line**, not one giant block — `distill` does `cut -c1-500` *per* text event, so
+  a single long prose block loses its tail (e.g. the "what to build?" question)
+  and the judge can't confirm it.
 
-Self-contained. The old `gemini` CLI is **auth-dead** (Google discontinued the
-free "Gemini Code Assist for individuals" OAuth tier — `IneligibleTierError`,
-migrate to Antigravity). Its successor is **`agy`** (`~/.local/bin/agy`,
-Antigravity CLI). Wiring it is **two jobs, not a stub**:
+**agy prereqs:** `agy --version` works + authenticated (the GUI OAuth carries
+over; startup `not logged into Antigravity` log lines are race noise — look for
+`Auth succeeded` further down, and `agy models` returns a list). Needs `python3`
++ `sqlite3` (both present on the dev Mac).
 
-**Gap 1 — product: the cofounder isn't installed for agy.** `install.sh` sets up
-`.claude/skills` for Claude and an AGENTS.md pointer for open-convention agents,
-but agy loads skills from `~/.gemini/skills` (also `~/.gemini/antigravity-cli/skills`),
-which nothing populates — both are empty. Until the installer sets up agy, an agy
-run has no cofounder persona / pre-flight skill, so the a2 asserts can't pass.
-This is a **product change** to `install.sh` → present the diff, bump
-`plugin.json` (patch), run `scripts/stamp-version.sh`.
-
-**Gap 2 — harness: agy has no JSON output.** `agy --print/-p "$PROMPT"
---dangerously-skip-permissions` prints only the **final prose** on stdout (no
-event stream, no tool trace). So:
-- the `pre-flight ran` deterministic assert (greps the transcript for the tool
-  invocation) and `judge.sh` `distill()` (greps JSON keys) both come up empty on
-  prose alone;
-- the real tool trace lives in a **SQLite trajectory store** at
-  `~/.gemini/antigravity-cli/conversations/<id>.db`, table `steps`, column
-  `step_payload` — **protobuf blobs**, but string-extractable (the prompt,
-  assistant text, tool names `command`/`execute_url`/`read_url`/`mcp`, and skill
-  paths are all recoverable via a `strings`-style hex dump).
-
-Plan: after an agy run, find the newest conversation `.db` (sequential runs, so
-newest-by-mtime is safe), extract a text digest from `steps.step_payload`, write
-it as the `.transcript.jsonl` the asserts/judge consume. Add an `agy` case arm to
-`run-agent.sh` (and an `agy` token to the harness arg-parse in `test-agent.sh`).
-
-**Prereqs:** `agy --version` works and is authenticated (the GUI OAuth carries
-over — the startup `not logged into Antigravity` log lines are race noise; look
-for `Auth succeeded` further down, and `agy models` returns a list).
-
-**Definition of done:** installer sets up cofounder skills for agy; `run-agent.sh`
-has an agy arm that materializes a greppable transcript from the trajectory DB;
-`distill()`/asserts handle the agy shape; a2 green under agy with a recorded
-pass-rate; status table + harness-adapter line updated. Installer change → version
-bump + stamp; test-only parts → no bump.
+Not yet pass-rate'd under codex/agy: `e2e` and `deploy` (only a2 was run).
 
 ### Gotchas already paid for (don't rediscover)
 

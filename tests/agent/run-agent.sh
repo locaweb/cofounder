@@ -13,6 +13,7 @@
 # <out>.err. Exits with the agent's exit code (3 = harness stub).
 set -uo pipefail
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS="" CWD="." OUT="/dev/stdout" PROMPT="" TIMEOUT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -64,9 +65,33 @@ case "$HARNESS" in
     # --output-format stream-json => JSONL events (text + tool calls, like
     # Claude's stream-json); --yolo to auto-approve all tools for headless runs;
     # --skip-trust to run in an untrusted (throwaway) workspace dir.
+    # NOTE: the free "Gemini Code Assist for individuals" tier was discontinued
+    # (IneligibleTierError); use the `agy` harness (Antigravity successor) instead.
     gm=(gemini -p "$PROMPT" --yolo --skip-trust --output-format stream-json)
     [ -n "${COFOUNDER_TEST_GEMINI_MODEL:-}" ] && gm+=(-m "$COFOUNDER_TEST_GEMINI_MODEL")
     ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${gm[@]}" ) >"$OUT" 2>"${OUT}.err"
+    ;;
+  agy)
+    # agy (Antigravity, gemini's successor) has NO JSON output — `agy -p` prints
+    # only the final prose, and its real tool trace (skill loads, shell commands)
+    # lives in a per-conversation SQLite "trajectory store". So: capture the
+    # prose, find the DB this run produced (new since `before`, else newest),
+    # and reconstruct a stream-json transcript the asserts/judge understand.
+    # The cofounder skills are read from the project's .agents/skills/ (agy's
+    # per-workspace skills dir, populated by install.sh's `universal` target).
+    conv="$HOME/.gemini/antigravity-cli/conversations"
+    before="$(mktemp)"; after="$(mktemp)"
+    ls "$conv"/*.db 2>/dev/null | sort >"$before"
+    am=(agy -p "$PROMPT" --dangerously-skip-permissions)
+    [ -n "${COFOUNDER_TEST_AGY_MODEL:-}" ] && am+=(--model "$COFOUNDER_TEST_AGY_MODEL")
+    ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${am[@]}" ) >"${OUT}.prose" 2>"${OUT}.err"
+    rc=$?
+    ls "$conv"/*.db 2>/dev/null | sort >"$after"
+    db="$(comm -13 "$before" "$after" | tail -1)"
+    [ -z "$db" ] && db="$(ls -t "$conv"/*.db 2>/dev/null | head -1)"
+    rm -f "$before" "$after"
+    python3 "$HERE/agy-transcript.py" "$db" "${OUT}.prose" >"$OUT" 2>>"${OUT}.err"
+    exit "$rc"
     ;;
   opencode)
     # --format json => raw JSON events (text + tool calls, like Claude's

@@ -41,12 +41,12 @@ INSTALL_SH="$REPO/../skills/cofounder-computer-setup/scripts/install.sh"
 # Arg parsing (all positional so it stays under one Bash allow rule):
 #   test-agent.sh [scenario] [harness] [runs]
 #   scenario: a2 | e2e            (default a2)
-#   harness:  claude|codex|gemini|opencode  (default claude / $COFOUNDER_TEST_HARNESS)
+#   harness:  claude|codex|gemini|agy|opencode  (default claude / $COFOUNDER_TEST_HARNESS)
 #   runs:     pass-rate count     (default 1)
 SCENARIO="a2"
 HARNESS="${COFOUNDER_TEST_HARNESS:-claude}"
 case "${1:-}" in a2|e2e|deploy) SCENARIO="$1"; shift ;; esac
-case "${1:-}" in claude|codex|gemini|opencode) HARNESS="$1"; shift ;; esac
+case "${1:-}" in claude|codex|gemini|agy|opencode) HARNESS="$1"; shift ;; esac
 RUNS="${1:-${COFOUNDER_TEST_RUNS:-1}}"
 
 export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.com
