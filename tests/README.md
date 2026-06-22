@@ -125,9 +125,13 @@ the pre-built-app fixture at `fixtures/deploy-app/`:
 
 Pieces (the reusable core for all future agent tests):
 - `run-agent.sh` — harness adapter. **Claude** (`claude -p --output-format
-  stream-json --permission-mode bypassPermissions`) and **OpenCode** (`opencode
+  stream-json --permission-mode bypassPermissions`), **OpenCode** (`opencode
   run --format json --dangerously-skip-permissions`, model = configured default
-  or `$COFOUNDER_TEST_OPENCODE_MODEL`) wired; codex/gemini are stubs.
+  or `$COFOUNDER_TEST_OPENCODE_MODEL`), and **Codex** (`codex exec --json
+  --dangerously-bypass-approvals-and-sandbox`, model = `$COFOUNDER_TEST_CODEX_MODEL`)
+  wired. A **gemini** arm exists but the old `gemini` CLI's free tier is
+  discontinued (auth-dead); its successor **agy** (Antigravity) is a separate
+  task — see the pickup brief below.
 - Pick the harness positionally: `tests/agent/test-agent.sh a2 opencode`
   (so it stays under the one Bash allow rule — no env-var prefix).
 - `judge.sh` — LLM-as-judge, runs in a neutral cwd, emits `PASS`/`FAIL`.
@@ -177,8 +181,10 @@ Snapshot for resuming in a fresh session. Everything below is on `main`.
 | Step 4 — deploy (app-deploy config) | `tests/agent/test-agent.sh deploy` | 16 |
 | Step 3 — install.sh macOS | `bash tests/install/test-install-macos.sh` (on a clean Mac) | ~25 |
 
-Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
-(a2 passes on both); **codex**/**gemini** are stubs.
+Harness adapter (`run-agent.sh`): **claude** + **opencode** + **codex** wired and
+validated (a2 passes on all three; codex a2 = **5/5** runs green). **gemini** is
+auth-dead (free CLI tier discontinued); **agy** (its Antigravity successor) is a
+separate task — see the pickup brief.
 
 ### Skill coverage
 
@@ -198,8 +204,9 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
    Surfaced + fixed a brew UX bug (the `[y/n]` dependency prompt has no default —
    now suppressed with `HOMEBREW_NO_ASK=1`). Still unexercised: universal-only A1
    branch and Intel `/usr/local` prefix.
-2. **Wire codex + gemini** in `run-agent.sh` (stubs today). ← **NEXT TASK** —
-   see the self-contained pickup brief below.
+2. **Add agy (Antigravity) as a harness.** ← **NEXT TASK** — see the pickup
+   brief below. (Codex is done: wired + a2 5/5. The old `gemini` CLI is auth-dead
+   — Google discontinued its free individual tier; its successor is `agy`.)
 3. **repo-setup real path** — `gh repo create` + push, against a dedicated test
    GitHub org (so it doesn't touch a real account). Today only the offline
    guard branches are covered.
@@ -213,55 +220,60 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
    itself against the live DB instead of trusting the agent's "tests pass"
    narration. Deferred (current approach accepted).
 
-### Pickup brief — wiring codex + gemini (the next task)
+### Codex — DONE (reference for how a harness gets wired)
 
-Self-contained so a fresh session can start cold. Goal: fill the two stubs in
-`run-agent.sh` so `a2`/`e2e`/`deploy` run under codex and gemini like they do
-under claude/opencode.
+Wired at `run-agent.sh` (codex arm): `codex exec --json
+--dangerously-bypass-approvals-and-sandbox "$PROMPT"` (+ optional
+`-m $COFOUNDER_TEST_CODEX_MODEL`). Validated: **a2 = 5/5 runs green** under codex.
+Shapes learned (JSONL on stdout): assistant text = `{"type":"agent_message",
+"text":"..."}` (the existing `"text":"..."` distill grep catches it); actions =
+`{"type":"command_execution","command":"..."}` — codex has **no** `"name"` tool
+key, so `judge.sh` `distill()` gained a **"Commands run"** section grepping
+`"command":"..."`. The raw-file test-signal grep already scans codex's
+`aggregated_output`, so e2e/deploy signals work unchanged. e2e/deploy under codex
+are wired but not yet pass-rate'd (only a2 was run).
 
-**Prereqs (do first):**
-- `codex` and `gemini` CLIs installed **and authenticated** on this machine
-  (`codex --version`, `gemini --version`). If missing, that's a blocker — stop
-  and tell the user; don't fake it.
-- The `Bash(tests/agent/test-agent.sh:*)` allow rule must already be in
-  `.claude/settings.local.json` (used by the wired harnesses too).
+### Pickup brief — add agy (Antigravity) as a harness (the next task)
 
-**Step 1 — the two CLI invocations.** Replace the stubs at `run-agent.sh:54-55`.
-The case arm must `cd "$CWD"`, run under `run_with_timeout "$TIMEOUT"`, redirect
-`>"$OUT" 2>"${OUT}.err"`, and pass `"$PROMPT"` — mirror the `claude`/`opencode`
-arms exactly. Starting points (⚠️ **verify against `codex exec --help` /
-`gemini --help` first** — these CLIs drift and the flags below are unconfirmed):
-- codex:  `codex exec "$PROMPT"` (look for a JSON/`--json` output flag + a
-  non-interactive/full-auto flag; codex `exec` is already the headless subcommand)
-- gemini: `gemini -p "$PROMPT" --yolo --output-format json` (`--yolo` = skip
-  approvals; confirm `--output-format json` exists)
+Self-contained. The old `gemini` CLI is **auth-dead** (Google discontinued the
+free "Gemini Code Assist for individuals" OAuth tier — `IneligibleTierError`,
+migrate to Antigravity). Its successor is **`agy`** (`~/.local/bin/agy`,
+Antigravity CLI). Wiring it is **two jobs, not a stub**:
 
-**Step 2 — the real trap: the judge distiller is Claude/OpenCode-shaped.**
-`judge.sh` `distill()` (lines 26 & 29) greps `"text":"..."` for narration and
-`"name":"..."` for tool calls. Codex/gemini almost certainly emit **different**
-JSON keys, so the digest will come up EMPTY and every LLM-judge assert will fail
-even when the agent behaved correctly. Before trusting any judge result:
-1. Run once, then `cat` the raw `--out` transcript and find the actual keys for
-   (a) assistant text and (b) tool/function-call names in each CLI's JSON.
-2. Extend `distill()` to also match those keys (add greps; keep the existing
-   ones so claude/opencode still work). Deterministic asserts in `test-agent.sh`
-   that grep the raw transcript may need the same treatment.
+**Gap 1 — product: the cofounder isn't installed for agy.** `install.sh` sets up
+`.claude/skills` for Claude and an AGENTS.md pointer for open-convention agents,
+but agy loads skills from `~/.gemini/skills` (also `~/.gemini/antigravity-cli/skills`),
+which nothing populates — both are empty. Until the installer sets up agy, an agy
+run has no cofounder persona / pre-flight skill, so the a2 asserts can't pass.
+This is a **product change** to `install.sh` → present the diff, bump
+`plugin.json` (patch), run `scripts/stamp-version.sh`.
 
-**Step 3 — run the matrix & record pass-rates:**
-```bash
-tests/agent/test-agent.sh a2 codex 5
-tests/agent/test-agent.sh a2 gemini 5
-# then the heavier ones once a2 is green on each:
-tests/agent/test-agent.sh e2e codex      # and gemini
-tests/agent/test-agent.sh deploy codex   # and gemini
-```
-Start with `a2` (cheapest) on each harness; only move to `e2e`/`deploy` once a2
-passes and the distiller is confirmed non-empty.
+**Gap 2 — harness: agy has no JSON output.** `agy --print/-p "$PROMPT"
+--dangerously-skip-permissions` prints only the **final prose** on stdout (no
+event stream, no tool trace). So:
+- the `pre-flight ran` deterministic assert (greps the transcript for the tool
+  invocation) and `judge.sh` `distill()` (greps JSON keys) both come up empty on
+  prose alone;
+- the real tool trace lives in a **SQLite trajectory store** at
+  `~/.gemini/antigravity-cli/conversations/<id>.db`, table `steps`, column
+  `step_payload` — **protobuf blobs**, but string-extractable (the prompt,
+  assistant text, tool names `command`/`execute_url`/`read_url`/`mcp`, and skill
+  paths are all recoverable via a `strings`-style hex dump).
 
-**Definition of done:** both stubs wired; `distill()` (and any raw-transcript
-asserts) handle codex+gemini shapes; `a2` green on both; pass-rates noted here;
-the harness-adapter line in the status table updated from "claude + opencode" to
-include codex/gemini. Test-only changes → no `plugin.json` bump.
+Plan: after an agy run, find the newest conversation `.db` (sequential runs, so
+newest-by-mtime is safe), extract a text digest from `steps.step_payload`, write
+it as the `.transcript.jsonl` the asserts/judge consume. Add an `agy` case arm to
+`run-agent.sh` (and an `agy` token to the harness arg-parse in `test-agent.sh`).
+
+**Prereqs:** `agy --version` works and is authenticated (the GUI OAuth carries
+over — the startup `not logged into Antigravity` log lines are race noise; look
+for `Auth succeeded` further down, and `agy models` returns a list).
+
+**Definition of done:** installer sets up cofounder skills for agy; `run-agent.sh`
+has an agy arm that materializes a greppable transcript from the trajectory DB;
+`distill()`/asserts handle the agy shape; a2 green under agy with a recorded
+pass-rate; status table + harness-adapter line updated. Installer change → version
+bump + stamp; test-only parts → no bump.
 
 ### Gotchas already paid for (don't rediscover)
 

@@ -26,7 +26,13 @@ distill() {
   grep -o '"text":"[^"]*"' "$f" | sed 's/^"text":"//; s/"$//' | cut -c1-500
   echo
   echo "## Tools used (count):"
+  # claude/opencode/gemini expose tool/function calls as "name":"..."; codex
+  # has no such key — its actions are shell commands ("command":"...", also the
+  # arg of claude/opencode Bash calls). Capture both so every harness shows work.
   grep -o '"name":"[^"]*"' "$f" | sed 's/^"name":"//; s/"$//' | sort | uniq -c | sort -rn
+  echo
+  echo "## Commands run:"
+  grep -o '"command":"[^"]*"' "$f" | sed 's/^"command":"//; s/"$//' | cut -c1-200 | sort -u | head -40
   echo
   echo "## Test/build result signals:"
   grep -oiE '([0-9]+ (passed|failed)|--- (PASS|FAIL)|^ok [a-z0-9_/.-]+|all tests pass|vitest|tsc -b|go (build|test)|go vet)' "$f" \

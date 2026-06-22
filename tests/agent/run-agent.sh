@@ -51,8 +51,23 @@ case "$HARNESS" in
         claude -p "$PROMPT" --output-format stream-json --verbose \
                --permission-mode bypassPermissions ) >"$OUT" 2>"${OUT}.err"
     ;;
-  codex)    echo "run-agent: codex not wired yet (codex exec ...)" >&2; exit 3 ;;
-  gemini)   echo "run-agent: gemini not wired yet (gemini -p --yolo ...)" >&2; exit 3 ;;
+  codex)
+    # --json => JSONL events on stdout (msg text + tool/command calls);
+    # --dangerously-bypass-approvals-and-sandbox for headless autonomy (mirrors
+    # claude's bypassPermissions). Model: configured default unless overridden.
+    cx=(codex exec --json --dangerously-bypass-approvals-and-sandbox)
+    [ -n "${COFOUNDER_TEST_CODEX_MODEL:-}" ] && cx+=(-m "$COFOUNDER_TEST_CODEX_MODEL")
+    cx+=("$PROMPT")
+    ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${cx[@]}" ) >"$OUT" 2>"${OUT}.err"
+    ;;
+  gemini)
+    # --output-format stream-json => JSONL events (text + tool calls, like
+    # Claude's stream-json); --yolo to auto-approve all tools for headless runs;
+    # --skip-trust to run in an untrusted (throwaway) workspace dir.
+    gm=(gemini -p "$PROMPT" --yolo --skip-trust --output-format stream-json)
+    [ -n "${COFOUNDER_TEST_GEMINI_MODEL:-}" ] && gm+=(-m "$COFOUNDER_TEST_GEMINI_MODEL")
+    ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${gm[@]}" ) >"$OUT" 2>"${OUT}.err"
+    ;;
   opencode)
     # --format json => raw JSON events (text + tool calls, like Claude's
     # stream-json); --dangerously-skip-permissions for headless autonomy.
