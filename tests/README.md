@@ -182,11 +182,10 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
 
 ### Skill coverage
 
-- ✓ computer-setup (Linux), pre-flight-check, playbook, tech-stack, testing
+- ✓ computer-setup (Linux **+ macOS**), pre-flight-check, playbook, tech-stack, testing
 - ◑ repo-setup (guard branches only — real `gh repo create` not tested)
 - ◑ app-deploy (config generation tested; **live deploy not tested**)
 - ◑ frontend-design (exercised in e2e, no design-quality assertion)
-- ⬜ computer-setup **macOS** leg (Step 3)
 - ⬜ ssh-key-rotation
 
 ### Remaining work, roughly ordered
@@ -199,10 +198,8 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
    Surfaced + fixed a brew UX bug (the `[y/n]` dependency prompt has no default —
    now suppressed with `HOMEBREW_NO_ASK=1`). Still unexercised: universal-only A1
    branch and Intel `/usr/local` prefix.
-2. **Wire codex + gemini** in `run-agent.sh` (stubs today): `codex exec "<p>"`
-   and `gemini -p "<p>" --yolo --output-format json`. Then run `a2`/`e2e`/`deploy`
-   across them. Note: the judge distiller greps Claude/OpenCode JSON shapes
-   (`"text"`/`"name"`) — re-check it against codex/gemini transcript formats.
+2. **Wire codex + gemini** in `run-agent.sh` (stubs today). ← **NEXT TASK** —
+   see the self-contained pickup brief below.
 3. **repo-setup real path** — `gh repo create` + push, against a dedicated test
    GitHub org (so it doesn't touch a real account). Today only the offline
    guard branches are covered.
@@ -215,6 +212,56 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
 6. **(optional) deterministic test asserts** — make e2e run `go test`/`vitest`
    itself against the live DB instead of trusting the agent's "tests pass"
    narration. Deferred (current approach accepted).
+
+### Pickup brief — wiring codex + gemini (the next task)
+
+Self-contained so a fresh session can start cold. Goal: fill the two stubs in
+`run-agent.sh` so `a2`/`e2e`/`deploy` run under codex and gemini like they do
+under claude/opencode.
+
+**Prereqs (do first):**
+- `codex` and `gemini` CLIs installed **and authenticated** on this machine
+  (`codex --version`, `gemini --version`). If missing, that's a blocker — stop
+  and tell the user; don't fake it.
+- The `Bash(tests/agent/test-agent.sh:*)` allow rule must already be in
+  `.claude/settings.local.json` (used by the wired harnesses too).
+
+**Step 1 — the two CLI invocations.** Replace the stubs at `run-agent.sh:54-55`.
+The case arm must `cd "$CWD"`, run under `run_with_timeout "$TIMEOUT"`, redirect
+`>"$OUT" 2>"${OUT}.err"`, and pass `"$PROMPT"` — mirror the `claude`/`opencode`
+arms exactly. Starting points (⚠️ **verify against `codex exec --help` /
+`gemini --help` first** — these CLIs drift and the flags below are unconfirmed):
+- codex:  `codex exec "$PROMPT"` (look for a JSON/`--json` output flag + a
+  non-interactive/full-auto flag; codex `exec` is already the headless subcommand)
+- gemini: `gemini -p "$PROMPT" --yolo --output-format json` (`--yolo` = skip
+  approvals; confirm `--output-format json` exists)
+
+**Step 2 — the real trap: the judge distiller is Claude/OpenCode-shaped.**
+`judge.sh` `distill()` (lines 26 & 29) greps `"text":"..."` for narration and
+`"name":"..."` for tool calls. Codex/gemini almost certainly emit **different**
+JSON keys, so the digest will come up EMPTY and every LLM-judge assert will fail
+even when the agent behaved correctly. Before trusting any judge result:
+1. Run once, then `cat` the raw `--out` transcript and find the actual keys for
+   (a) assistant text and (b) tool/function-call names in each CLI's JSON.
+2. Extend `distill()` to also match those keys (add greps; keep the existing
+   ones so claude/opencode still work). Deterministic asserts in `test-agent.sh`
+   that grep the raw transcript may need the same treatment.
+
+**Step 3 — run the matrix & record pass-rates:**
+```bash
+tests/agent/test-agent.sh a2 codex 5
+tests/agent/test-agent.sh a2 gemini 5
+# then the heavier ones once a2 is green on each:
+tests/agent/test-agent.sh e2e codex      # and gemini
+tests/agent/test-agent.sh deploy codex   # and gemini
+```
+Start with `a2` (cheapest) on each harness; only move to `e2e`/`deploy` once a2
+passes and the distiller is confirmed non-empty.
+
+**Definition of done:** both stubs wired; `distill()` (and any raw-transcript
+asserts) handle codex+gemini shapes; `a2` green on both; pass-rates noted here;
+the harness-adapter line in the status table updated from "claude + opencode" to
+include codex/gemini. Test-only changes → no `plugin.json` bump.
 
 ### Gotchas already paid for (don't rediscover)
 
