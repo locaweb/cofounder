@@ -50,8 +50,43 @@ fast, no container, no agent:
   empty/no-git, git-repo-no-remote, git-sync against a local bare remote (clean
   + dirty auto-commit/push), dev-tool detection, remote detection.
 - **`repo-init.sh`** — offline guard branches (missing name, invalid visibility,
-  not authenticated). The real `gh repo create` path is real-infra and is
-  deferred to a dedicated test org (later).
+  not authenticated). The real `gh repo create` + push path is now covered
+  separately by the gated live test, `tests/repo/test-repo-setup-live.sh`
+  (see "Live repo-setup" below).
+
+## Live repo-setup — run it (gated real-infra)
+
+```bash
+tests/repo/test-repo-setup-live.sh
+```
+
+Exercises `repo-init.sh`'s real GitHub path against the live API, with
+**guaranteed teardown** — the throwaway repo is hard-deleted in an EXIT trap,
+even on failure. 11 asserts across two scenarios:
+
+- **create + push** — fresh local repo → `gh repo create --private` → assert the
+  repo exists on GitHub, is private, `origin` is set locally, the committed
+  `README.md` reached the remote, and nothing is left unpushed;
+- **idempotent re-run** — same dir again → "Remote 'origin' already set", exit 0,
+  no duplicate creation;
+- **teardown assertion** — deletes the repo and asserts it's gone.
+
+Safe by construction: the repo is **private**, named uniquely per run
+(`cofounder-citest-<epoch>-<rand>`), created under the authenticated user by
+default (override with `COFOUNDER_TEST_GH_OWNER`), and deleted on exit.
+
+Prereqs (else it **SKIPs** cleanly, exit 0): `gh` installed + authenticated, and
+the **`delete_repo`** scope on the token for teardown —
+
+```bash
+gh auth refresh -h github.com -s delete_repo   # complete the browser Authorize step
+```
+
+Without `delete_repo` the test still runs create+rerun, but deliberately **fails**
+the teardown assertion and leaves the repo (so a silent orphan can't pass). Not
+covered: the "repo already exists on GitHub, fresh local clone with divergent
+history" branch (repo-init's `pull --rebase || true` then `push` would reject a
+non-fast-forward — a real script limitation, not exercised here).
 
 ## Step 3 — run it (on a clean Mac)
 
@@ -196,6 +231,7 @@ Snapshot for resuming in a fresh session. Everything below is on `main`.
 | ----- | ------- | ------- |
 | Step 1 — install.sh Linux/WSL | `tests/install/test-install.sh` | 27 |
 | Step 2 — preflight.sh + repo-init.sh | `tests/scripts/test-scripts.sh` | 29 |
+| Live repo-setup (gh repo create + push) | `tests/repo/test-repo-setup-live.sh` | 11 |
 | Step 4 — a2 (session start) | `tests/agent/test-agent.sh a2 [harness] [runs]` | 4 |
 | Step 4 — e2e (scaffold A4+A5) | `tests/agent/test-agent.sh e2e` | 6 |
 | Step 4 — deploy (app-deploy config) | `tests/agent/test-agent.sh deploy` | 16 |
@@ -209,7 +245,8 @@ Antigravity successor) instead.
 ### Skill coverage
 
 - ✓ computer-setup (Linux **+ macOS**), pre-flight-check, playbook, tech-stack, testing
-- ◑ repo-setup (guard branches only — real `gh repo create` not tested)
+- ✓ repo-setup (guard branches **+ live `gh repo create` + push**, with teardown;
+  divergent-history clone branch still untested)
 - ◑ app-deploy (config generation tested; **live deploy not tested**)
 - ◑ frontend-design (exercised in e2e, no design-quality assertion)
 - ⬜ ssh-key-rotation
@@ -227,10 +264,13 @@ Antigravity successor) instead.
 2. **Harness adapter — codex + agy DONE** (a2 5/5 each; see the reference note
    below). Remaining harness work, all optional: run `e2e`/`deploy` under
    codex/agy to record their pass-rates (only a2 is recorded). The old `gemini`
-   CLI is auth-dead — superseded by `agy`. ← **NEXT TASK is now #3.**
-3. **repo-setup real path** — `gh repo create` + push, against a dedicated test
-   GitHub org (so it doesn't touch a real account). Today only the offline
-   guard branches are covered.
+   CLI is auth-dead — superseded by `agy`.
+3. **repo-setup real path.** ✅ DONE — `tests/repo/test-repo-setup-live.sh`
+   (11/11 green) drives the real `gh repo create --private` + push under the
+   authenticated user with guaranteed teardown (hard-delete in an EXIT trap;
+   needs the `delete_repo` scope). Still untested: the "repo already exists on
+   GitHub, fresh local clone with divergent history" branch (repo-init would hit
+   a non-fast-forward reject). ← **NEXT TASK is now #4.**
 4. **frontend-design** — add a design-quality check (e.g. an LLM-judge over a
    Playwright screenshot for obvious breakage), since e2e only exercises it.
 5. **Real-infra (gated)** — app-deploy **live deploy** (A7/A8) + **ssh-key-rotation**.
