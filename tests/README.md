@@ -10,7 +10,7 @@ We climb the ladder one rung at a time, cheapest/most-deterministic first:
 | **1** | `install.sh` Linux/WSL leg in clean podman containers (A0 tooling + A1 bootstrap + idempotency) | podman (local) | ✅ here |
 | **2** | `preflight.sh` + `repo-init.sh` guard/sync branches in temp dirs | local | ✅ here |
 | **4** | single-skill headless agent runs + LLM judge (harness adapter) | Claude CLI (local) | ✅ here |
-| 3 | `install.sh` macOS leg | a clean Mac (tart/spare machine) | todo |
+| **3** | `install.sh` macOS leg (A0 tooling + A1 bootstrap) | a clean Mac (tart/spare machine) | ✅ here (run on the Mac) |
 
 ## Step 1 — run it
 
@@ -52,6 +52,32 @@ fast, no container, no agent:
 - **`repo-init.sh`** — offline guard branches (missing name, invalid visibility,
   not authenticated). The real `gh repo create` path is real-infra and is
   deferred to a dedicated test org (later).
+
+## Step 3 — run it (on a clean Mac)
+
+```bash
+# copy the single self-contained file to a throwaway / brand-new Mac, then:
+bash test-install-macos.sh
+```
+
+`tests/install/test-install-macos.sh` is the macOS counterpart of Step 1 — same
+A0/A1 scenarios, but on the **host** (macOS can't be containerized). It is
+**destructive to the host** (installs Homebrew + podman + mise + gh and inits a
+podman machine; does not remove them) so it gate-confirms first and only cleans
+the temp project dirs. Run it in your **own Terminal**, not inside Claude —
+password and Rosetta prompts need to be answered interactively.
+
+- Self-contained (assert helpers inlined) so you can `scp`/`curl` just this one
+  file — no repo clone needed on the Mac.
+- Runs the **published** one-liner's exact bytes (fetched once from the redirect,
+  then driven from `$HOME` for A0 and temp dirs for A1). Override with
+  `INSTALL_URL=…` or a local copy via `INSTALL_SH=/path`; `CONFIRM=1` skips the prompt.
+- Mac-specific asserts Step 1 can't reach: `brew` + `/opt/homebrew` prefix,
+  podman machine exists + running, the `<16GB → --memory 1024` branch, `$HOME`
+  home-dir guard, and the idempotent "já está instalado / já está rodando" re-run.
+- A1 here covers the **Claude-detected** path (`~/.claude` present pins
+  `settings.json` + symlinks skills); the universal-only branch is Step 1's job.
+- Rosetta is a GUI prompt — confirmed manually, not asserted.
 
 ## Step 4 — run it
 
@@ -149,6 +175,7 @@ Snapshot for resuming in a fresh session. Everything below is on `main`.
 | Step 4 — a2 (session start) | `tests/agent/test-agent.sh a2 [harness] [runs]` | 4 |
 | Step 4 — e2e (scaffold A4+A5) | `tests/agent/test-agent.sh e2e` | 6 |
 | Step 4 — deploy (app-deploy config) | `tests/agent/test-agent.sh deploy` | 16 |
+| Step 3 — install.sh macOS | `bash tests/install/test-install-macos.sh` (on a clean Mac) | ~25 |
 
 Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
 (a2 passes on both); **codex**/**gemini** are stubs.
@@ -164,10 +191,14 @@ Harness adapter (`run-agent.sh`): **claude** + **opencode** wired and validated
 
 ### Remaining work, roughly ordered
 
-1. **Step 3 — install.sh macOS leg.** Needs a *clean* Mac (a `tart` VM or a
-   spare/factory-reset machine). Port the Step 1 scenarios (A0 tooling: Homebrew
-   + `podman machine` init/memory/Rosetta; A1 bootstrap) to run there. Can't run
-   in a container.
+1. **Step 3 — install.sh macOS leg.** ✅ Validated by hand on a clean Apple
+   Silicon Mac (16 GiB, Claude detected): A0 tooling, A1 Claude-detected
+   bootstrap, and a live agent run (playbook loaded first even when the opening
+   message was an off-topic distraction; full pre-flight → repo-setup chain).
+   `tests/install/test-install-macos.sh` captures the A0/A1 asserts for re-runs.
+   Surfaced + fixed a brew UX bug (the `[y/n]` dependency prompt has no default —
+   now suppressed with `HOMEBREW_NO_ASK=1`). Still unexercised: universal-only A1
+   branch and Intel `/usr/local` prefix.
 2. **Wire codex + gemini** in `run-agent.sh` (stubs today): `codex exec "<p>"`
    and `gemini -p "<p>" --yolo --output-format json`. Then run `a2`/`e2e`/`deploy`
    across them. Note: the judge distiller greps Claude/OpenCode JSON shapes
