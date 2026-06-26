@@ -461,10 +461,16 @@ project_bootstrap() {
 print_next_steps() {
   echo
   if [[ "$IN_PROJECT" == "1" ]]; then
+    # Home-abbreviated path so the "cd" step shows e.g. `cd ~/meu-app`.
+    local proj_display="$PWD"
+    if [[ "$PWD" == "$HOME"/* ]]; then
+      proj_display="~${PWD#"$HOME"}"
+    fi
     if [[ "$NEED_RESTART" == "1" ]]; then
       ok   "Projeto configurado."
-      warn "Feche o terminal (digite 'exit') e abra um novo para carregar as"
-      warn "ferramentas, volte para esta pasta e inicie seu agente de IA para começar."
+      warn "Feche o terminal (digite 'exit') e abra um novo para carregar as ferramentas"
+      warn "Volte para esta pasta: cd $proj_display"
+      warn "Inicie seu agente de IA (Claude, Codex etc.)"
     else
       ok "Projeto configurado! Inicie seu agente de IA nesta pasta para começar."
     fi
