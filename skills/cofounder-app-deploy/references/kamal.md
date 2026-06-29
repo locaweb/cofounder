@@ -56,7 +56,7 @@ Accessories are defined in the destination config `config/deploy.{env}.yml`:
 # config/deploy.preview.yml
 accessories:
   db:
-    image: supabase/postgres:17.6.1.138
+    image: supabase/postgres:17.6.1.139
     host: <%= ENV['INFRA_DB_IP'] %>
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB -c max_connections=100"
@@ -197,7 +197,7 @@ proxy:
 
 accessories:
   db:
-    image: supabase/postgres:17.6.1.138
+    image: supabase/postgres:17.6.1.139
     host: <%= ENV['INFRA_DB_IP'] %>
     port: "5432:5432"
     cmd: "postgres -D /etc/postgresql -c shared_buffers=1GB"
