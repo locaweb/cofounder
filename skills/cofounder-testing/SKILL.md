@@ -81,7 +81,7 @@ The specific API depends on the test runner and testing library in use. The patt
 
 Choose a test runner compatible with the frontend framework (e.g., Vitest for Vite-based projects) and a DOM testing library that encourages testing from the user's perspective. Configure a simulated DOM environment (jsdom or similar) and add a `test` script to `package.json`. Look up the current recommended setup for the project's toolchain.
 
-**Vitest + Vite config:** Import `defineConfig` from `'vitest/config'`, not `'vite'`. This is the only way to make `tsc -b` accept the `test` block. Do **not** use `/// <reference types="vitest" />` — it doesn't fix the overload signature and `tsc -b` will fail with TS2769.
+**Vitest + Vite config:** Import `defineConfig` from `'vitest/config'`, not `'vite'`. This is the only way to make the type check accept the `test` block. Do **not** use `/// <reference types="vitest" />` — it doesn't fix the overload signature and `tsc` will fail with TS2769.
 
 ### Retrofitting tests to existing components
 
@@ -91,11 +91,13 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 ### TypeScript type check — required before every commit
 
-Vite's dev server skips type checking for speed, but the production build (`tsc -b && vite build`) does not — so errors like unused imports, type mismatches, or config file issues will only surface at deploy time unless caught locally. **Always run the TypeScript compiler before committing:**
+The dev server skips type checking for speed, and the production build (`react-router build`) doesn't type-check either — so errors like unused imports, type mismatches, or config file issues never surface on their own. **Always run the type check before committing:**
 
 ```bash
-bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx tsc -b'
+bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npm run typecheck'
 ```
+
+The scaffold's `typecheck` script runs `react-router typegen && tsc` — the typegen step generates the route types in `frontend/.react-router/` that `tsc` needs. Never run bare `tsc` directly; on a fresh checkout it fails without the generated types.
 
 ---
 

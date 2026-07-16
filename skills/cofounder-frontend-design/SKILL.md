@@ -49,7 +49,15 @@ Two observations to keep in mind:
 
 Always generate a custom favicon for the app — do **not** reuse the Vite default (`vite.svg`). Design it as part of the brand identity — it should echo the chosen aesthetic direction (color palette, visual motifs, overall tone). Keep the shape simple and recognizable at 16×16px.
 
-Deliver it as an **inline SVG data URI** in the `href` of `<link rel="icon">` in `index.html`. Do not create a separate file in `public/`. Example:
+Deliver it as an **inline SVG data URI** in the `href` of `<link rel="icon">`. Do not create a separate file in `public/`. In a cofounder app (React Router framework mode — there is no `index.html`), declare it via the `links` export in `app/root.tsx`:
+
+```tsx
+export const links: Route.LinksFunction = () => [
+  { rel: "icon", href: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e74c3c'/></svg>" },
+];
+```
+
+In a standalone HTML page, the same `<link>` goes directly in the `<head>`:
 
 ```html
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%23e74c3c'/></svg>">

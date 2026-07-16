@@ -1,17 +1,17 @@
 ---
 name: cofounder-tech-stack
-description: Go + React full-stack architecture with iterative local development. Use this skill when scaffolding a new app, adding features, fixing bugs, running the local dev loop, or when the user asks to "run the app locally", "run the app on my computer", "start the app", "rodar o programa", "rodar o app", "executar localmente", or any equivalent request to launch the application in their local environment. Covers project layout, database migrations, sqlc code generation, local Supabase/Postgres via Podman, Postgres extensions (pgmq, pg_cron, pgroonga, pgvector, pg_jsonschema, LISTEN/NOTIFY), and the write-test-repeat feedback cycle.
+description: Go + React full-stack architecture with iterative local development. Use this skill when scaffolding a new app, adding features, fixing bugs, running the local dev loop, or when the user asks to "run the app locally", "run the app on my computer", "start the app", "rodar o programa", "rodar o app", "executar localmente", or any equivalent request to launch the application in their local environment. Covers project layout, database migrations, sqlc code generation, local Supabase/Postgres via Podman, Postgres extensions (pgmq, pg_cron, pgroonga, pgvector, pg_jsonschema, LISTEN/NOTIFY), public-page prerendering for SEO and AI crawlers, and the write-test-repeat feedback cycle.
 ---
 
 # Tech Stack
 
-Go JSON API + React SPA served from a single binary and deployed as one container.
+Go JSON API + React SPA served from a single binary and deployed as one container. Public pages are prerendered to static HTML at build time so search engines and AI agents can read them.
 
 ## Architecture
 
 **Backend:** Go stdlib `net/http` router, `pgx/v5` for Postgres, `sqlc` for query generation, `slog` for logging, embedded SQL migrations via `go:embed`.
 
-**Frontend:** Vite + React + TypeScript, shadcn/ui components, Tailwind CSS, React Router. ALWAYS use the **frontend-design** skill when writing or modifying frontend code — it provides the design direction for layouts, styling, component aesthetics, and UI polish.
+**Frontend:** React + TypeScript, shadcn/ui components, Tailwind CSS, in **React Router framework mode** with `ssr: false` — a pure SPA at runtime (no Node server in production), with Vite as the underlying dev server and bundler. Public routes are listed in the `prerender` config so they ship as real HTML for search engines and AI agents (see [Public pages: prerender for SEO and AI agents](#public-pages-prerender-for-seo-and-ai-agents)). ALWAYS use the **frontend-design** skill when writing or modifying frontend code — it provides the design direction for layouts, styling, component aesthetics, and UI polish.
 
 ## Project Layout
 
@@ -31,11 +31,14 @@ Go JSON API + React SPA served from a single binary and deployed as one containe
 │   └── sqlc.yaml
 ├── e2e/                        # Visual checks (Playwright screenshots)
 │   └── package.json
-├── frontend/                    # Vite + React SPA
-│   ├── src/
-│   │   ├── components/ui/       # shadcn/ui (generated, editable)
-│   │   └── pages/               # Route-level components
-│   └── dist/                    # Build output (gitignored)
+├── frontend/                    # React SPA (React Router framework mode)
+│   ├── app/
+│   │   ├── routes.ts            # Route declarations
+│   │   ├── root.tsx             # Root layout (head, favicon, global providers)
+│   │   ├── routes/              # Route modules
+│   │   └── components/ui/       # shadcn/ui (generated, editable)
+│   ├── react-router.config.ts   # ssr: false (+ prerender list of public routes)
+│   └── build/                   # Build output (gitignored); static assets in build/client/
 └── Dockerfile
 ```
 
@@ -43,7 +46,8 @@ Ensure the project `.gitignore` includes at least:
 
 ```
 backend/server  # add the actual output path used by `go build`
-frontend/dist/
+frontend/build/
+frontend/.react-router/  # generated route types
 frontend/node_modules/
 e2e/node_modules/
 .venv/
@@ -197,32 +201,99 @@ The Go server handles everything: API routes under `/api/`, frontend static file
 
 In local development, the Vite dev server is the user-facing entry point — all browser traffic goes through it, and the proxy forwards `/api/*` and `/auth/*` to Go transparently. This means external-facing URLs — including OAuth redirect URIs configured in third-party consoles (e.g., Google Cloud) — must use the Vite port, not the Go backend port. Set `BASE_URL` in `.env` to the Vite dev server origin (e.g., `http://localhost:5173`). In deployed environments, `BASE_URL` is set to the app's public URL (e.g., `https://myapp.example.com`) via the deploy config — see the **app-deploy** skill. The Go backend reads `BASE_URL` from the environment in all cases — no Host header inference needed.
 
-The SPA catch-all **must not** serve `index.html` for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to `index.html` only for SPA routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
+The SPA catch-all **must not** serve the SPA shell for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` (this also covers prerendered pages like `about/index.html`) and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to the SPA shell only for routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
+
+The SPA shell filename depends on the prerender config (see [Public pages: prerender for SEO and AI agents](#public-pages-prerender-for-seo-and-ai-agents)): builds without a `prerender` list emit the shell as `index.html`; builds that prerender `/` (any app with public pages) emit the prerendered home as `index.html` and the shell as `__spa-fallback.html`. The pattern below detects this once at startup — and `/` must always be served from `index.html` (when `/` is prerendered, that file **is** the home page, not the shell).
 
 > **`frontendDist` must be the literal string `"frontend/dist"`.** Never use `"../frontend/dist"`, never use an absolute path like `"/frontend/dist"`, and never add fallback logic that tries multiple paths. The binary's working directory in production is the Dockerfile's `WORKDIR` — not `backend/`. The path `../frontend/dist` seems correct when looking at the local repo layout (Go runs from `backend/`), but in the Docker container it escapes to the wrong parent and causes a 404. This mistake is invisible during local development because Vite serves the frontend and the static-file handler is not registered when `DEV_MODE` is set — the error only surfaces after deploy. The Dockerfile section below shows the matching layout.
 
 ```go
 frontendDist := "frontend/dist"
 if _, err := os.Stat(frontendDist); err == nil && !cfg.DevMode {
+    // SPA shell: __spa-fallback.html when the build prerenders "/", index.html otherwise
+    spaShell := "index.html"
+    if _, err := os.Stat(filepath.Join(frontendDist, "__spa-fallback.html")); err == nil {
+        spaShell = "__spa-fallback.html"
+    }
     fs := http.FileServer(http.Dir(frontendDist))
     mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/auth/") {
             http.NotFound(w, r)
             return
         }
-        // Serve real files from dist; fall back to index.html for SPA routes
-        if r.URL.Path != "/" {
-            if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
-                fs.ServeHTTP(w, r)
-                return
-            }
+        // "/" always maps to index.html (the prerendered home page in prerendered builds)
+        if r.URL.Path == "/" {
+            fs.ServeHTTP(w, r)
+            return
         }
-        http.ServeFile(w, r, filepath.Join(frontendDist, "index.html"))
+        // Serve real files and prerendered pages from dist
+        if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
+            fs.ServeHTTP(w, r)
+            return
+        }
+        // Unmatched route → SPA shell
+        http.ServeFile(w, r, filepath.Join(frontendDist, spaShell))
     })
 } else if !cfg.DevMode {
     slog.Warn("frontend dist not found — SPA routes will return 404", "path", frontendDist)
 }
 ```
+
+### Public pages: prerender for SEO and AI agents
+
+A client-rendered SPA is effectively invisible to most non-browser readers. Googlebot does execute JavaScript, but in a delayed second indexing wave with a crawl-budget penalty; Bing is inconsistent; and AI crawlers (GPTBot, ClaudeBot, PerplexityBot, CCBot) and link unfurlers (WhatsApp, Slack, LinkedIn) fetch raw HTML and run **no JavaScript at all** — they see an empty `<div id="root">`. This only matters for **public** pages: the authenticated app gains nothing from server rendering.
+
+Every app is already scaffolded in framework mode (see [Frontend scaffold and cleanup](#frontend-scaffold-and-cleanup)), so this is a single config knob — list every public route (landing, pricing, about, blog, docs, public listings) in `prerender`:
+
+```ts
+// frontend/react-router.config.ts
+import type { Config } from "@react-router/dev/config";
+
+export default {
+  ssr: false, // pure SPA at runtime — no Node server, ever
+  prerender: ["/", "/about", "/pricing"], // every public route
+} satisfies Config;
+```
+
+Apps fully behind login (internal tools, dashboards) simply omit `prerender` — nothing else about them changes.
+
+At build time React Router renders each listed route to static HTML inside the client build: `index.html` (the prerendered home — always include `/` in the list), `about/index.html`, and so on, plus a small `.data` file per route used for client-side navigations. Because `/` is prerendered, the SPA shell is emitted as `__spa-fallback.html` — the Go catch-all above detects it automatically. Browsers hydrate the prerendered HTML into the normal SPA, so client-side navigation and the app experience are untouched; bots and agents get full HTML.
+
+**Never introduce an SSR framework (Next.js, Remix) or a Node server runtime for SEO.** Prerendering is build-time only and preserves the single-Go-binary deployment.
+
+**Constraint of `ssr: false`:** server `loader`/`action` functions are only allowed on prerendered routes (they run at build time, e.g. reading local markdown for a blog). All other routes must use `clientLoader`/`clientAction` or plain `fetch` to the Go API, as usual.
+
+#### Per-route metadata
+
+Every public route module must export `meta` with a real title, description, and Open Graph tags — this is what makes search snippets and link previews work (something a plain SPA cannot deliver at all):
+
+```ts
+export function meta() {
+  return [
+    { title: "Acme — Effortless invoicing" },
+    { name: "description", content: "Send invoices in seconds, get paid faster." },
+    { property: "og:title", content: "Acme — Effortless invoicing" },
+    { property: "og:description", content: "Send invoices in seconds, get paid faster." },
+    { property: "og:image", content: "https://acme.example.com/og.png" },
+  ];
+}
+```
+
+#### Dynamic public content
+
+Build-time prerendering only covers paths known at build time. `prerender` also accepts an async function, so content that lives in the repo (e.g. blog posts as markdown files) can be enumerated at build. For public pages created at **runtime** (public listings, profiles, shared documents), choose by weight:
+
+- **Lightweight (default):** keep the content client-rendered, but have the Go handler for those routes inject the correct `<title>`, meta description, OG tags, and JSON-LD into the SPA shell before serving it. Indexing and unfurls get the essentials without any rendering infrastructure.
+- **Full:** render those routes server-side from Go with `html/template`, reusing the built Tailwind CSS (add the template files to Tailwind's source globs so their classes are included). Reserve this for apps where public content pages **are** the product (marketplaces, directories, job boards).
+
+#### Bot hygiene checklist
+
+For every app with public pages, ship these (static files in `frontend/public/`, or a Go handler where content is dynamic):
+
+- **`robots.txt`** — never copy a template that blocks AI crawlers; ensure GPTBot, ClaudeBot, PerplexityBot, and CCBot are not disallowed, and reference the sitemap (`Sitemap: https://<domain>/sitemap.xml`).
+- **`sitemap.xml`** — list all public URLs. Generate at build time when routes are static; serve from a Go handler when public entities are dynamic.
+- **`llms.txt`** — emerging convention: a plain-markdown map of the site's public content at the root, for LLM agents.
+- **JSON-LD structured data** on pages that map to schema.org types (Product, Article, FAQPage, Organization).
 
 ### Postgres first
 
@@ -282,15 +353,43 @@ if err != nil {
 
 The Go backend listens for Postgres `NOTIFY` events and holds open a standard HTTP response with `Content-Type: text/event-stream` for each connected client. The React frontend uses the browser's built-in `EventSource` API. SSE is preferred over WebSockets to avoid adverse proxy configurations.
 
-### Vite scaffold cleanup
+### Frontend scaffold and cleanup
 
-After running `npm create vite`, remove all Vite/React template defaults before writing application code:
+Scaffold the frontend non-interactively with:
 
-- Delete `frontend/.git` if it exists (Vite scaffolding initializes its own git repo — it must be removed to avoid a nested repository)
-- Delete `public/vite.svg` (the Vite logo — must not ship as the app's favicon)
-- Delete `src/assets/react.svg`
-- Set `<title>` in `index.html` to the app's actual name (not `"frontend"` or `"Vite + React"`)
-- Replace the boilerplate `App.tsx`/`App.css` with the application's root component
+```bash
+bash -c 'cd "$(git rev-parse --show-toplevel)" && mise x -- npx create-react-router@latest frontend --yes --no-git-init --no-install --no-agent-skills'
+```
+
+The template ships with Tailwind CSS preconfigured and these npm scripts: `dev` (`react-router dev` — Vite under the hood), `build` (`react-router build`), and `typecheck` (`react-router typegen && tsc`). Routes are declared in `app/routes.ts`:
+
+```ts
+import { type RouteConfig, index, route } from "@react-router/dev/routes";
+
+export default [
+  index("routes/home.tsx"),
+  route("pricing", "routes/pricing.tsx"),
+] satisfies RouteConfig;
+```
+
+Then apply this cleanup before writing application code:
+
+- **Set `ssr: false`** in `react-router.config.ts` — the template defaults to `ssr: true`, which requires a Node server; this stack never runs one
+- **Add the dev proxy** to `vite.config.ts` so the dev server forwards API calls to Go (keep the existing `plugins` and `resolve` entries):
+
+  ```ts
+  server: {
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/auth": "http://localhost:8080",
+    },
+  },
+  ```
+
+- Delete `frontend/Dockerfile` and `frontend/.dockerignore` — the project root owns the single Dockerfile (see [Dockerfile](#dockerfile))
+- Delete `app/welcome/` and replace the default home route (`app/routes/home.tsx`) with the app's real one
+- Delete `public/favicon.ico` and the template's Google Fonts (Inter) links in `app/root.tsx` — the **frontend-design** skill handles favicon and typography
+- Set a real title and description via the `meta` export (root or home route) — never ship the template defaults
 
 Do **not** create a placeholder `public/favicon.svg` — the **frontend-design** skill handles favicon generation separately.
 
@@ -307,11 +406,11 @@ These match the **app-deploy** skill requirements:
 
 ## Dockerfile
 
-Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + `frontend/dist/` + CA certs. The Go binary embeds migrations; frontend assets are copied alongside the binary.
+Multi-stage: (1) build frontend with Node, (2) build Go binary, (3) minimal Alpine runtime with binary + frontend assets (copied to `frontend/dist/`) + CA certs. The Go binary embeds migrations; frontend assets are copied alongside the binary.
 
 The `FROM` tags in the Dockerfile use the same major versions as `mise.toml` with the `-alpine` suffix — e.g., `FROM node:24-alpine` and `FROM golang:1-alpine`. Docker Hub resolves these floating tags to the latest minor/patch at build time, so the Dockerfile stays in sync with `mise.toml` without manual version lookups. When a new Go or Node minor/patch is released, the next build picks it up automatically. The GHA BuildKit cache detects the manifest change and rebuilds from that layer down.
 
-**The runtime stage must place the binary and `frontend/dist/` as siblings under `WORKDIR`:**
+**The runtime stage must place the binary and the frontend client build (copied to `frontend/dist`) as siblings under `WORKDIR`:**
 
 ```dockerfile
 # Stage 1: Build frontend
@@ -330,18 +429,18 @@ RUN go mod download
 COPY backend/ ./
 RUN CGO_ENABLED=0 go build -o /server ./cmd/server
 
-# Stage 3: Runtime — binary and frontend/dist as siblings under WORKDIR
+# Stage 3: Runtime — binary and frontend assets as siblings under WORKDIR
 FROM alpine:3
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=backend-build /server ./server
-COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+COPY --from=frontend-build /app/frontend/build/client ./frontend/dist
 EXPOSE 80
 ENV PORT=80
 CMD ["./server"]
 ```
 
-The specific `WORKDIR` path does not matter — what matters is that both the binary and `frontend/dist/` are placed directly under it. The Go code uses `frontendDist := "frontend/dist"` (see the SPA catch-all above), so the Dockerfile must place the assets at that relative path from the binary's working directory. Since `CMD` runs from `WORKDIR`, copying both into `WORKDIR` satisfies this. In local dev, Vite serves the frontend, so the Go handler for static files is only registered when `DEV_MODE` is not set.
+The specific `WORKDIR` path does not matter — what matters is that both the binary and the frontend assets are placed directly under it. The frontend build outputs to `frontend/build/client/`; the Dockerfile copies that directory to `frontend/dist`, the literal path the Go binary expects (see the SPA catch-all above). Since `CMD` runs from `WORKDIR`, copying both into `WORKDIR` satisfies this. In local dev, Vite serves the frontend, so the Go handler for static files is only registered when `DEV_MODE` is not set.
 
 **Do not create a `.dockerignore` file.** The multi-stage build already keeps the final image small, and a `.dockerignore` that accidentally excludes files needed by `go:embed` (e.g., `migrations/`) will break the build with no clear error at authoring time.
 
@@ -492,7 +591,7 @@ Locally, all services are on `localhost`. Deployed, each accessory gets its own 
 bash -c 'ROOT="$(git rev-parse --show-toplevel)" && set -a && . "$ROOT/.env" && set +a && cd "$ROOT/backend" && DEV_MODE=1 mise x -- go run ./cmd/server'
 ```
 
-### 3. Start the Vite dev server (terminal 2)
+### 3. Start the frontend dev server (terminal 2)
 
 ```bash
 bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npm install && mise x -- npm run dev'
@@ -506,7 +605,7 @@ If the task output is no longer available, detect the port from the OS:
 lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
 ```
 
-Vite proxies `/api/*` and `/auth/*` to the Go backend.
+`npm run dev` runs `react-router dev` — Vite under the hood, so the usual Vite banner and port behavior apply — and proxies `/api/*` and `/auth/*` to the Go backend via the `server.proxy` block added at scaffold time.
 
 ### Stopping all project containers
 
@@ -568,7 +667,7 @@ Write/Edit Code + Tests
     ↓
 Start services (podman, go run, npm run dev)
     ↓
-Run tests (Layer 1: Go, Layer 2: Vitest + tsc -b)
+Run tests (Layer 1: Go, Layer 2: Vitest + npm run typecheck)
     ↓
 All pass? ──No──► Fix & repeat
     ↓ Yes
@@ -608,6 +707,7 @@ After committing, present the session wrap-up as defined in the cofounder agent.
 - **No ORMs.** SQL through sqlc only.
 - **No CSS preprocessors.** Tailwind CSS only.
 - **No additional JavaScript frameworks.** React + React Router only.
+- **No SSR frameworks or Node server runtime.** SEO needs are met by build-time prerendering (see [Public pages: prerender for SEO and AI agents](#public-pages-prerender-for-seo-and-ai-agents)) — never introduce Next.js or a runtime rendering server.
 
 ## Authorization Best Practices
 
