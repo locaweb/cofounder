@@ -39,6 +39,7 @@ Two observations to keep in mind:
 
 1. **Design both modes intentionally.** Dark mode is not "invert the colors." Each mode must have its own curated palette — background tones, text contrast, accent vibrancy, shadow depth, and border opacity all shift independently. A dark theme that simply swaps white for black looks washed out and lifeless. Design each mode as a first-class experience with its own personality.
 2. **Use CSS custom properties as the single source of truth.** Define all color tokens as `--color-*` variables on `:root` (light) and `[data-theme="dark"]` (or `.dark`). Components should never reference raw color values — only variables. This makes theming a one-place change and keeps both modes perfectly in sync. Offer three toggle states — **Light**, **Dark**, and **System** — where System (the default) follows the OS-wide preference via `prefers-color-scheme: dark`. Persist the user's choice to `localStorage` so it survives reloads, but always start with System so the app respects the platform setting out of the box.
+3. **With prerendered pages, `data-theme` must be owned by an inline `<head>` script, not by React.** Set it in a tiny script that runs before paint, keep the attribute out of React-rendered JSX, and add `suppressHydrationWarning` to `<html>`. Prerendered HTML bakes one value at build time — letting React render the attribute causes hydration mismatches and a theme flash.
 
 ### Interaction Feedback
 

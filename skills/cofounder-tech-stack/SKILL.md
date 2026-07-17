@@ -201,7 +201,7 @@ The Go server handles everything: API routes under `/api/`, frontend static file
 
 In local development, the Vite dev server is the user-facing entry point — all browser traffic goes through it, and the proxy forwards `/api/*` and `/auth/*` to Go transparently. This means external-facing URLs — including OAuth redirect URIs configured in third-party consoles (e.g., Google Cloud) — must use the Vite port, not the Go backend port. Set `BASE_URL` in `.env` to the Vite dev server origin (e.g., `http://localhost:5173`). In deployed environments, `BASE_URL` is set to the app's public URL (e.g., `https://myapp.example.com`) via the deploy config — see the **app-deploy** skill. The Go backend reads `BASE_URL` from the environment in all cases — no Host header inference needed.
 
-The SPA catch-all **must not** serve the SPA shell for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below: check whether the requested path matches a real file in `dist/` (this also covers prerendered pages like `about/index.html`) and serve it via `http.FileServer` (which sets the correct `Content-Type` automatically), falling back to the SPA shell only for routes that don't correspond to files on disk. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
+The SPA catch-all **must not** serve the SPA shell for every non-API path. Doing so returns HTML with `text/html` content type for `.js`, `.css`, and other hashed assets under `/assets/`, causing browsers to reject them with MIME type errors — the app will appear completely broken in production even though it works in development (where Vite's dev server handles assets directly). Always use the pattern below — it encodes three rules learned the hard way: real files go through `http.FileServer` (correct `Content-Type`); prerendered pages (`about/index.html`) are served **directly**, because handing the directory to `FileServer` 301-redirects every sitemap URL to its trailing-slash form; and directories are never given to `FileServer`, which would expose a browsable listing of the app's internals. `http.Dir` restricts access to the specified directory, so this is safe against path traversal.
 
 The SPA shell filename depends on the prerender config (see [Public pages: prerender for SEO and AI agents](#public-pages-prerender-for-seo-and-ai-agents)): builds without a `prerender` list emit the shell as `index.html`; builds that prerender `/` (any app with public pages) emit the prerendered home as `index.html` and the shell as `__spa-fallback.html`. The pattern below detects this once at startup — and `/` must always be served from `index.html` (when `/` is prerendered, that file **is** the home page, not the shell).
 
@@ -226,10 +226,22 @@ if _, err := os.Stat(frontendDist); err == nil && !cfg.DevMode {
             fs.ServeHTTP(w, r)
             return
         }
-        // Serve real files and prerendered pages from dist
-        if _, err := os.Stat(filepath.Join(frontendDist, filepath.Clean(r.URL.Path))); err == nil {
-            fs.ServeHTTP(w, r)
-            return
+        target := filepath.Join(frontendDist, filepath.Clean(r.URL.Path))
+        if info, err := os.Stat(target); err == nil {
+            if !info.IsDir() {
+                fs.ServeHTTP(w, r) // real asset; FileServer sets Content-Type
+                return
+            }
+            // Prerendered page ("/about" → about/index.html). Serve the file directly:
+            // delegating a directory to FileServer would 301 to "/about/", adding a
+            // redirect hop to every URL listed in sitemap.xml.
+            page := filepath.Join(target, "index.html")
+            if _, err := os.Stat(page); err == nil {
+                http.ServeFile(w, r, page)
+                return
+            }
+            // Directory without index.html (e.g. /assets/): fall through to the shell —
+            // FileServer would render a browsable listing of the app's internals.
         }
         // Unmatched route → SPA shell
         http.ServeFile(w, r, filepath.Join(frontendDist, spaShell))
@@ -288,12 +300,12 @@ Build-time prerendering only covers paths known at build time. `prerender` also 
 
 #### Bot hygiene checklist
 
-For every app with public pages, ship these (static files in `frontend/public/`, or a Go handler where content is dynamic):
+For every app with public pages, serve `robots.txt`, `sitemap.xml`, and `llms.txt` from **Go handlers, deriving every URL from `BASE_URL`**. Never write them as static files: the public origin doesn't exist until deploy, so a static file inevitably carries a made-up domain that silently breaks crawler discovery in production. Cover the derivation with a test that runs against **two** synthetic origins (`.test` domains) — with a single origin, a hardcoded URL passes by coincidence.
 
-- **`robots.txt`** — never copy a template that blocks AI crawlers; ensure GPTBot, ClaudeBot, PerplexityBot, and CCBot are not disallowed, and reference the sitemap (`Sitemap: https://<domain>/sitemap.xml`).
-- **`sitemap.xml`** — list all public URLs. Generate at build time when routes are static; serve from a Go handler when public entities are dynamic.
-- **`llms.txt`** — emerging convention: a plain-markdown map of the site's public content at the root, for LLM agents.
-- **JSON-LD structured data** on pages that map to schema.org types (Product, Article, FAQPage, Organization).
+- **`robots.txt`** — must not disallow AI crawlers (GPTBot, ClaudeBot, PerplexityBot, CCBot); end with `Sitemap: <BASE_URL>/sitemap.xml`.
+- **`sitemap.xml`** — every public URL.
+- **`llms.txt`** — plain-markdown map of the public content, for LLM agents.
+- **JSON-LD structured data** (this one lives in the route's HTML, not in Go) on pages that map to schema.org types (Product, Article, FAQPage, Organization).
 
 ### Postgres first
 
@@ -375,19 +387,24 @@ export default [
 Then apply this cleanup before writing application code:
 
 - **Set `ssr: false`** in `react-router.config.ts` — the template defaults to `ssr: true`, which requires a Node server; this stack never runs one
-- **Add the dev proxy** to `vite.config.ts` so the dev server forwards API calls to Go (keep the existing `plugins` and `resolve` entries):
+- **Add the dev proxy** in `vite.config.ts` so the dev server forwards backend routes to Go (keep the existing `plugins` and `resolve` entries). Targets must match the Go `PORT` from `.env`:
 
   ```ts
   server: {
     proxy: {
       "/api": "http://localhost:8080",
       "/auth": "http://localhost:8080",
+      // Served by Go, derived from BASE_URL — without the proxy they 404 only in dev
+      "/robots.txt": "http://localhost:8080",
+      "/sitemap.xml": "http://localhost:8080",
+      "/llms.txt": "http://localhost:8080",
     },
   },
   ```
 
-- Delete `frontend/Dockerfile` and `frontend/.dockerignore` — the project root owns the single Dockerfile (see [Dockerfile](#dockerfile))
+- Delete `frontend/Dockerfile`, `frontend/.dockerignore`, and `frontend/README.md` — the project root owns the Dockerfile (see [Dockerfile](#dockerfile)), and the template README describes an SSR setup this stack doesn't use
 - Delete `app/welcome/` and replace the default home route (`app/routes/home.tsx`) with the app's real one
+- Remove the `start` script and the server-only deps (`@react-router/node`, `@react-router/serve`, `isbot`) — SPA mode never runs a Node server
 - Delete `public/favicon.ico` and the template's Google Fonts (Inter) links in `app/root.tsx` — the **frontend-design** skill handles favicon and typography
 - Set a real title and description via the `meta` export (root or home route) — never ship the template defaults
 
@@ -597,7 +614,7 @@ bash -c 'ROOT="$(git rev-parse --show-toplevel)" && set -a && . "$ROOT/.env" && 
 bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npm install && mise x -- npm run dev'
 ```
 
-Don't assume the default Vite port (5173) — Vite automatically picks the next available port when the default is already in use by another project. After starting the dev server in the background, read the task output and look for the `Local:` line in Vite's startup banner (e.g., `Local: http://localhost:5174/`). Use the URL from that line — not a hardcoded port — for all subsequent access.
+Don't assume the default Vite port (5173) — Vite automatically picks the next available port when the default is already in use by another project. After starting the dev server in the background, read the task output and look for the `Local:` line in Vite's startup banner (e.g., `Local: http://localhost:5174/`). Use the URL from that line — not a hardcoded port — for all subsequent access, and keep `BASE_URL` in `.env` (plus any OAuth redirect URIs registered on it) in sync with the actual port.
 
 If the task output is no longer available, detect the port from the OS:
 
@@ -605,7 +622,7 @@ If the task output is no longer available, detect the port from the OS:
 lsof -i -P -n -sTCP:LISTEN | grep node | awk '{print $9}'
 ```
 
-`npm run dev` runs `react-router dev` — Vite under the hood, so the usual Vite banner and port behavior apply — and proxies `/api/*` and `/auth/*` to the Go backend via the `server.proxy` block added at scaffold time.
+`npm run dev` runs `react-router dev` — Vite under the hood — and proxies `/api/*`, `/auth/*`, and the SEO files to the Go backend via the `server.proxy` block added at scaffold time.
 
 ### Stopping all project containers
 

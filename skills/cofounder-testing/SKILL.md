@@ -83,6 +83,8 @@ Choose a test runner compatible with the frontend framework (e.g., Vitest for Vi
 
 **Vitest + Vite config:** Import `defineConfig` from `'vitest/config'`, not `'vite'`. This is the only way to make the type check accept the `test` block. Do **not** use `/// <reference types="vitest" />` — it doesn't fix the overload signature and `tsc` will fail with TS2769.
 
+**No `@vitejs/plugin-react` for Vitest.** In React Router framework mode it conflicts with the router's toolchain (incompatible Babel), and Vitest transforms JSX natively — add no JSX transform config at all.
+
 ### Retrofitting tests to existing components
 
 1. Identify components with non-trivial logic.
