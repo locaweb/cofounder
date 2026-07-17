@@ -404,7 +404,7 @@ Then apply this cleanup before writing application code:
 
 - Delete `frontend/Dockerfile`, `frontend/.dockerignore`, and `frontend/README.md` — the project root owns the Dockerfile (see [Dockerfile](#dockerfile)), and the template README describes an SSR setup this stack doesn't use
 - Delete `app/welcome/` and replace the default home route (`app/routes/home.tsx`) with the app's real one
-- Remove the `start` script and the server-only deps (`@react-router/node`, `@react-router/serve`, `isbot`) — SPA mode never runs a Node server
+- Remove the `start` script and `@react-router/serve` — SPA mode never runs a Node server. **Keep `@react-router/node` and `isbot`**: build-time prerendering still needs them to resolve a server runtime; removing them breaks `react-router build` and `typegen`
 - Delete `public/favicon.ico` and the template's Google Fonts (Inter) links in `app/root.tsx` — the **frontend-design** skill handles favicon and typography
 - Set a real title and description via the `meta` export (root or home route) — never ship the template defaults
 
