@@ -10,6 +10,14 @@ set -euo pipefail
 REPO_NAME="${1:?Usage: repo-init.sh <repo-name> [private|public]}"
 VISIBILITY="${2:-private}"
 
+# Validate repository name: alphanumeric, hyphens, underscores, dots; must not
+# start with a hyphen or dot (prevents flag injection and GitHub rejection).
+if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]*$ ]]; then
+  echo "ERROR: Invalid repository name '$REPO_NAME'." >&2
+  echo "       Use only letters, digits, hyphens, underscores, and dots; must not start with '-' or '.'." >&2
+  exit 1
+fi
+
 # Validate visibility
 if [[ "$VISIBILITY" != "private" && "$VISIBILITY" != "public" ]]; then
   echo "ERROR: visibility must be 'private' or 'public', got '$VISIBILITY'" >&2
@@ -55,11 +63,12 @@ if gh repo view "$REPO_NAME" &>/dev/null; then
 else
   # Create the remote repository on GitHub
   echo "Creating $VISIBILITY repository '$REPO_NAME' on GitHub..."
-  gh repo create "$REPO_NAME" \
-    "--$VISIBILITY" \
-    --source=. \
-    --remote=origin \
-    --push
+  # Use explicit flags to avoid flag-injection via string interpolation.
+  if [[ "$VISIBILITY" == "private" ]]; then
+    gh repo create "$REPO_NAME" --private  --source=. --remote=origin --push
+  else
+    gh repo create "$REPO_NAME" --public   --source=. --remote=origin --push
+  fi
 fi
 
 echo ""

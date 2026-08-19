@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.25.5 -->
+<!-- COFOUNDER_VERSION: 0.26.0 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder skills.
 
@@ -24,7 +24,7 @@ Fetch `https://raw.githubusercontent.com/locaweb/cofounder/refs/heads/main/.clau
 - **Remote is newer:** The session **must not continue** on the outdated skills. Refresh them by running the universal install command:
 
   ```sh
-  mise x node@lts -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
+  mise x node@22 -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
   ```
 
   (Re-running `/bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"` does the same thing and also refreshes the dev tools.) Then tell the user the cofounder was updated and that they **must start a new session** to load it — the current session still runs the outdated skills — and **stop**.
