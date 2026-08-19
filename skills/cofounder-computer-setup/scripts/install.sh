@@ -276,7 +276,8 @@ install_playwright_chromium_deps_linux() {
   # exports ~/.local/bin onto PATH for the rest of this script run.
   # `mise x node@24` fetches a temporary node if it isn't already installed.
   # `npx --yes` accepts the playwright download prompt non-interactively.
-  mise x node@24 -- npx --yes playwright@latest install-deps chromium
+  # Pinned version reduces supply-chain exposure; update together with the e2e package.json.
+  mise x node@24 -- npx --yes playwright@1.50.1 install-deps chromium
 }
 
 install_gh_linux() {
@@ -373,6 +374,8 @@ write_claude_settings() {
   local settings="$PWD/.claude/settings.json"
   local script
   script=$(mktemp)
+  # Ensure the temp script is removed whether the Node call succeeds or fails.
+  trap 'rm -f "$script"' RETURN
   cat > "$script" <<'NODE'
 const fs = require('fs');
 const p = process.argv[2];
@@ -387,16 +390,19 @@ cur.permissions = Object.assign({}, cur.permissions, { allow: [...allow] });
 fs.writeFileSync(p, JSON.stringify(cur, null, 2) + '\n');
 NODE
   mise x node@lts -- node "$script" "$settings"
-  rm -f "$script"
   ok "configurado .claude/settings.json"
 }
 
-# Append .gitignore entries for the vendored skills (idempotent). The npx
-# machinery stays the source of truth; the skills are not committed.
+# Append .gitignore entries for the vendored skills and common secret files
+# (idempotent). Negation rules un-ignore template variants (.env.example etc.)
+# so they can be committed safely. Order matters: negations must follow the
+# pattern they override.
 append_gitignore() {
   local gi="$PWD/.gitignore" entry
   touch "$gi"
-  for entry in ".claude/skills/" ".agents/skills/" ".hermes/skills/" "skills-lock.json"; do
+  for entry in \
+      ".claude/skills/" ".agents/skills/" ".hermes/skills/" "skills-lock.json" \
+      ".env" ".env.*" "!.env.example" "!.env.sample" "!.env.template"; do
     grep -qxF "$entry" "$gi" || echo "$entry" >> "$gi"
   done
 }
@@ -442,7 +448,7 @@ project_bootstrap() {
 
   # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
   # whose gitignored skills are absent and the installer hasn't been re-run yet).
-  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`/bin/bash -c \"\$(curl -fsSL $COFOUNDER_INSTALL_URL)\"\`, then invoke the playbook.)"
+  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
 
   # CLAUDE.md: @import so Claude (which doesn't read AGENTS.md natively) loads it.
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."

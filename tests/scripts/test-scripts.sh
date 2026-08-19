@@ -106,6 +106,73 @@ expect "PREFLIGHT_PASSED"             file_contains "$LOG/s7.log" "PREFLIGHT_PAS
 expect "committed local changes"      file_contains "$LOG/s7.log" "SYNC: Committing local changes..."
 expect "nothing left unpushed"        test -z "$(git -C "$d" rev-list '@{upstream}..HEAD' 2>/dev/null)"
 
+# mkrepo <dir> — git repo with a local bare remote, one commit pushed, ready to sync.
+mkrepo() {
+  local d="$1" bare="$1.git"
+  git init --bare -q -b main "$bare"
+  mkdir -p "$d"
+  ( cd "$d" && git init -b main -q && git commit --allow-empty -m init -q \
+     && git remote add origin "$bare" && git push -u origin main -q )
+}
+
+echo "== preflight: sensitive file guard — untracked secrets block the sync =="
+d="$BASE/s9"; mkrepo "$d"
+mkdir -p "$d/config" "$d/tls"
+echo "SECRET=abc" >"$d/.env"
+echo "SECRET=abc" >"$d/prod.env"            # <name>.env convention
+echo "SECRET=abc" >"$d/config/staging.env"  # <name>.env in a subdirectory
+echo "SECRET=abc" >"$d/.env.local"          # .env.<suffix>
+touch "$d/server.key" "$d/tls/private.key" "$d/app.secret" "$d/id_rsa"
+pf s9 "$d" "$FAKEHOME" "$PATH"
+expect "exit 1"                       test "$(rc s9)" = 1
+expect "SENSITIVE_FILES_DETECTED"     file_contains "$LOG/s9.log" "SENSITIVE_FILES_DETECTED"
+for f in .env prod.env config/staging.env .env.local server.key tls/private.key app.secret id_rsa; do
+  expect "lists $f"                   file_contains "$LOG/s9.log" "$f"
+done
+expect "nothing was committed"        test -z "$(git -C "$d" log --oneline -1 --grep='Auto-sync')"
+
+echo "== preflight: sensitive file guard — templates and lookalikes do not block =="
+d="$BASE/s10"; mkrepo "$d"
+mkdir -p "$d/src"
+echo "SECRET=changeme" >"$d/.env.example"
+echo "SECRET=changeme" >"$d/.env.sample"
+echo "SECRET=changeme" >"$d/prod.env.template"
+echo "export const x = 1" >"$d/src/environment.ts"   # contains "env", must not match
+touch "$d/foo.environment" "$d/keyboard.md" "$d/monkey.txt"
+pf s10 "$d" "$FAKEHOME" "$PATH"
+expect "PREFLIGHT_PASSED"             file_contains "$LOG/s10.log" "PREFLIGHT_PASSED"
+refute "no false positive"            file_contains "$LOG/s10.log" "SENSITIVE_FILES_DETECTED"
+expect "committed normally"           file_contains "$LOG/s10.log" "SYNC: Committing local changes..."
+
+echo "== preflight: sensitive file guard — staged secret blocks with restore advice =="
+d="$BASE/s11"; mkrepo "$d"
+echo "SECRET=abc" >"$d/.env"
+git -C "$d" add -f .env
+pf s11 "$d" "$FAKEHOME" "$PATH"
+expect "exit 1"                       test "$(rc s11)" = 1
+expect "SENSITIVE_FILES_DETECTED"     file_contains "$LOG/s11.log" "SENSITIVE_FILES_DETECTED"
+expect "suggests restore --staged"    file_contains "$LOG/s11.log" "git restore --staged"
+
+echo "== preflight: sensitive file guard — tracked+modified secret suggests git rm --cached =="
+d="$BASE/s12"; mkrepo "$d"
+echo "SECRET=abc" >"$d/.env"
+( cd "$d" && git add -f .env && git commit -qm "add env" && git push -q )
+echo "SECRET=changed" >"$d/.env"     # tracked and modified — the deadlock case
+pf s12 "$d" "$FAKEHOME" "$PATH"
+expect "exit 1"                       test "$(rc s12)" = 1
+expect "SENSITIVE_FILES_DETECTED"     file_contains "$LOG/s12.log" "SENSITIVE_FILES_DETECTED"
+expect "suggests git rm --cached"     file_contains "$LOG/s12.log" "git rm --cached"
+
+echo "== preflight: sensitive file guard — deleting a tracked secret does NOT block =="
+d="$BASE/s13"; mkrepo "$d"
+echo "SECRET=abc" >"$d/.env"
+( cd "$d" && git add -f .env && git commit -qm "add env" && git push -q )
+rm "$d/.env"                          # the correct cleanup must not deadlock the session
+pf s13 "$d" "$FAKEHOME" "$PATH"
+expect "PREFLIGHT_PASSED"             file_contains "$LOG/s13.log" "PREFLIGHT_PASSED"
+refute "not blocked on deletion"      file_contains "$LOG/s13.log" "SENSITIVE_FILES_DETECTED"
+expect "deletion was committed"       test -z "$(git -C "$d" ls-files .env)"
+
 echo "== preflight: dev tools missing =="
 d="$BASE/s8"; mkdir -p "$d"
 pf s8 "$d" "$FAKEHOME" "/nonexistent"   # hide podman/mise/gh

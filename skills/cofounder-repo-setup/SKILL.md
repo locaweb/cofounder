@@ -40,13 +40,15 @@ If not authenticated, run:
 GH_FORCE_TTY=1 NO_COLOR=1 GH_PROMPT_DISABLED=1 gh auth login --hostname github.com --git-protocol https --scopes "repo,read:org,workflow" > /tmp/gh-auth.log 2>&1 & sleep 3 && cat /tmp/gh-auth.log
 ```
 
-Retrieve the one-time code from the output and display it **very prominently**
-to the user along with the URL https://github.com/login/device. For example:
+Show the user the raw output from the log file and guide them to locate the
+device code (a short alphanumeric string like `XXXX-XXXX`) in it. This is a
+temporary single-use device code for the GitHub OAuth device flow — not a
+long-lived credential. The user reads it directly from their terminal output
+and enters it themselves at https://github.com/login/device. For example:
 
 > **GitHub login required!**
 >
-> Your one-time code is: **`XXXX-XXXX`**
->
+> Look for a one-time code in the output above (format: `XXXX-XXXX`).
 > Open **https://github.com/login/device** in your browser and enter the code.
 
 Ask the user to complete the browser authorization and confirm when done.

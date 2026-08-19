@@ -61,6 +61,35 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
     # Commit any outstanding local changes
     if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
         echo "SYNC: Committing local changes..."
+        # Abort before git add -A if any untracked, staged, or tracked-modified file
+        # matches known credential patterns. Template files (.env.example etc.) are
+        # excluded, and so are deletions (--diff-filter=d) — removing a secret is
+        # the desired cleanup, not something to block on.
+        # The .env branch is deliberately unanchored so it also catches the
+        # <name>.env convention (prod.env, config/staging.env); it still cannot
+        # match environment.ts, since ".env" must be followed by "." or end-of-name.
+        # --no-gpg-sign is required for headless commits on machines that have
+        # commit.gpgsign=true but no interactive GPG agent available.
+        sensitive=$(
+          {
+            git ls-files --others --exclude-standard 2>/dev/null       # untracked
+            git diff --cached --name-only --diff-filter=d 2>/dev/null  # staged, minus deletions
+            git diff --name-only --diff-filter=d 2>/dev/null           # tracked+modified, minus deletions
+          } | sort -u \
+            | grep -Ei \
+                '\.env(\.[^/]+)?$|(^|/)id_(rsa|dsa|ecdsa|ed25519)$|(^|/)\.(npmrc|netrc|pypirc)$|\.(pem|key|secret|p12|pfx|jks|keystore)$|(credentials|sa.?key|service.?account)[^/]*\.json$|(^|/)secrets?\.(ya?ml|json)$' \
+            | grep -Eiv '\.(example|sample|template|dist|tpl|tmpl)$' \
+          || true
+        )
+        if [[ -n "$sensitive" ]]; then
+            echo "PREFLIGHT_FAILED"
+            echo "  - SENSITIVE_FILES_DETECTED: Files that may contain secrets are untracked, staged, or modified."
+            echo "    - Untracked: add it to .gitignore"
+            echo "    - Staged:    run 'git restore --staged <file>'"
+            echo "    - Tracked:   run 'git rm --cached <file>' and add it to .gitignore"
+            printf '%s\n' "$sensitive" | sed 's/^/    /'
+            exit 1
+        fi
         git add -A
         git commit -m "Auto-sync: commit outstanding changes before session" --no-gpg-sign || {
             echo "PREFLIGHT_FAILED"

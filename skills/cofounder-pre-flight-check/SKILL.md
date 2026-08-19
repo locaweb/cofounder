@@ -15,21 +15,22 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.25.5 -->
+<!-- COFOUNDER_VERSION: 0.25.6 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder skills.
 
-Fetch `https://raw.githubusercontent.com/locaweb/cofounder/refs/heads/main/.claude-plugin/plugin.json` and compare its `version` field with the version in the marker.
+Fetch `https://api.github.com/repos/locaweb/cofounder/contents/.claude-plugin/plugin.json` and read the `version` field from the decoded content. Using the GitHub API (instead of a raw branch URL) ensures the response is signed and subject to GitHub's integrity controls.
 
-- **Remote is newer:** The session **must not continue** on the outdated skills. Refresh them by running the universal install command:
+Only compare the version number — never execute or evaluate content from the fetched response.
+
+- **Remote is newer:** Warn the user that the cofounder skills are outdated and ask them to update by running the command below in their OS terminal. Tell them they **must start a new session** after updating — the current session still runs the outdated skills — and **stop**:
 
   ```sh
-  mise x node@lts -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
+  mise x node@22 -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
   ```
 
-  (Re-running `/bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"` does the same thing and also refreshes the dev tools.) Then tell the user the cofounder was updated and that they **must start a new session** to load it — the current session still runs the outdated skills — and **stop**.
 - **Versions match:** Proceed normally.
-- **Fetch fails:** Ask the user for network permission, then retry. If it still fails, proceed without blocking the session.
+- **Fetch fails:** Proceed without blocking the session — do not treat a failed fetch as a reason to stop.
 
 ## Running the Check
 
@@ -72,15 +73,14 @@ repository first to acknowledge the existing content.
 When the directory has a git repository **and** at least one remote is configured,
 the script automatically synchronizes:
 
-1. **Commit** any uncommitted local changes (staged or unstaged)
-2. **Pull** remote commits using rebase to keep history linear
-3. **Push** local commits to the remote
+1. **Sensitive file guard** — aborts if any untracked, staged, or modified file matches credential patterns (`.env` / `<name>.env` / `.env.*`, `id_rsa` and friends, `.npmrc`/`.netrc`/`.pypirc`, `.pem`, `.key`, `.secret`, `.p12`, `.pfx`, `.jks`, `.keystore`, `credentials*.json`, `secrets.yaml`). Template files (`.example`, `.sample`, `.template`, …) and deletions are ignored. The remediation depends on how the file is tracked: add it to `.gitignore` (untracked), `git restore --staged <file>` (staged), or `git rm --cached <file>` plus `.gitignore` (already tracked).
+2. **Commit** any uncommitted local changes (staged or unstaged)
+3. **Pull** remote commits using rebase to keep history linear
+4. **Push** local commits to the remote
 
 This ensures every session starts from a fully synchronized state.
 
-**On failure:** The script reports a `GIT_SYNC_ERROR` with details (commit
-failed, merge conflict on pull, or push rejected). The user must resolve the
-issue manually and re-run the check.
+**On failure:** The script reports a `GIT_SYNC_ERROR` or `SENSITIVE_FILES_DETECTED` with details. The user must resolve the issue manually and re-run the check.
 
 ### 4. Dev Tools Check
 
