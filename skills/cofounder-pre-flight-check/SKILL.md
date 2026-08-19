@@ -73,7 +73,7 @@ repository first to acknowledge the existing content.
 When the directory has a git repository **and** at least one remote is configured,
 the script automatically synchronizes:
 
-1. **Sensitive file guard** — aborts if any untracked file matching credential patterns (`.env`, `.pem`, `.key`, `.p12`, `.pfx`, `.secret`) is not covered by `.gitignore`. The user must add them to `.gitignore` before the sync can proceed.
+1. **Sensitive file guard** — aborts if any untracked, staged, or modified file matches credential patterns (`.env` / `<name>.env` / `.env.*`, `id_rsa` and friends, `.npmrc`/`.netrc`/`.pypirc`, `.pem`, `.key`, `.secret`, `.p12`, `.pfx`, `.jks`, `.keystore`, `credentials*.json`, `secrets.yaml`). Template files (`.example`, `.sample`, `.template`, …) and deletions are ignored. The remediation depends on how the file is tracked: add it to `.gitignore` (untracked), `git restore --staged <file>` (staged), or `git rm --cached <file>` plus `.gitignore` (already tracked).
 2. **Commit** any uncommitted local changes (staged or unstaged)
 3. **Pull** remote commits using rebase to keep history linear
 4. **Push** local commits to the remote
