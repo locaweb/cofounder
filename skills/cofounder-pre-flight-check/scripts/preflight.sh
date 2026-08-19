@@ -61,12 +61,16 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
     # Commit any outstanding local changes
     if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
         echo "SYNC: Committing local changes..."
-        # Warn about files that may be sensitive and are not tracked (untracked = not yet in .gitignore)
+        # Abort if untracked files that look sensitive are not covered by .gitignore.
+        # This prevents auto-commit from inadvertently staging credentials or keys.
         sensitive=$(git ls-files --others --exclude-standard 2>/dev/null \
             | grep -Ei '\.(env|pem|key|p12|pfx|secret)$|^\.env(\.|$)' || true)
         if [[ -n "$sensitive" ]]; then
-            echo "SYNC_WARNING: Potentially sensitive untracked files detected — confirm .gitignore covers them:"
-            echo "$sensitive" | sed 's/^/    /'
+            echo "PREFLIGHT_FAILED"
+            echo "  - SENSITIVE_FILES_DETECTED: Untracked files that may contain secrets were found."
+            echo "    Add them to .gitignore before continuing:"
+            printf '%s\n' "$sensitive" | sed 's/^/    /'
+            exit 1
         fi
         git add -A
         git commit -m "Auto-sync: commit outstanding changes before session" || {
