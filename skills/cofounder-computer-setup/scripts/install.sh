@@ -393,12 +393,16 @@ NODE
   ok "configurado .claude/settings.json"
 }
 
-# Append .gitignore entries for the vendored skills (idempotent). The npx
-# machinery stays the source of truth; the skills are not committed.
+# Append .gitignore entries for the vendored skills and common secret files
+# (idempotent). Negation rules un-ignore template variants (.env.example etc.)
+# so they can be committed safely. Order matters: negations must follow the
+# pattern they override.
 append_gitignore() {
   local gi="$PWD/.gitignore" entry
   touch "$gi"
-  for entry in ".claude/skills/" ".agents/skills/" ".hermes/skills/" "skills-lock.json"; do
+  for entry in \
+      ".claude/skills/" ".agents/skills/" ".hermes/skills/" "skills-lock.json" \
+      ".env" ".env.*" "!.env.example" "!.env.sample" "!.env.template"; do
     grep -qxF "$entry" "$gi" || echo "$entry" >> "$gi"
   done
 }
