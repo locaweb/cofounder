@@ -10,8 +10,8 @@
 #        - WSL:    same as Linux — WSL Ubuntu reports as Linux to uname
 #
 #   2. Project bootstrap (when run inside a project directory):
-#        - Installs the cofounder skills into the project via `npx skills`
-#          (auto-detecting the installed agent: Claude / Codex / Cursor / …)
+#        - Installs the cofounder skills into the project straight from the
+#          repo tarball (shared .agents/skills store + symlinks for Claude/Hermes)
 #        - Writes the AGENTS.md activation pointer (+ CLAUDE.md @import)
 #        - Pins .claude/settings.json when Claude is detected
 #        - Appends .gitignore entries for the vendored skills
@@ -328,6 +328,7 @@ install_gh_linux() {
 
 COFOUNDER_REPO="locaweb/cofounder"
 COFOUNDER_INSTALL_URL="https://cofounder.locaweb.com.br/install.sh"
+COFOUNDER_TARBALL_URL="https://github.com/$COFOUNDER_REPO/archive/refs/heads/main.tar.gz"
 
 BEGIN_MARKER="<!-- cofounder:begin -->"
 END_MARKER="<!-- cofounder:end -->"
@@ -410,6 +411,54 @@ append_gitignore() {
   done
 }
 
+# Install the cofounder skills straight from the repo tarball, without the
+# `npx skills` CLI. What the CLI did for us here was narrow and fully
+# reproducible: copy each skill into the shared .agents/skills store, then
+# symlink it into .claude/skills and .hermes/skills when those exist. Doing it
+# ourselves drops the node/npx dependency from this step and keeps the install
+# to a single, auditable code path.
+#
+# Only cofounder-* entries are touched, so skills a project installed from
+# other sources are left alone. Re-running replaces them in place (idempotent).
+install_cofounder_skills() {
+  # Explicit cleanup, not `trap ... RETURN` — see the note in write_claude_settings.
+  local tmp; tmp="$(mktemp -d)"
+
+  info "Instalando as skills do cofounder..."
+  if ! curl -fsSL "$COFOUNDER_TARBALL_URL" | tar -xz -C "$tmp" --strip-components=1; then
+    rm -rf "$tmp"
+    err "Falha ao baixar as skills do cofounder de $COFOUNDER_TARBALL_URL"
+    err "Verifique sua conexão e execute o instalador novamente."
+    exit 1
+  fi
+
+  if ! compgen -G "$tmp/skills/cofounder-*" >/dev/null; then
+    rm -rf "$tmp"
+    err "O pacote baixado não contém as skills esperadas — abortando."
+    exit 1
+  fi
+
+  mkdir -p "$PWD/.agents/skills"
+  local src name agent_dir count=0
+  for src in "$tmp"/skills/cofounder-*; do
+    [[ -d "$src" ]] || continue
+    name="$(basename "$src")"
+    rm -rf "${PWD:?}/.agents/skills/$name"
+    cp -R "$src" "$PWD/.agents/skills/$name"
+    # Claude and Hermes read their own project dirs, not the shared store. Link
+    # rather than copy so there is a single source of truth. The dirs are
+    # pre-created above only when the matching agent is installed for this user.
+    for agent_dir in .claude .hermes; do
+      [[ -d "$PWD/$agent_dir" ]] || continue
+      mkdir -p "$PWD/$agent_dir/skills"
+      ln -sfn "../../.agents/skills/$name" "$PWD/$agent_dir/skills/$name"
+    done
+    count=$((count + 1))
+  done
+  rm -rf "$tmp"
+  ok "$count skills instaladas em .agents/skills/"
+}
+
 project_bootstrap() {
   # Home-dir guard: never inject the cofounder into $HOME (would activate it
   # globally). This is a machine-setup-only run; print_next_steps explains what
@@ -423,9 +472,9 @@ project_bootstrap() {
   info "Configurando o cofounder neste projeto..."
 
   # Non-universal agents (Claude, Hermes) keep skills in their OWN project dir
-  # (.claude/skills, .hermes/skills) and don't read the shared store. The
-  # npx-skills installer only symlinks into those dirs when they ALREADY EXIST
-  # in the project — so we pre-create one ONLY when that agent is actually
+  # (.claude/skills, .hermes/skills) and don't read the shared store.
+  # install_cofounder_skills only symlinks into those dirs when they ALREADY
+  # EXIST in the project — so we pre-create one ONLY when that agent is actually
   # installed for this user (its home dir is present). Users without it get no
   # stray .claude/ or .hermes/ directory.
   local claude_home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -438,20 +487,17 @@ project_bootstrap() {
   fi
 
   # Install to explicit, deterministic targets — no agent auto-detection:
-  #   * universal                  → the shared .agents/skills store read by every
+  #   * .agents/skills             → the shared store read by every
   #                                  open-convention agent (Codex, Cursor, Gemini,
   #                                  OpenCode, Cline, Replit, Amp, …).
-  #   * claude-code, hermes-agent  → their own dirs; symlinked only when the
+  #   * .claude, .hermes           → their own dirs; symlinked only when the
   #                                  matching dir was pre-created above, so users
   #                                  without that agent get no junk.
-  # Passing -a explicitly also sidesteps the CLI's "nothing detected + -y →
-  # install to all ~70 agents" fallback entirely.
-  info "Instalando as skills do cofounder (via npx skills)..."
-  mise x node@lts -- npx -y skills add "$COFOUNDER_REPO" --agent universal claude-code hermes-agent --skill '*' -y
+  install_cofounder_skills
 
   # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
   # whose gitignored skills are absent and the installer hasn't been re-run yet).
-  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
+  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, tell the user to re-run the cofounder installer in their own OS terminal, from this directory: \`/bin/bash -c \"\$(curl -fsSL $COFOUNDER_INSTALL_URL)\"\` — then invoke the playbook.)"
 
   # CLAUDE.md: @import so Claude (which doesn't read AGENTS.md natively) loads it.
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
