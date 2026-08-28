@@ -374,8 +374,10 @@ write_claude_settings() {
   local settings="$PWD/.claude/settings.json"
   local script
   script=$(mktemp)
-  # Ensure the temp script is removed whether the Node call succeeds or fails.
-  trap 'rm -f "$script"' RETURN
+  # Clean up explicitly rather than with `trap ... RETURN`: a RETURN trap set
+  # inside a function stays armed after that function returns and fires again on
+  # the NEXT function return, when the local it references is out of scope —
+  # which aborts the installer under `set -u` before it prints the next steps.
   cat > "$script" <<'NODE'
 const fs = require('fs');
 const p = process.argv[2];
@@ -389,7 +391,8 @@ for (const a of ['Bash', 'Read', 'WebFetch']) allow.add(a);
 cur.permissions = Object.assign({}, cur.permissions, { allow: [...allow] });
 fs.writeFileSync(p, JSON.stringify(cur, null, 2) + '\n');
 NODE
-  mise x node@lts -- node "$script" "$settings"
+  mise x node@lts -- node "$script" "$settings" || { rm -f "$script"; return 1; }
+  rm -f "$script"
   ok "configurado .claude/settings.json"
 }
 
