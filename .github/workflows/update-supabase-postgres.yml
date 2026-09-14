@@ -36,16 +36,43 @@ jobs:
 
       - name: Query Docker Hub for latest 17.x tag
         id: latest
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
+          : "${DOCKERHUB_USERNAME:?Set the DOCKERHUB_USERNAME Actions secret}"
+          : "${DOCKERHUB_TOKEN:?Set the DOCKERHUB_TOKEN Actions secret}"
+
+          # Docker Hub limits anonymous pagination to the first 1,000 tags.
+          # Exchange the PAT for a Hub API token; docker login alone does not
+          # authenticate these HTTP requests.
+          token=$(jq -n '{identifier: env.DOCKERHUB_USERNAME, secret: env.DOCKERHUB_TOKEN}' \
+            | curl -fsS --retry 3 --connect-timeout 15 --max-time 60 \
+                -H 'Content-Type: application/json' --data-binary @- \
+                https://hub.docker.com/v2/auth/token \
+            | jq -er '.access_token | select(type == "string" and length > 0)')
+          echo "::add-mask::$token"
+
           all_tags=""
           url="https://hub.docker.com/v2/repositories/supabase/postgres/tags?page_size=100"
+          pages=0
 
           while [ -n "$url" ] && [ "$url" != "null" ]; do
-            response=$(curl -sf "$url")
+            # Only send the bearer token to Docker Hub, including on next pages.
+            [[ "$url" == https://hub.docker.com/v2/* ]] || exit 1
+            response=$(curl -sS --fail-with-body --retry 3 \
+              --connect-timeout 15 --max-time 60 \
+              -H "Authorization: Bearer $token" "$url") || {
+                printf '%s\n' "$response" >&2
+                exit 1
+              }
             page_tags=$(echo "$response" | jq -r '.results[].name')
             all_tags="${all_tags}${page_tags}"$'\n'
             url=$(echo "$response" | jq -r '.next')
+            pages=$((pages + 1))
           done
+          echo "Fetched $pages Docker Hub tag pages successfully."
 
           latest=$(echo "$all_tags" \
             | grep -E '^17\.[0-9]+\.[0-9]+\.[0-9]+$' \
