@@ -332,7 +332,7 @@ Example sync:
 # In config/deploy.preview.yml:
 accessories:
   db:
-    image: supabase/postgres:17.11.0.004
+    image: supabase/postgres:17.11.0.007
     # ... backend service, no proxy
 
   n8n:
