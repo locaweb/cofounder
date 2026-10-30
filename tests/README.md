@@ -48,7 +48,19 @@ fast, no container, no agent:
 
 - **`preflight.sh`** — home-dir guard, existing-content guard, exempt content,
   empty/no-git, git-repo-no-remote, git-sync against a local bare remote (clean
-  + dirty auto-commit/push), dev-tool detection, remote detection.
+  + dirty auto-commit/push), sensitive file-name and secret-content guards
+  (incl. documentation placeholders not blocking), dev-tool detection, remote
+  detection.
+- **`version-check.sh`**: authenticated `gh api` preferred, anonymous `curl`
+  fallback (gh missing or not logged in), outdated/current/skipped outcomes.
+  Driven with fake `gh`/`curl` stubs on a minimal `PATH`, so no network.
+- **`tests/agent/judge.sh`**: prompt-injection hardening against an adversarial
+  transcript (`rm -rf /` payload). Checks that the judge gets no tools and no MCP
+  servers, that `bypassPermissions` is not used, and that the transcript sits
+  inside a random per-run fence. Driven with a fake `claude` stub. The live
+  counterpart, `tests/agent/test-judge-injection.sh`, runs the real judge (one
+  call, spends tokens) and checks it neither executes the payload nor is
+  steered to `PASS`.
 - **`repo-init.sh`** — offline guard branches (missing name, invalid visibility,
   not authenticated). The real `gh repo create` + push path is now covered
   separately by the gated live test, `tests/repo/test-repo-setup-live.sh`

@@ -217,18 +217,59 @@ install_podman_linux() {
   NEED_RESTART=1
 }
 
+# mise is installed from a pinned release binary checked against its SHA256,
+# instead of piping https://mise.run into sh. To update: pick a release at
+# https://github.com/jdx/mise/releases, set MISE_VERSION and copy the four
+# hashes from that release's SHASUMS256.txt (the mise-<version>-linux-* lines).
+# The file is signed (SHASUMS256.asc) by the mise release key
+# 24853EC9F655CE80B48E6C3A8B81C9D17413A06D, listed at
+# https://mise.jdx.dev/installing-mise.html; check the signature first.
+MISE_VERSION="v2026.10.21"
+MISE_SHA256_LINUX_X64="ccfe12d7a62c6fb9def2a20db1f210f13a51de881f21fd8c85db4b6312405d07"
+MISE_SHA256_LINUX_X64_MUSL="2e0a76d246a2189505e3b116f0c85ec8ac7d42611a7eb805216f2c058aa8a4c7"
+MISE_SHA256_LINUX_ARM64="a7c96627e56c075543fe1c1aafeb289d2588d6ddfd4d705fce4ae140c57e190c"
+MISE_SHA256_LINUX_ARM64_MUSL="5ff3db329eb4e9c97e826b7303e333ce740f52d0ca33c0545435d6e484be0bcb"
+
 install_mise_linux() {
-  # mise.run installs to ~/.local/bin/mise but does NOT touch shell rc files
-  # or PATH — it only prints instructions. We persist the PATH entry to
-  # ~/.bashrc ourselves and source it so it's also valid for the rest of this
-  # script run.
+  # Installs to ~/.local/bin/mise but does NOT touch shell rc files or PATH.
+  # We persist the PATH entry to ~/.bashrc ourselves and export it so it's
+  # also valid for the rest of this script run.
   if have mise || [[ -x "${HOME}/.local/bin/mise" ]]; then
     ok "mise já está instalado"
     persist_local_bin_on_path
     return
   fi
-  info "Instalando mise..."
-  curl -fsSL https://mise.run | sh
+  local arch libc="" sha tmp
+  case "$(uname -m)" in
+    x86_64|amd64)  arch=x64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *)
+      err "Arquitetura não suportada pelo instalador do mise: $(uname -m)"
+      exit 1
+      ;;
+  esac
+  # musl distros (Alpine) cannot run the glibc build.
+  if compgen -G '/lib/ld-musl-*' >/dev/null; then
+    libc="-musl"
+  fi
+  case "${arch}${libc}" in
+    x64)        sha="$MISE_SHA256_LINUX_X64" ;;
+    x64-musl)   sha="$MISE_SHA256_LINUX_X64_MUSL" ;;
+    arm64)      sha="$MISE_SHA256_LINUX_ARM64" ;;
+    arm64-musl) sha="$MISE_SHA256_LINUX_ARM64_MUSL" ;;
+  esac
+  info "Instalando mise ${MISE_VERSION}..."
+  tmp=$(mktemp)
+  curl -fsSL -o "$tmp" \
+    "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/mise-${MISE_VERSION}-linux-${arch}${libc}"
+  if ! printf '%s  %s\n' "$sha" "$tmp" | sha256sum -c - >/dev/null 2>&1; then
+    rm -f "$tmp"
+    err "O mise baixado não confere com o SHA256 esperado. Instalação abortada."
+    exit 1
+  fi
+  mkdir -p "${HOME}/.local/bin"
+  chmod 755 "$tmp"
+  mv "$tmp" "${HOME}/.local/bin/mise"
   NEED_RESTART=1
   persist_local_bin_on_path
 }
@@ -265,8 +306,11 @@ install_playwright_chromium_deps_linux() {
   fi
   # Cheap idempotency check: if a couple of canary libs from Playwright's list
   # are already in the linker cache, assume the rest are too.
-  if ldconfig -p 2>/dev/null | grep -q 'libnspr4\.so' \
-     && ldconfig -p 2>/dev/null | grep -q 'libnss3\.so'; then
+  # Capture first: under `set -o pipefail`, `ldconfig -p | grep -q` fails with
+  # SIGPIPE (141) when grep exits early, so the check never passed.
+  local libs
+  libs="$(ldconfig -p 2>/dev/null || true)"
+  if grep -q 'libnspr4\.so' <<<"$libs" && grep -q 'libnss3\.so' <<<"$libs"; then
     ok "Dependências do Chromium do Playwright já estão instaladas"
     return
   fi
@@ -280,20 +324,55 @@ install_playwright_chromium_deps_linux() {
   mise x node@24 -- npx --yes playwright@1.50.1 install-deps chromium
 }
 
+# Primary key fingerprints of the GitHub CLI apt repository keyring, as listed
+# at https://github.com/cli/cli/blob/trunk/docs/install_linux.md. To update
+# after a key rotation, replace this list with the one in that doc. These are
+# public fingerprints, not secrets; gitleaks:allow keeps the secret scan (G2)
+# from flagging them as an API key.
+GH_KEY_FINGERPRINTS="2C6106201985B60E6C7AC87323F3D4EA75716059 7F38BBB59D064DBCB3D84D725612B36462313325"  # gitleaks:allow
+
+# gh_keyring_trusted <keyring> — succeed only when the keyring holds at least
+# one primary key and every one of them is in GH_KEY_FINGERPRINTS. Subkeys are
+# not listed: they are bound to their primary key by its signature.
+gh_keyring_trusted() {
+  local gnupghome fprs fpr
+  gnupghome=$(mktemp -d)
+  fprs=$(gpg --homedir "$gnupghome" --show-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1 == "pub" { want = 1; next } $1 == "fpr" && want { print $10; want = 0 }')
+  rm -rf "$gnupghome"
+  [[ -n "$fprs" ]] || return 1
+  for fpr in $fprs; do
+    case " $GH_KEY_FINGERPRINTS " in
+      *" $fpr "*) ;;
+      *) return 1 ;;
+    esac
+  done
+}
+
 install_gh_linux() {
   if have gh; then
     ok "gh já está instalado"
     return
   fi
-  local family
+  local family keyring
   family=$(distro_family "$1" "$2")
   info "Instalando gh..."
   case "$family" in
     debian)
+      if ! have gpg; then
+        sudo apt-get update
+        sudo apt-get install -y gnupg
+      fi
+      keyring=$(mktemp)
+      curl -fsSL -o "$keyring" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+      if ! gh_keyring_trusted "$keyring"; then
+        rm -f "$keyring"
+        err "A chave do repositório do gh não confere com os fingerprints oficiais. Instalação abortada."
+        exit 1
+      fi
       sudo mkdir -p -m 755 /etc/apt/keyrings
-      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
-      sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+      sudo install -m 644 "$keyring" /etc/apt/keyrings/githubcli-archive-keyring.gpg
+      rm -f "$keyring"
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
         | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
       sudo apt-get update
@@ -327,7 +406,10 @@ install_gh_linux() {
 # ---------- project bootstrap ----------
 
 COFOUNDER_REPO="locaweb/cofounder"
-COFOUNDER_INSTALL_URL="https://cofounder.locaweb.com.br/install.sh"
+# npm "skills" CLI used to install the skills. To update: pick a version at
+# https://www.npmjs.com/package/skills?activeTab=versions and re-run
+# tests/install/test-install.sh, which checks which agent dirs it creates.
+SKILLS_CLI_VERSION="1.7.4"
 
 BEGIN_MARKER="<!-- cofounder:begin -->"
 END_MARKER="<!-- cofounder:end -->"
@@ -396,16 +478,18 @@ NODE
   ok "configurado .claude/settings.json"
 }
 
-# Append .gitignore entries for the vendored skills and common secret files
-# (idempotent). Negation rules un-ignore template variants (.env.example etc.)
-# so they can be committed safely. Order matters: negations must follow the
-# pattern they override.
+# Append .gitignore entries for the vendored skills, common secret files, and
+# IDE/OS/Python/build artifacts that preflight's `git add -A` would otherwise
+# auto-commit (idempotent). Negation rules un-ignore template variants
+# (.env.example etc.) so they can be committed safely. Order matters: negations
+# must follow the pattern they override.
 append_gitignore() {
   local gi="$PWD/.gitignore" entry
   touch "$gi"
   for entry in \
       ".claude/skills/" ".agents/skills/" ".hermes/skills/" "skills-lock.json" \
-      ".env" ".env.*" "!.env.example" "!.env.sample" "!.env.template"; do
+      ".env" ".env.*" "!.env.example" "!.env.sample" "!.env.template" \
+      ".idea/" ".vscode/" ".DS_Store" "*.pyc" "__pycache__/" "dist/"; do
     grep -qxF "$entry" "$gi" || echo "$entry" >> "$gi"
   done
 }
@@ -424,30 +508,33 @@ project_bootstrap() {
 
   # Non-universal agents (Claude, Hermes) keep skills in their OWN project dir
   # (.claude/skills, .hermes/skills) and don't read the shared store. The
-  # npx-skills installer only symlinks into those dirs when they ALREADY EXIST
-  # in the project — so we pre-create one ONLY when that agent is actually
-  # installed for this user (its home dir is present). Users without it get no
-  # stray .claude/ or .hermes/ directory.
+  # npx-skills installer creates the dir of every agent passed to --agent, so
+  # we target one ONLY when that agent is actually installed for this user (its
+  # home dir is present). Users without it get no stray .claude/ or .hermes/
+  # directory.
   local claude_home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
   local hermes_home="${HERMES_HOME:-$HOME/.hermes}"
+  local agents=(universal)
   if [[ -e "$claude_home" ]]; then
     write_claude_settings   # pins Claude settings and creates .claude/ as a side effect
+    agents+=(claude-code)
   fi
   if [[ -e "$hermes_home" ]]; then
     mkdir -p "$PWD/.hermes"
+    agents+=(hermes-agent)
   fi
 
   # Install to explicit, deterministic targets — no agent auto-detection:
   #   * universal                  → the shared .agents/skills store read by every
   #                                  open-convention agent (Codex, Cursor, Gemini,
   #                                  OpenCode, Cline, Replit, Amp, …).
-  #   * claude-code, hermes-agent  → their own dirs; symlinked only when the
-  #                                  matching dir was pre-created above, so users
-  #                                  without that agent get no junk.
+  #   * claude-code, hermes-agent  → their own dirs, only when that agent is
+  #                                  installed (see above).
   # Passing -a explicitly also sidesteps the CLI's "nothing detected + -y →
-  # install to all ~70 agents" fallback entirely.
+  # install to all ~70 agents" fallback entirely. The CLI version is pinned so
+  # a new npm release never runs here unreviewed.
   info "Instalando as skills do cofounder (via npx skills)..."
-  mise x node@lts -- npx -y skills add "$COFOUNDER_REPO" --agent universal claude-code hermes-agent --skill '*' -y
+  mise x node@lts -- npx -y "skills@${SKILLS_CLI_VERSION}" add "$COFOUNDER_REPO" --agent "${agents[@]}" --skill '*' -y
 
   # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
   # whose gitignored skills are absent and the installer hasn't been re-run yet).

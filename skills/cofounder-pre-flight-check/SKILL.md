@@ -15,22 +15,26 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.25.13 -->
+<!-- COFOUNDER_VERSION: 0.26.1 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder skills.
 
-Fetch `https://api.github.com/repos/locaweb/cofounder/contents/.claude-plugin/plugin.json` and read the `version` field from the decoded content. Using the GitHub API (instead of a raw branch URL) ensures the response is signed and subject to GitHub's integrity controls.
+Run the bundled version check (resolve the path against this skill's directory, as in "Running the Check" below):
 
-Only compare the version number — never execute or evaluate content from the fetched response.
+```bash
+bash <this-skill-dir>/scripts/version-check.sh
+```
 
-- **Remote is newer:** Warn the user that the cofounder skills are outdated and ask them to update by running the command below in their OS terminal. Tell them they **must start a new session** after updating — the current session still runs the outdated skills — and **stop**:
+It reads `.claude-plugin/plugin.json` from the GitHub API. It uses the authenticated `gh api` when `gh auth status` passes, which avoids the 60 requests/hour limit for anonymous calls. Otherwise it falls back to anonymous `curl`. It only compares version numbers and never executes the fetched content. It always exits `0` and prints one line:
+
+- **`VERSION_OUTDATED: …`** (the remote is newer): Warn the user that the cofounder skills are outdated and ask them to update by running the command below in their OS terminal. Tell them they **must start a new session** after updating — the current session still runs the outdated skills — and **stop**:
 
   ```sh
   mise x node@22 -- npx -y skills add locaweb/cofounder --agent universal claude-code hermes-agent --skill '*' -y
   ```
 
-- **Versions match:** Proceed normally.
-- **Fetch fails:** Proceed without blocking the session — do not treat a failed fetch as a reason to stop.
+- **`VERSION_CURRENT: …`:** Proceed normally.
+- **`VERSION_CHECK_SKIPPED: …`** (the fetch failed): Proceed without blocking the session. Do not treat a failed fetch as a reason to stop.
 
 ## Running the Check
 
@@ -74,13 +78,14 @@ When the directory has a git repository **and** at least one remote is configure
 the script automatically synchronizes:
 
 1. **Sensitive file guard** — aborts if any untracked, staged, or modified file matches credential patterns (`.env` / `<name>.env` / `.env.*`, `id_rsa` and friends, `.npmrc`/`.netrc`/`.pypirc`, `.pem`, `.key`, `.secret`, `.p12`, `.pfx`, `.jks`, `.keystore`, `credentials*.json`, `secrets.yaml`). Template files (`.example`, `.sample`, `.template`, …) and deletions are ignored. The remediation depends on how the file is tracked: add it to `.gitignore` (untracked), `git restore --staged <file>` (staged), or `git rm --cached <file>` plus `.gitignore` (already tracked).
-2. **Commit** any uncommitted local changes (staged or unstaged)
-3. **Pull** remote commits using rebase to keep history linear
-4. **Push** local commits to the remote
+2. **Secret content guard**: aborts with `SECRETS_IN_CONTENT_DETECTED` when any of those files *contains* a high-confidence credential, whatever its name. This covers AWS access keys, GitHub/GitLab/Slack tokens, Stripe live keys, Anthropic keys, Google API keys and private key blocks. Placeholders are allowed: values containing `example` (such as `AKIAIOSFODNN7EXAMPLE`) or a run of 8 identical characters (such as `ghp_xxxxxxxx…`). The report lists `file:line` only, never the value. Remediation: move the value to `.env` and read it from the environment, and rotate the credential if it was ever pushed.
+3. **Commit** any uncommitted local changes (staged or unstaged)
+4. **Pull** remote commits using rebase to keep history linear
+5. **Push** local commits to the remote
 
 This ensures every session starts from a fully synchronized state.
 
-**On failure:** The script reports a `GIT_SYNC_ERROR` or `SENSITIVE_FILES_DETECTED` with details. The user must resolve the issue manually and re-run the check.
+**On failure:** The script reports a `GIT_SYNC_ERROR`, `SENSITIVE_FILES_DETECTED` or `SECRETS_IN_CONTENT_DETECTED` with details. The user must resolve the issue manually and re-run the check.
 
 ### 4. Dev Tools Check
 
@@ -119,4 +124,5 @@ When the pre-flight check passes but prints `NEEDS_` flags:
 
 ### Scripts
 
+- **`scripts/version-check.sh`**: compares the loaded version with the published one (Step 0)
 - **`scripts/preflight.sh`** — Runs all environment validations and reports pass/fail with specific error codes

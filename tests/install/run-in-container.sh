@@ -22,6 +22,10 @@ export PATH="$HOME/.local/bin:$PATH"
 expect "podman installed"                  command -v podman
 expect "gh installed"                      command -v gh
 expect "mise binary present"               test -x "$HOME/.local/bin/mise"
+MISE_PIN="$(sed -n 's/^MISE_VERSION="v\(.*\)"$/\1/p' "$INSTALL_SH")"
+expect "mise is the pinned $MISE_PIN"      file_contains <("$HOME/.local/bin/mise" --version 2>/dev/null) "$MISE_PIN"
+refute "mise.run not used"                 file_contains "$LOG/a0.log" "mise.run"
+expect "gh keyring installed after check"  test -s /etc/apt/keyrings/githubcli-archive-keyring.gpg
 expect "bashrc persists ~/.local/bin PATH" file_contains "$HOME/.bashrc" 'export PATH="$HOME/.local/bin:$PATH"'
 expect "A0 prints 'Ferramentas prontas.'"  file_contains "$LOG/a0.log" "Ferramentas prontas."
 refute "A0 in \$HOME does not bootstrap a project" test -e "$HOME/AGENTS.md"
@@ -41,8 +45,12 @@ expect "AGENTS.md points to playbook skill" file_contains "$U/AGENTS.md" "cofoun
 expect "CLAUDE.md has @AGENTS.md import"    file_contains "$U/CLAUDE.md" "@AGENTS.md"
 expect ".gitignore lists .agents/skills/"   file_contains "$U/.gitignore" ".agents/skills/"
 expect ".gitignore lists skills-lock.json"  file_contains "$U/.gitignore" "skills-lock.json"
+for e in .idea/ .vscode/ '*.pyc' __pycache__/ .DS_Store dist/; do
+  expect ".gitignore lists $e"              grep -qxF "$e" "$U/.gitignore"
+done
 expect "universal skills store created"     test -d "$U/.agents/skills"
 refute "no .claude dir when Claude absent"  test -e "$U/.claude"
+refute "no .hermes dir when Hermes absent"  test -e "$U/.hermes"
 
 echo "== A1: project bootstrap with Claude detected =="
 mkdir -p "$HOME/.claude"   # simulate Claude installed for this user
