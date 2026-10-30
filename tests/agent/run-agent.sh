@@ -48,14 +48,23 @@ run_with_timeout() {
 
 case "$HARNESS" in
   claude)
+    # bypassPermissions is deliberate: the agent under test must run unattended
+    # (install tools, start podman, write and run code) and any permission
+    # prompt would hang the headless run. The prompt is authored by
+    # test-agent.sh (trusted) and the cwd is a throwaway mktemp project, but
+    # this is NOT a sandbox: the agent can reach the whole host, so run the
+    # suite only on a dev machine (or a VM) where that is acceptable. The
+    # grader is different: judge.sh reads untrusted transcripts, so it runs
+    # with no tools at all.
     ( cd "$CWD" && run_with_timeout "$TIMEOUT" \
         claude -p "$PROMPT" --output-format stream-json --verbose \
                --permission-mode bypassPermissions ) >"$OUT" 2>"${OUT}.err"
     ;;
   codex)
     # --json => JSONL events on stdout (msg text + tool/command calls);
-    # --dangerously-bypass-approvals-and-sandbox for headless autonomy (mirrors
-    # claude's bypassPermissions). Model: configured default unless overridden.
+    # --dangerously-bypass-approvals-and-sandbox for headless autonomy (same
+    # justification as claude's bypassPermissions above). Model: configured
+    # default unless overridden.
     cx=(codex exec --json --dangerously-bypass-approvals-and-sandbox)
     [ -n "${COFOUNDER_TEST_CODEX_MODEL:-}" ] && cx+=(-m "$COFOUNDER_TEST_CODEX_MODEL")
     cx+=("$PROMPT")
@@ -63,7 +72,8 @@ case "$HARNESS" in
     ;;
   gemini)
     # --output-format stream-json => JSONL events (text + tool calls, like
-    # Claude's stream-json); --yolo to auto-approve all tools for headless runs;
+    # Claude's stream-json); --yolo to auto-approve all tools for headless runs (see
+    # the claude arm for why that is acceptable here);
     # --skip-trust to run in an untrusted (throwaway) workspace dir.
     # NOTE: the free "Gemini Code Assist for individuals" tier was discontinued
     # (IneligibleTierError); use the `agy` harness (Antigravity successor) instead.
@@ -82,7 +92,7 @@ case "$HARNESS" in
     conv="$HOME/.gemini/antigravity-cli/conversations"
     before="$(mktemp)"; after="$(mktemp)"
     ls "$conv"/*.db 2>/dev/null | sort >"$before"
-    am=(agy -p "$PROMPT" --dangerously-skip-permissions)
+    am=(agy -p "$PROMPT" --dangerously-skip-permissions)   # headless autonomy, see claude arm
     [ -n "${COFOUNDER_TEST_AGY_MODEL:-}" ] && am+=(--model "$COFOUNDER_TEST_AGY_MODEL")
     ( cd "$CWD" && run_with_timeout "$TIMEOUT" "${am[@]}" ) >"${OUT}.prose" 2>"${OUT}.err"
     rc=$?
@@ -95,7 +105,8 @@ case "$HARNESS" in
     ;;
   opencode)
     # --format json => raw JSON events (text + tool calls, like Claude's
-    # stream-json); --dangerously-skip-permissions for headless autonomy.
+    # stream-json); --dangerously-skip-permissions for headless autonomy (see
+    # the claude arm for why that is acceptable here).
     # Model: configured default unless COFOUNDER_TEST_OPENCODE_MODEL is set.
     oc=(opencode run "$PROMPT" --format json --dangerously-skip-permissions)
     [ -n "${COFOUNDER_TEST_OPENCODE_MODEL:-}" ] && oc+=(-m "$COFOUNDER_TEST_OPENCODE_MODEL")
