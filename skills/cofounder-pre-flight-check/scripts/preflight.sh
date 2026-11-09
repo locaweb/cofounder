@@ -90,6 +90,38 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
             printf '%s\n' "$sensitive" | sed 's/^/    /'
             exit 1
         fi
+        # Content guard: names alone miss credentials pasted into innocently
+        # named files (config.json, notes.txt). Scan the same candidate set for
+        # high-confidence token formats. Documentation placeholders are not
+        # secrets and are skipped: anything containing "example" (AWS's own docs
+        # key is AKIAIOSFODNN7EXAMPLE) or a run of 8 identical characters
+        # (ghp_xxxxxxxx…). Only file:line is printed, never the matched value, so
+        # the secret does not leak into the agent transcript. NUL-delimited so
+        # paths with spaces or non-ASCII characters are scanned too.
+        secret_re='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82}|glpat-[A-Za-z0-9_-]{20}|xox[abposr]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{24,}|sk-ant-[A-Za-z0-9_-]{32,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----'
+        content_hits=$(
+          {
+            git ls-files -z --others --exclude-standard 2>/dev/null
+            git diff -z --cached --name-only --diff-filter=d 2>/dev/null
+            git diff -z --name-only --diff-filter=d 2>/dev/null
+          } | sort -zu | while IFS= read -r -d '' f; do
+              [[ -f "$f" && ! -L "$f" ]] || continue
+              grep -IonE -- "$secret_re" "$f" 2>/dev/null \
+                | grep -Eiv 'example' \
+                | grep -Ev '(.)\1\1\1\1\1\1\1' \
+                | cut -d: -f1 | sort -un \
+                | while IFS= read -r n; do printf '%s:%s\n' "$f" "$n"; done
+          done || true
+        )
+        if [[ -n "$content_hits" ]]; then
+            echo "PREFLIGHT_FAILED"
+            echo "  - SECRETS_IN_CONTENT_DETECTED: Files contain what looks like a hardcoded credential (cloud key, API token, private key)."
+            echo "    - Move the value to .env (gitignored) and read it from the environment"
+            echo "    - If it was ever pushed, rotate the credential"
+            echo "    - For documentation, use an obvious placeholder (e.g. AKIAIOSFODNN7EXAMPLE)"
+            printf '%s\n' "$content_hits" | sed 's/^/    /'
+            exit 1
+        fi
         git add -A
         git commit -m "Auto-sync: commit outstanding changes before session" --no-gpg-sign || {
             echo "PREFLIGHT_FAILED"

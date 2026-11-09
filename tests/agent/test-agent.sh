@@ -103,7 +103,9 @@ run_a2() {
   before=$FAIL
   expect "[$i] transcript non-empty"    test -s "$t"
   expect "[$i] persona tag [Cofounder]" file_contains "$t" "[Cofounder]"
-  expect "[$i] pre-flight ran"          grep -qiE 'cofounder-pre-flight-check|preflight' "$t"
+  # Real script output (line start in a tool result), not the skill text that
+  # merely mentions `PREFLIGHT_PASSED`.
+  expect "[$i] pre-flight ran"          grep -qE '(\\n|"content":")PREFLIGHT_(PASSED|FAILED)' "$t"
   verdict="$("$JUDGE" "$t" "$A2_RUBRIC" 2>"$proj/.judge.log" || true)"
   echo "    judge: ${verdict:-<none>}"
   expect "[$i] judge verdict PASS"      test "$verdict" = PASS

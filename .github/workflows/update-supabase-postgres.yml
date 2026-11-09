@@ -13,18 +13,20 @@ on:
     - cron: "0 8 * * 1"     # Monday 08:00 UTC
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   check-update:
     name: Check for New Version
     runs-on: ubuntu-latest
+    permissions:
+      actions: write        # dispatch the security gate on the bot branch
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
 
       - name: Detect current version
         id: current
@@ -151,6 +153,9 @@ jobs:
           EOF
           )"
 
-          gh pr merge --squash "$branch"
+          # PRs opened with GITHUB_TOKEN don't trigger pull_request workflows;
+          # dispatch the gate explicitly so the PR gets its required checks.
+          gh workflow run security-gate.yml --ref "$branch"
 
-          echo "PR created and merged for \`$branch\`" >> "$GITHUB_STEP_SUMMARY"
+          # No auto-merge: main is protected and the bump needs a human review.
+          echo "PR created for \`$branch\` — awaiting review" >> "$GITHUB_STEP_SUMMARY"

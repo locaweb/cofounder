@@ -77,7 +77,7 @@ echo "== repo-setup live: owner=$OWNER repo=$NAME =="
 # --- scenario A: create + push a fresh repo --------------------------------
 d="$BASE/proj"; mkdir -p "$d"
 (
-  cd "$d"
+  cd "$d" || exit 1
   git init -b main -q
   printf '# %s\n\ncofounder live repo-setup test\n' "$NAME" > README.md
   git add README.md
