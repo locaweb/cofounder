@@ -125,6 +125,7 @@ expect "AGENTS.md points to playbook skill" file_contains "$C/AGENTS.md" "cofoun
 expect "CLAUDE.md has @AGENTS.md import"    file_contains "$C/CLAUDE.md" "@AGENTS.md"
 expect ".gitignore lists .agents/skills/"   file_contains "$C/.gitignore" ".agents/skills/"
 expect ".gitignore lists skills-lock.json"  file_contains "$C/.gitignore" "skills-lock.json"
+expect ".gitignore lists .DS_Store"         grep -qxF ".DS_Store" "$C/.gitignore"
 expect ".claude/settings.json written"      test -f "$C/.claude/settings.json"
 expect "settings pin model opus[1m]"        file_contains "$C/.claude/settings.json" '"opus[1m]"'
 expect "settings defaultMode acceptEdits"   file_contains "$C/.claude/settings.json" '"acceptEdits"'

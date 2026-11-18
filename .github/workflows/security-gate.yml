@@ -1,0 +1,120 @@
+# Security Gate
+#
+# Blocking checks for every PR into main. Mark the jobs below as required
+# status checks in main's branch protection, except Dependency Review, which
+# only runs on pull_request events.
+#
+# workflow_dispatch exists for the bot PRs from update-supabase-postgres.yml:
+# PRs opened with GITHUB_TOKEN do not trigger pull_request workflows, so that
+# workflow dispatches this one on its branch.
+
+name: Security Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  shellcheck:
+    name: G1 · Shell Safety
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - name: shellcheck
+        run: |
+          shellcheck --version
+          find . -name '*.sh' -not -path './.git/*' -print0 \
+            | xargs -0 shellcheck --severity=warning
+
+  secret-scan:
+    name: G2 · Secret Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+        with:
+          fetch-depth: 0
+      # The gitleaks Action needs a license key secret for organization repos;
+      # the release binary, checked against its published SHA256, does not.
+      - name: Install gitleaks
+        run: |
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+      - name: gitleaks
+        run: ./gitleaks git . --redact --no-banner --verbose --exit-code 1
+
+  workflow-lint:
+    name: G3/G4 · Action Pinning & Workflow Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      # actionlint does not flag mutable tags, so pinning is checked here. The
+      # SHA must be the uses: value itself, not a trailing comment: both filters
+      # are anchored to the grep "file:line:" prefix, so a "uses: …@<sha>" inside
+      # a comment does not count.
+      - name: Action pinning
+        run: |
+          unpinned=$(grep -rnE '^[[:space:]-]*uses:' .github/workflows/ \
+            | grep -vE "^[^:]+:[0-9]+:[[:space:]-]*uses:[[:space:]]*[\"']?(\./|docker://)" \
+            | grep -vE "^[^:]+:[0-9]+:[[:space:]-]*uses:[[:space:]]*[\"']?[^[:space:]\"'#@]+@[0-9a-f]{40}[\"']?([[:space:]]|$)" || true)
+          if [ -n "$unpinned" ]; then
+            echo "$unpinned"
+            echo "::error::Pin every action to a full commit SHA"
+            exit 1
+          fi
+      - name: Install actionlint
+        run: |
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${tarball}"
+          echo "${ACTIONLINT_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" actionlint
+      - name: actionlint
+        run: ./actionlint -color
+
+  dependency-review:
+    name: G6 · Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          fail-on-severity: high
+
+  version-sync:
+    name: G7 · Version Sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+      - name: plugin.json vs COFOUNDER_VERSION marker
+        run: |
+          plugin=$(jq -r .version .claude-plugin/plugin.json)
+          marker=$(grep -oE 'COFOUNDER_VERSION: [0-9]+\.[0-9]+\.[0-9]+' \
+            skills/cofounder-pre-flight-check/SKILL.md | cut -d' ' -f2)
+          if [ "$plugin" != "$marker" ]; then
+            echo "::error::plugin.json is $plugin but the COFOUNDER_VERSION marker is ${marker:-missing}; run scripts/stamp-version.sh"
+            exit 1
+          fi
+          echo "Version in sync: $plugin"
