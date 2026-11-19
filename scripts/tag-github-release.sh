@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Last step of the Azure → GitHub sync: creates the v<version> tag on GitHub's
-# main, which triggers .github/workflows/release.yml. Run it after the sync PR
-# is merged on GitHub. The local repo has no GitHub remote and its history
-# differs from GitHub's, so the tag is created through the API, never pushed.
+# Last step of a release: creates the v<version> tag on GitHub's main, which
+# triggers .github/workflows/release.yml. Run it after the version bump PR is
+# merged. The tag is created through the API from main's own plugin.json, so it
+# never depends on the state of a local checkout.
 set -euo pipefail
 
 REPO="locaweb/cofounder"
@@ -18,7 +18,7 @@ fi
 tag="v$version"
 
 if gh api "repos/$REPO/git/ref/tags/$tag" >/dev/null 2>&1; then
-  echo "$tag already exists on GitHub; bump plugin.json before syncing" >&2
+  echo "$tag already exists on GitHub; bump plugin.json first" >&2
   exit 1
 fi
 

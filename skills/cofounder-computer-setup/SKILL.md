@@ -12,11 +12,13 @@ description: >
 
 **This is a sanity check, not the primary install path.** Onboarding runs the
 `install.sh` one-liner *before* the agent session ever opens, and that script
-already installs the dev tools (and the cofounder skills). So by the time a
+already installs the dev tools (and the cofounder skills; when the cofounder
+Claude Code plugin is installed, Claude uses the plugin's and the other agents
+get the installed copy). So by the time a
 session exists, a package manager, mise, podman, and GH CLI should all be
-present. This skill verifies that — and if a tool is somehow missing, it points
-the user back at the same one-liner to repair the install. Idempotent — safe to
-re-run.
+present. This skill verifies that — and if a tool is somehow missing, it has
+the user run the copy of `install.sh` bundled with this skill to repair the
+install. Idempotent — safe to re-run.
 
 ## 1. Detect platform
 
@@ -24,13 +26,13 @@ re-run.
 uname -s 2>/dev/null || echo Windows
 ```
 
-- `Darwin` → follow **macOS / Linux (one-liner)**
-- `Linux` → follow **macOS / Linux (one-liner)**
+- `Darwin` → follow **macOS / Linux (installer)**
+- `Linux` → follow **macOS / Linux (installer)**
 - `MINGW64_NT*` / `MSYS_NT*` or similar → follow **Windows**
 
 ---
 
-## macOS / Linux (one-liner)
+## macOS / Linux (installer)
 
 ### 1. Check whether tools are already installed
 
@@ -46,14 +48,24 @@ command -v brew
 
 If everything resolves, skip to [Phase 2 — Verify](#phase-2--verify-and-set-up).
 
-### 2. Run the one-liner installer
+### 2. Run the bundled installer
 
-If anything of the above tools are missing, tell the user to **open a fresh OS terminal** (NOT this Claude session) and
-run:
+If anything of the above tools are missing, resolve the absolute path of the
+installer bundled with this skill (`<this-skill-dir>/scripts/install.sh`):
+
+```bash
+cd "<this-skill-dir>/scripts" && pwd -P
+```
+
+Then tell the user to **open a fresh OS terminal** (NOT this Claude session) and
+run it, with the path you resolved filled in and kept inside the double quotes:
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"
+/bin/bash "<absolute path>/install.sh"
 ```
+
+Run it from the home folder (the terminal opens there): in `$HOME` the
+installer only installs the tools and does not touch any project.
 
 Why a separate OS terminal: the installer needs `sudo` for some steps
 (Homebrew on macOS, package install on Linux/WSL). Running it outside Claude
@@ -233,7 +245,7 @@ it and press **Install**. The command hangs until Rosetta is installed.
 podman machine start
 ```
 
-> The one-liner installer already runs `init` and `start` on macOS. These
+> The installer already runs `init` and `start` on macOS. These
 > steps are only needed if it failed or if the user is on Windows.
 
 ### Podman Connectivity Test
@@ -268,7 +280,7 @@ gh version
 
 ## Troubleshooting
 
-- **Tools not found after the one-liner ran**: open a brand-new OS terminal
+- **Tools not found after the installer ran**: open a brand-new OS terminal
   so PATH is reloaded, then run `claude` again. On Linux/WSL, shell rc files
   only reload in new shells. On WSL specifically, the new terminal must be a
   fresh **Ubuntu** terminal (Start menu → type **Ubuntu** → Enter), not a
@@ -285,10 +297,10 @@ gh version
   Re-run the curl check. If it persists, check firewall rules and that port
   18080 is free.
 - **Linux distro not recognized by the installer**: install podman and gh
-  manually using your distro's package manager, then re-run the one-liner —
+  manually using your distro's package manager, then re-run the installer —
   it will detect the existing tools and skip ahead.
 
 ## Bundled Resources
 
-- `scripts/install.sh` — one-liner installer for macOS and Linux. Served via
-  redirect at `https://cofounder.locaweb.com.br/install.sh` (see project CLAUDE.md).
+- `scripts/install.sh` — installer for macOS and Linux (the same script
+  onboarding runs before the first session).

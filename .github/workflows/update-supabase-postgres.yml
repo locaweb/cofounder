@@ -81,6 +81,11 @@ jobs:
             | sort -V \
             | tail -1)
 
+          if [ -z "$latest" ]; then
+            echo "::error::No 17.x.y.z tag found on Docker Hub; refusing to write an empty image tag"
+            exit 1
+          fi
+
           echo "version=$latest" >> "$GITHUB_OUTPUT"
           echo "Latest Docker Hub tag: **$latest**" >> "$GITHUB_STEP_SUMMARY"
 

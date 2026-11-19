@@ -25,8 +25,9 @@ for item in * .[!.]* ..?*; do
         # Exempt git, common local dirs, and everything the cofounder installer
         # itself writes into a fresh project (so a just-installed, not-yet-git
         # project doesn't trip this guard): .agents/.claude/.hermes skill stores,
-        # the AGENTS.md/CLAUDE.md pointers, .gitignore, and the npx skills lock.
-        .git|.claude|.agents|.hermes|.venv|CLAUDE.md|AGENTS.md|.gitignore|skills-lock.json) continue ;;
+        # the AGENTS.md/CLAUDE.md pointers, .gitignore, the npx skills lock, and
+        # the .codex settings that codex-settings.sh writes before this check.
+        .git|.claude|.agents|.codex|.hermes|.venv|CLAUDE.md|AGENTS.md|.gitignore|skills-lock.json) continue ;;
     esac
     has_other_content=true
     break
@@ -57,6 +58,10 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
 
     # Resolve the upstream tracking ref (e.g. "origin/main") if configured
     upstream=$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null || true)
+
+    # High-confidence credential formats, shared by the content guard and the
+    # unpushed-commit guard below.
+    secret_re='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82}|glpat-[A-Za-z0-9_-]{20}|xox[abposr]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{24,}|sk-ant-[A-Za-z0-9_-]{32,}|sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|-----BEGIN PGP PRIVATE KEY BLOCK-----'
 
     # Commit any outstanding local changes
     if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
@@ -98,7 +103,6 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
         # (ghp_xxxxxxxx…). Only file:line is printed, never the matched value, so
         # the secret does not leak into the agent transcript. NUL-delimited so
         # paths with spaces or non-ASCII characters are scanned too.
-        secret_re='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{82}|glpat-[A-Za-z0-9_-]{20}|xox[abposr]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{24,}|sk-ant-[A-Za-z0-9_-]{32,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----'
         content_hits=$(
           {
             git ls-files -z --others --exclude-standard 2>/dev/null
@@ -128,6 +132,33 @@ if $has_git && [[ -n "$(git remote 2>/dev/null)" ]]; then
             echo "  - GIT_SYNC_ERROR: Failed to commit local changes."
             exit 1
         }
+    fi
+
+    # Unpushed-commit guard: the guards above only see the working tree, so a
+    # credential committed outside this script (by hand, or by the agent during
+    # a session) would ride along with the push below. Scan every file touched
+    # by a commit that no remote-tracking ref has yet, as of that commit, with
+    # the same patterns and placeholder filters. Reports commit:file:line only.
+    unpushed_hits=$(
+      git rev-list HEAD --not --remotes 2>/dev/null | while IFS= read -r c; do
+          git diff-tree --no-commit-id --name-only -r -z --root --diff-filter=d "$c" 2>/dev/null \
+            | while IFS= read -r -d '' f; do
+                git show "$c:$f" 2>/dev/null \
+                  | grep -IonE -- "$secret_re" \
+                  | grep -Eiv 'example' \
+                  | grep -Ev '(.)\1\1\1\1\1\1\1' \
+                  | cut -d: -f1 | sort -un \
+                  | while IFS= read -r n; do printf '%s:%s:%s\n' "${c:0:8}" "$f" "$n"; done
+            done
+      done || true
+    )
+    if [[ -n "$unpushed_hits" ]]; then
+        echo "PREFLIGHT_FAILED"
+        echo "  - SECRETS_IN_UNPUSHED_COMMITS: Local commits not yet pushed contain what looks like a hardcoded credential."
+        echo "    - Remove it from those commits before pushing (e.g. 'git reset --soft <last pushed commit>', move the value to .env, commit again)"
+        echo "    - If the commit was ever shared, rotate the credential"
+        printf '%s\n' "$unpushed_hits" | sed 's/^/    /'
+        exit 1
     fi
 
     if [[ -n "$upstream" ]]; then

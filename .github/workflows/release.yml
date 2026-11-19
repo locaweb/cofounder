@@ -1,8 +1,8 @@
 # Release
 #
 # Publishes a GitHub Release with provenance attestations for every v* tag.
-# The tag is created on main by scripts/tag-github-release.sh as the last step
-# of the Azure → GitHub sync, and must match .claude-plugin/plugin.json.
+# The tag is created on main by scripts/tag-github-release.sh after the version
+# bump PR is merged, and must match .claude-plugin/plugin.json.
 #
 # Verify an artifact with:
 #   gh attestation verify <artifact> --repo locaweb/cofounder
