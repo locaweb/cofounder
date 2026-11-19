@@ -459,6 +459,23 @@ else
   printf '  SKIP  project-activation read-only (running as root)\n'
 fi
 
+echo "== project-activation: begin marker without end → skipped, user content kept =="
+mkdir -p "$PA/unclosed/docs"; touch "$PA/unclosed/docs/PRD.md"
+printf '# Projeto\n<!-- cofounder:begin -->\nponteiro antigo\n\n## Regras do time\n- nunca commitar na main\n' >"$PA/unclosed/AGENTS.md"
+cp "$PA/unclosed/AGENTS.md" "$LOG/a10.orig"; pa a10 "$PA_PLUGIN" "$PA/unclosed"
+expect "exit 0"                       test "$(rc a10)" = 0
+expect "ACTIVATION_SKIPPED"           file_contains "$LOG/a10.log" "ACTIVATION_SKIPPED: unclosed cofounder block in AGENTS.md"
+expect "AGENTS.md untouched"          cmp -s "$PA/unclosed/AGENTS.md" "$LOG/a10.orig"
+expect "no CLAUDE.md written"         test ! -e "$PA/unclosed/CLAUDE.md"
+
+echo "== project-activation: unclosed block in CLAUDE.md → nothing written =="
+mkdir -p "$PA/unclosed2/docs"; touch "$PA/unclosed2/docs/PRD.md"
+printf '<!-- cofounder:begin -->\nminhas notas\n' >"$PA/unclosed2/CLAUDE.md"
+cp "$PA/unclosed2/CLAUDE.md" "$LOG/a11.orig"; pa a11 "$PA_PLUGIN" "$PA/unclosed2"
+expect "ACTIVATION_SKIPPED"           file_contains "$LOG/a11.log" "ACTIVATION_SKIPPED: unclosed cofounder block in CLAUDE.md"
+expect "CLAUDE.md untouched"          cmp -s "$PA/unclosed2/CLAUDE.md" "$LOG/a11.orig"
+expect "no AGENTS.md written"         test ! -e "$PA/unclosed2/AGENTS.md"
+
 echo "== project-activation: pointer matches install.sh's PLUGIN_POINTER =="
 pointer_of() { sed -n 's/^PLUGIN_POINTER=//p' "$1"; }
 expect "same pointer text"            test "$(pointer_of "$PF_SRC/scripts/project-activation.sh")" = "$(pointer_of "$REPO/../skills/cofounder-computer-setup/scripts/install.sh")"
@@ -751,6 +768,73 @@ pl p6 "$PL/disabled" "$PL/there"
 refute "installed but disabled"       test "$(rc p6)" = 0
 pl p7 "$PL/user" "$PL/off"
 refute "disabled in this project's local settings" test "$(rc p7)" = 0
+
+# um <name> <file> — run install.sh's upsert_managed_block on <file>.
+um() {
+  "$BASH_BIN" -c '
+    set -euo pipefail
+    ok() { :; }; warn() { echo "WARN $*"; }
+    eval "$(grep -E "^(BEGIN|END)_MARKER=" "$1")"
+    eval "$(sed -n "/^upsert_managed_block() {/,/^}/p" "$1")"
+    upsert_managed_block "$2" "novo ponteiro"
+    echo AFTER
+  ' _ "$INSTALL_FN_SRC" "$2" >"$LOG/$1.log" 2>&1
+}
+UM="$BASE/upsert"; mkdir -p "$UM"
+
+echo "== install.sh: upsert_managed_block replaces a closed block, keeps the rest =="
+printf 'topo\n<!-- cofounder:begin -->\nvelho\n<!-- cofounder:end -->\nfim\n' >"$UM/closed.md"
+um um1 "$UM/closed.md"
+expect "new block in place"           file_contains "$UM/closed.md" "novo ponteiro"
+refute "old block gone"               file_contains "$UM/closed.md" "velho"
+expect "surrounding text kept"        test "$(head -1 "$UM/closed.md")$(tail -1 "$UM/closed.md")" = "topofim"
+
+echo "== install.sh: upsert_managed_block leaves a begin without end untouched =="
+printf '# Projeto\n<!-- cofounder:begin -->\nponteiro antigo\n\n## Regras do time\n- nunca commitar na main\n' >"$UM/unclosed.md"
+cp "$UM/unclosed.md" "$LOG/um2.orig"; um um2 "$UM/unclosed.md"
+expect "warned"                       file_contains "$LOG/um2.log" "WARN"
+expect "installer continues"          file_contains "$LOG/um2.log" "AFTER"
+expect "file untouched"               cmp -s "$UM/unclosed.md" "$LOG/um2.orig"
+
+# pb <name> <plugin-enabled 0|1> <hermes 0|1> — run install.sh's
+# project_bootstrap in a fresh project with stubbed helpers; records the agents
+# passed to `npx skills add` and the AGENTS.md written.
+PB="$BASE/bootstrap"
+pb() {
+  local proj="$PB/$1" home="$PB/$1-home"
+  mkdir -p "$proj" "$home/.claude"; [[ "$3" == 1 ]] && mkdir -p "$home/.hermes"
+  (cd "$proj" && HOME="$home" FAKE_PLUGIN="$2" PB_CALLS="$LOG/$1.calls" "$BASH_BIN" -c '
+    set -euo pipefail
+    info() { :; }; ok() { :; }; warn() { :; }
+    write_claude_settings() { :; }; append_gitignore() { :; }
+    cofounder_plugin_enabled() { [[ "$FAKE_PLUGIN" == 1 ]]; }
+    mise() { echo "$*" >>"$PB_CALLS"; }
+    eval "$(grep -E "^(COFOUNDER_REPO|SKILLS_CLI_VERSION|BEGIN_MARKER|END_MARKER|PLUGIN_POINTER)=" "$1")"
+    eval "$(sed -n "/^upsert_managed_block() {/,/^}/p" "$1")"
+    eval "$(sed -n "/^project_bootstrap() {/,/^}/p" "$1")"
+    project_bootstrap
+  ' _ "$INSTALL_FN_SRC" >"$LOG/$1.log" 2>&1)
+  printf '%s' "$?" >"$LOG/$1.rc"
+}
+
+echo "== install.sh: Claude plugin enabled → other agents still get the skills =="
+pb pb1 1 1
+expect "exit 0"                       test "$(rc pb1)" = 0
+expect "npx skills add ran"           file_contains "$LOG/pb1.calls" "add locaweb/cofounder"
+expect "universal installed"          file_contains "$LOG/pb1.calls" "agent universal hermes-agent --skill"
+refute "claude-code left out"         file_contains "$LOG/pb1.calls" "claude-code"
+expect "plugin pointer in AGENTS.md"  file_contains "$PB/pb1/AGENTS.md" "cofounder:cofounder-playbook"
+expect "CLAUDE.md imports AGENTS.md"  file_contains "$PB/pb1/CLAUDE.md" "@AGENTS.md"
+
+echo "== install.sh: Claude plugin enabled, no Hermes → universal only =="
+pb pb2 1 0
+expect "universal only"               file_contains "$LOG/pb2.calls" "agent universal --skill"
+
+echo "== install.sh: no Claude plugin → claude-code installed, npx pointer =="
+pb pb3 0 0
+expect "universal + claude-code"      file_contains "$LOG/pb3.calls" "agent universal claude-code --skill"
+expect "npx pointer in AGENTS.md"     file_contains "$PB/pb3/AGENTS.md" "invoke the \`cofounder-playbook\` skill"
+refute "not the plugin pointer"       file_contains "$PB/pb3/AGENTS.md" "cofounder:cofounder-playbook"
 
 # --- judge.sh: an adversarial transcript must stay inert data ---------------
 # A fake `claude` records its argv and prompt, then answers like a real judge.

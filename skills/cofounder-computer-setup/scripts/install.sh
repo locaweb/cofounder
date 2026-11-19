@@ -14,8 +14,9 @@
 #          (auto-detecting the installed agent: Claude / Codex / Cursor / …)
 #        - Writes the AGENTS.md activation pointer (+ CLAUDE.md @import)
 #        - Pins .claude/settings.json when Claude is detected
-#        - Skips the skills when the cofounder Claude Code plugin is already
-#          installed (it brings its own); the pointer then names the plugin
+#        - When the cofounder Claude Code plugin is already installed, leaves
+#          Claude out (the plugin brings its skills) and writes the plugin
+#          pointer; the other agents still get the skills
 #        - Appends .gitignore entries for the vendored skills
 #
 # Idempotent — safe to re-run. Detects existing tools before installing and
@@ -454,6 +455,12 @@ $END_MARKER"
     ok "criado $file"
     return
   fi
+  if grep -q '<!-- cofounder:begin' "$file" && ! grep -q '<!-- cofounder:end -->' "$file"; then
+    # Without the end marker the awk below would drop everything after the
+    # begin line (the user's own content) and never write the block.
+    warn "$file tem a linha <!-- cofounder:begin --> sem a <!-- cofounder:end -->; não alterei o arquivo. Acrescente a linha de fim (ou remova a de início) e rode o instalador de novo."
+    return 0
+  fi
   if grep -q '<!-- cofounder:begin' "$file"; then
     local block_file
     block_file=$(mktemp)
@@ -583,21 +590,20 @@ project_bootstrap() {
   # directory.
   local claude_home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
   local hermes_home="${HERMES_HOME:-$HOME/.hermes}"
-  local agents=(universal)
+  local agents=(universal) claude_plugin=0
   if [[ -e "$claude_home" ]]; then
     write_claude_settings   # pins Claude settings and creates .claude/ as a side effect
-    agents+=(claude-code)
-    # The plugin already brings the skills; an `npx skills` copy next to it
-    # would take over the project and update through the wrong channel. The
-    # plugin has no SessionStart hook (the Claude plugin directory only accepts
-    # hooks from Verified organizations), so the project's AGENTS.md activates
-    # it, with the same pointer the pre-flight's project-activation.sh writes.
+    # The plugin already brings the skills to Claude; a .claude/skills copy next
+    # to it would take over Claude and update through the wrong channel, so
+    # claude-code is left out. The other agents (Codex, Cursor, Hermes, …) do
+    # not see the Claude plugin and still get the skills below. The plugin has
+    # no SessionStart hook (the Claude plugin directory only accepts hooks from
+    # Verified organizations), so the project's AGENTS.md activates it, with
+    # the same pointer the pre-flight's project-activation.sh writes.
     if cofounder_plugin_enabled "$claude_home"; then
-      upsert_managed_block "$PWD/AGENTS.md" "$PLUGIN_POINTER"
-      upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
-      append_gitignore
-      ok "Plugin cofounder do Claude Code detectado: as skills ficam por conta dele."
-      return
+      claude_plugin=1
+    else
+      agents+=(claude-code)
     fi
   fi
   if [[ -e "$hermes_home" ]]; then
@@ -617,15 +623,26 @@ project_bootstrap() {
   info "Instalando as skills do cofounder (via npx skills)..."
   mise x node@lts -- npx -y "skills@${SKILLS_CLI_VERSION}" add "$COFOUNDER_REPO" --agent "${agents[@]}" --skill '*' -y
 
-  # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
-  # whose gitignored skills are absent and the installer hasn't been re-run yet).
-  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills@${SKILLS_CLI_VERSION} add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
+  # AGENTS.md: activation pointer. With the Claude plugin, the plugin pointer
+  # (it names the skill both as the plugin's and by its plain name, so it works
+  # for Claude and for the agents that read .agents/skills); otherwise the
+  # pointer with the resilience self-bootstrap (for a fresh clone whose
+  # gitignored skills are absent and the installer hasn't been re-run yet).
+  if [[ "$claude_plugin" == 1 ]]; then
+    upsert_managed_block "$PWD/AGENTS.md" "$PLUGIN_POINTER"
+  else
+    upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills@${SKILLS_CLI_VERSION} add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
+  fi
 
   # CLAUDE.md: @import so Claude (which doesn't read AGENTS.md natively) loads it.
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
 
   append_gitignore
-  ok "Skills e configuração do projeto instaladas."
+  if [[ "$claude_plugin" == 1 ]]; then
+    ok "Plugin cofounder do Claude Code detectado: o Claude usa o plugin, e os outros agentes usam as skills instaladas."
+  else
+    ok "Skills e configuração do projeto instaladas."
+  fi
 }
 
 # ---------- next steps ----------

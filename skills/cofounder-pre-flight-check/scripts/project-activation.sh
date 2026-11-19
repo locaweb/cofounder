@@ -61,6 +61,18 @@ END_MARKER="<!-- cofounder:end -->"
 PLUGIN_POINTER="You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to load the \`cofounder-playbook\` skill of the cofounder plugin (in Claude Code, use the Skill tool to invoke \`cofounder:cofounder-playbook\`; in other agents, invoke it by the name their skills listing shows), then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder plugin is not installed, tell the user to install it as described in https://github.com/locaweb/cofounder-plugin and to start a new session.)"
 CLAUDE_IMPORT="The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
 
+# A begin marker without its end marker would make render() drop everything
+# after it (the user's own content) and never write the block. Leave both files
+# alone; closing the block is the user's call. Checked before any write, so a
+# run never updates one file and stops at the other.
+for name in AGENTS.md CLAUDE.md; do
+    file="$project/$name"
+    if [[ -f "$file" ]] && grep -q '<!-- cofounder:begin' "$file" && ! grep -q '<!-- cofounder:end -->' "$file"; then
+        echo "ACTIVATION_SKIPPED: unclosed cofounder block in $name"
+        exit 0
+    fi
+done
+
 # render <file> <body> — print the file's content with the managed block set to
 # <body>: replaced in place, appended, or as a new file.
 render() {

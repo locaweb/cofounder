@@ -16,6 +16,8 @@ As versões 0.27 e 0.28 foram publicadas só como plugin do Claude Code e do Cod
 - **Playbook:** passa a ser acionado também por pedidos como "quero criar um app" ou por uma pasta vazia, além do ponteiro no `AGENTS.md`.
 - **Deploy:** o teardown pede confirmação explícita do ambiente que será apagado, e a inspeção das variáveis de ambiente do container mostra só os nomes, nunca os valores.
 - **Postgres:** imagem `supabase/postgres:17.12.0.000`.
+- **Correção no `AGENTS.md` e no `CLAUDE.md`:** quando o arquivo tinha a linha `<!-- cofounder:begin -->` sem a `<!-- cofounder:end -->`, o instalador apagava tudo o que vinha depois dela, inclusive o conteúdo do usuário. Agora o arquivo não é alterado, e o instalador avisa como corrigir.
+- **Plugin do Claude e outros agentes no mesmo projeto:** com o plugin do Claude Code instalado, o `install.sh` deixa de instalar só a cópia do Claude, mas continua instalando as skills para os outros agentes (Codex, Cursor, Hermes e outros), que não enxergam o plugin.
 
 ### Só para o plugin
 

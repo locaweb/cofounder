@@ -95,7 +95,8 @@ It only acts on plugin installs (Claude Code or Codex), and only in an empty fol
 
 - **`ACTIVATION_UPDATED: …`:** Tell the user in one sentence that, from the next session on, the cofounder will start on its own in this project. Proceed.
 - **`ACTIVATION_BLOCKED: …`:** The file is not writable from the sandbox (Codex before its settings take effect). Run the same command again requesting escalated permissions (outside the sandbox), then handle that second run's line as described here. If it is blocked again, proceed without mentioning it: the step runs again next session.
-- **`ACTIVATION_CURRENT`** or **`ACTIVATION_SKIPPED: …`:** Proceed normally without mentioning it.
+- **`ACTIVATION_SKIPPED: unclosed cofounder block in <file>`:** The file has a `<!-- cofounder:begin -->` line without the matching `<!-- cofounder:end -->`, so the script left it untouched to avoid deleting the user's content. Tell the user in one sentence that the cofounder will not start on its own in this project until they add the missing `<!-- cofounder:end -->` line (or remove the begin line) in `<file>`. Do not edit the file yourself. Proceed.
+- **`ACTIVATION_CURRENT`** or any other **`ACTIVATION_SKIPPED: …`:** Proceed normally without mentioning it.
 
 ## Running the Check
 

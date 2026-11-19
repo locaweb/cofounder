@@ -12,8 +12,9 @@ description: >
 
 **This is a sanity check, not the primary install path.** Onboarding runs the
 `install.sh` one-liner *before* the agent session ever opens, and that script
-already installs the dev tools (and the cofounder skills, unless the cofounder
-Claude Code plugin is installed, which brings them itself). So by the time a
+already installs the dev tools (and the cofounder skills; when the cofounder
+Claude Code plugin is installed, Claude uses the plugin's and the other agents
+get the installed copy). So by the time a
 session exists, a package manager, mise, podman, and GH CLI should all be
 present. This skill verifies that — and if a tool is somehow missing, it has
 the user run the copy of `install.sh` bundled with this skill to repair the
