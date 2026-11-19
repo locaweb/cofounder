@@ -43,7 +43,7 @@ distill() {
   grep -o '"name":"[^"]*"' "$f" | sed 's/^"name":"//; s/"$//' | sort | uniq -c | sort -rn
   echo
   echo "## Commands run:"
-  # 600 chars: agents chain steps (`curl … && bash …/preflight.sh`), and the
+  # 600 chars: agents chain steps (`cd … && bash …/preflight.sh`), and the
   # long absolute skill path pushes the second step past a shorter cut.
   grep -oE '"command":"([^"\\]|\\.)*"' "$f" | sed 's/^"command":"//; s/"$//' | cut -c1-600 | sort -u | head -40
   echo

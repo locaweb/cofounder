@@ -452,7 +452,7 @@ Quick reference for interacting with deployed infrastructure. See [references/op
 | Connect to accessory (e.g. Postgres) | SSH into accessory VM -> `docker exec -it <repo-name>-db psql -U postgres` |
 | View app logs | SSH into web VM -> `docker logs $(docker ps -q --filter "label=service=<repo-name>") --tail 100` |
 | Check app health | `curl -s https://<web_ip>.nip.io/up` |
-| Shell into app container | SSH into web VM -> `docker exec -it $(docker ps -q --filter "label=service=<repo-name>") sh` |
+| Shell into app container | SSH into web VM -> `docker ps -q --filter "label=service=<repo-name>"` for the container ID, then `docker exec -it <container-id> sh` |
 
 ## Dockerfile Requirements
 
@@ -584,6 +584,8 @@ Change the `plan` in the `accessories` JSON in the workflow. **For database acce
 **Other accessories may also have memory-dependent configuration** (e.g., `maxmemory` for Redis, JVM heap for Elasticsearch). When scaling any accessory, review its `cmd`, `env`, or container configuration in `config/deploy.<env>.yml` and adjust parameters to match the new plan's resources.
 
 ## Teardown
+
+Teardown permanently deletes the environment's VMs and data volumes. Never run it on your own initiative or from an ambiguous request. Before triggering it, tell the user which environment (`env_name` and zone) will be destroyed and that its data disks are deleted (only the daily snapshots remain), and wait for an explicit yes.
 
 See [references/teardown.md](references/teardown.md) for tearing down environments, inferring zone/env_name from existing workflows, and reading last run outputs.
 

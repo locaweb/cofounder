@@ -14,6 +14,8 @@
 #          (auto-detecting the installed agent: Claude / Codex / Cursor / …)
 #        - Writes the AGENTS.md activation pointer (+ CLAUDE.md @import)
 #        - Pins .claude/settings.json when Claude is detected
+#        - Skips the skills when the cofounder Claude Code plugin is already
+#          installed (it brings its own); the pointer then names the plugin
 #        - Appends .gitignore entries for the vendored skills
 #
 # Idempotent — safe to re-run. Detects existing tools before installing and
@@ -28,7 +30,10 @@
 # from the Windows Start menu, not PowerShell or Command Prompt. Run it from
 # inside the project directory you want to set up:
 #
-#   /bin/bash -c "$(curl -fsSL https://cofounder.locaweb.com.br/install.sh)"
+#   /bin/bash install.sh
+#
+# (onboarding serves this same file from https://cofounder.locaweb.com.br/install.sh;
+# each GitHub Release also ships it with SHA256SUMS and a provenance attestation.)
 #
 # After it finishes, open a new terminal (so PATH picks up the new tools),
 # cd into your project, and open your agent (e.g. run `claude`).
@@ -88,13 +93,30 @@ install_macos() {
   setup_podman_machine_macos
 }
 
+# Homebrew's official installer, pinned to a commit of Homebrew/install and
+# checked against its SHA256 before it runs (same policy as mise below). To
+# bump: pick a newer commit, download its install.sh and update both values.
+HOMEBREW_INSTALL_COMMIT="e5b3c5834e3932c8aaa42deef4794076c9b0cbf0"
+HOMEBREW_INSTALL_SHA256="5f333bbe53bc490e51e7ccb1df8779b3dd6ee73a1a7379efda216edb08ccb148"
+
 install_homebrew_macos() {
   if have brew; then
     ok "Homebrew já está instalado"
     return
   fi
   info "Instalando o Homebrew (sua senha pode ser solicitada)..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  local tmp
+  tmp=$(mktemp)
+  curl -fsSL -o "$tmp" \
+    "https://raw.githubusercontent.com/Homebrew/install/${HOMEBREW_INSTALL_COMMIT}/install.sh"
+  # macOS ships shasum, not sha256sum.
+  if ! printf '%s  %s\n' "$HOMEBREW_INSTALL_SHA256" "$tmp" | shasum -a 256 -c - >/dev/null 2>&1; then
+    rm -f "$tmp"
+    err "O instalador do Homebrew baixado não confere com o SHA256 esperado. Instalação abortada."
+    exit 1
+  fi
+  /bin/bash "$tmp"
+  rm -f "$tmp"
   NEED_RESTART=1
   # Make brew available for the rest of this script
   if ! have brew; then
@@ -120,7 +142,7 @@ install_brew_pkg() {
 
 setup_podman_machine_macos() {
   # Check machine state directly — more reliable than `podman version` which
-  # may fail to reach the server in non-interactive shells (curl | bash).
+  # may fail to reach the server in non-interactive shells.
   if podman machine list --format '{{.Running}}' 2>/dev/null | grep -q 'true'; then
     ok "A máquina do Podman já está rodando"
     return
@@ -131,8 +153,8 @@ setup_podman_machine_macos() {
     info "Inicializando a máquina do Podman..."
     # Plain string (not bash array) for compatibility with macOS's bundled
     # /bin/bash 3.2 — under `set -u`, expanding an empty array errors out
-    # there. The curl-pipe-sh invocation uses /bin/bash directly and ignores
-    # this script's #!/usr/bin/env bash shebang.
+    # there. The documented invocation (`/bin/bash install.sh`) uses
+    # /bin/bash directly and ignores this script's #!/usr/bin/env bash shebang.
     local mem_arg=""
     local mem_bytes
     mem_bytes=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
@@ -409,10 +431,15 @@ COFOUNDER_REPO="locaweb/cofounder"
 # npm "skills" CLI used to install the skills. To update: pick a version at
 # https://www.npmjs.com/package/skills?activeTab=versions and re-run
 # tests/install/test-install.sh, which checks which agent dirs it creates.
+# Keep the update command in cofounder-pre-flight-check/SKILL.md in step.
 SKILLS_CLI_VERSION="1.7.4"
 
 BEGIN_MARKER="<!-- cofounder:begin -->"
 END_MARKER="<!-- cofounder:end -->"
+
+# Activation pointer for projects that use the cofounder plugin. Keep in sync
+# with PLUGIN_POINTER in skills/cofounder-pre-flight-check/scripts/project-activation.sh.
+PLUGIN_POINTER="You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to load the \`cofounder-playbook\` skill of the cofounder plugin (in Claude Code, use the Skill tool to invoke \`cofounder:cofounder-playbook\`; in other agents, invoke it by the name their skills listing shows), then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder plugin is not installed, tell the user to install it as described in https://github.com/locaweb/cofounder-plugin and to start a new session.)"
 
 # upsert_managed_block <file> <body> — replace the managed region between the
 # cofounder markers, creating the file or appending the block as needed.
@@ -449,8 +476,9 @@ $END_MARKER"
 }
 
 # Pin .claude/settings.json (model / acceptEdits / permissions). Idempotent
-# merge that preserves the user's other keys and drops the obsolete "agent"
-# key. Uses node (provisioned by mise) so we don't depend on jq being present.
+# merge that preserves the user's other keys and drops the obsolete cofounder
+# "agent" key. Uses node (provisioned by mise) so we don't depend on jq being
+# present.
 write_claude_settings() {
   mkdir -p "$PWD/.claude"
   local settings="$PWD/.claude/settings.json"
@@ -464,17 +492,31 @@ write_claude_settings() {
 const fs = require('fs');
 const p = process.argv[2];
 let cur = {};
-try { cur = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {}
-delete cur.agent;
+// Only a missing file starts from scratch: one that cannot be read or parsed
+// belongs to the user and must not be overwritten with just our keys.
+let ok = true;
+try { cur = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { ok = e.code === 'ENOENT'; }
+if (!ok || cur === null || typeof cur !== 'object' || Array.isArray(cur)) process.exit(3);
+// Older cofounder installs activated it through "agent"; any other value
+// belongs to the user and stays.
+if (cur.agent === 'cofounder' || cur.agent === 'cofounder:cofounder') delete cur.agent;
+// Claude Code reads defaultMode only under permissions; older installers wrote
+// it at the root, where it was ignored.
+delete cur.defaultMode;
 cur.model = 'opus[1m]';
-cur.defaultMode = 'acceptEdits';
 const allow = new Set((cur.permissions && cur.permissions.allow) || []);
 for (const a of ['Bash', 'Read', 'WebFetch']) allow.add(a);
-cur.permissions = Object.assign({}, cur.permissions, { allow: [...allow] });
+cur.permissions = Object.assign({}, cur.permissions, { allow: [...allow], defaultMode: 'acceptEdits' });
 fs.writeFileSync(p, JSON.stringify(cur, null, 2) + '\n');
 NODE
-  mise x node@lts -- node "$script" "$settings" || { rm -f "$script"; return 1; }
+  local rc=0
+  mise x node@lts -- node "$script" "$settings" || rc=$?
   rm -f "$script"
+  if [[ $rc -eq 3 ]]; then
+    warn ".claude/settings.json não é um JSON válido — mantido como está. Corrija o arquivo e rode o instalador de novo para configurar as permissões do cofounder."
+    return 0
+  fi
+  [[ $rc -eq 0 ]] || return 1
   ok "configurado .claude/settings.json"
 }
 
@@ -492,6 +534,33 @@ append_gitignore() {
       ".idea/" ".vscode/" ".DS_Store" "*.pyc" "__pycache__/" "dist/"; do
     grep -qxF "$entry" "$gi" || echo "$entry" >> "$gi"
   done
+}
+
+# True when the cofounder Claude Code plugin is enabled in this folder: Claude's
+# plugin registry has a cofounder@<marketplace> entry at user scope, or at
+# project/local scope for $PWD, and enabledPlugins marks it true. Disabling a
+# plugin keeps its registry entry, so the registry alone is not enough; the
+# most specific settings file that names the plugin wins (local > project >
+# user), as in Claude Code.
+cofounder_plugin_enabled() {
+  local home="$1"
+  [[ -f "$home/plugins/installed_plugins.json" ]] || return 1
+  mise x node@lts -- node -e '
+const fs = require("fs");
+const [, home, dir] = process.argv;
+const read = (p) => { try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { return {}; } };
+const reg = read(`${home}/plugins/installed_plugins.json`);
+const layers = [`${dir}/.claude/settings.local.json`, `${dir}/.claude/settings.json`, `${home}/settings.json`]
+  .map((p) => read(p).enabledPlugins || {});
+const enabled = (id) => {
+  for (const layer of layers) if (id in layer) return layer[id] === true;
+  return false;
+  };
+const active = Object.entries(reg.plugins || {}).some(([id, entries]) =>
+  id.startsWith("cofounder@") && enabled(id) &&
+  (entries || []).some((e) => e.scope === "user" || e.projectPath === dir));
+process.exit(active ? 0 : 1);
+' "$home" "$PWD"
 }
 
 project_bootstrap() {
@@ -518,6 +587,18 @@ project_bootstrap() {
   if [[ -e "$claude_home" ]]; then
     write_claude_settings   # pins Claude settings and creates .claude/ as a side effect
     agents+=(claude-code)
+    # The plugin already brings the skills; an `npx skills` copy next to it
+    # would take over the project and update through the wrong channel. The
+    # plugin has no SessionStart hook (the Claude plugin directory only accepts
+    # hooks from Verified organizations), so the project's AGENTS.md activates
+    # it, with the same pointer the pre-flight's project-activation.sh writes.
+    if cofounder_plugin_enabled "$claude_home"; then
+      upsert_managed_block "$PWD/AGENTS.md" "$PLUGIN_POINTER"
+      upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."
+      append_gitignore
+      ok "Plugin cofounder do Claude Code detectado: as skills ficam por conta dele."
+      return
+    fi
   fi
   if [[ -e "$hermes_home" ]]; then
     mkdir -p "$PWD/.hermes"
@@ -538,7 +619,7 @@ project_bootstrap() {
 
   # AGENTS.md: activation pointer + resilience self-bootstrap (for a fresh clone
   # whose gitignored skills are absent and the installer hasn't been re-run yet).
-  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
+  upsert_managed_block "$PWD/AGENTS.md" "You are operating as a cofounder. Your FIRST action this session — before responding to or acting on the user's message, even if it is a specific task, question, or feature request — MUST be to use the Skill tool to invoke the \`cofounder-playbook\` skill, then follow it as your operating instructions for the entire session. Do not begin the user's request until the playbook is loaded. (If the cofounder skills are not installed in this project, first install them by running \`mise x node@22 -- npx -y skills@${SKILLS_CLI_VERSION} add $COFOUNDER_REPO --agent universal claude-code hermes-agent --skill '*' -y\`, then invoke the playbook.)"
 
   # CLAUDE.md: @import so Claude (which doesn't read AGENTS.md natively) loads it.
   upsert_managed_block "$PWD/CLAUDE.md" "The cofounder operating instructions are maintained in @AGENTS.md — read and follow them."

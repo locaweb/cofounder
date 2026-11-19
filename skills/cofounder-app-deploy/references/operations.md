@@ -160,8 +160,9 @@ docker logs <repo-name>-db --tail 100
 # Check disk mounts
 df -h /data    # web VM or accessory VM
 
-# Check container environment variables
-docker exec $(docker ps -q --filter "label=service=<repo-name>") env
+# Check which environment variables the container has (names only: the
+# values include secrets such as POSTGRES_PASSWORD and must not reach the chat)
+docker exec $(docker ps -q --filter "label=service=<repo-name>") env | cut -d= -f1
 
 # Open a shell inside the app container
 docker exec -it $(docker ps -q --filter "label=service=<repo-name>") sh

@@ -28,9 +28,9 @@ set -uo pipefail
 INSTALL_URL="${INSTALL_URL:-https://cofounder.locaweb.com.br/install.sh}"
 
 # ---------- inlined assert helpers (mirror tests/lib/assert.sh) ----------
-PASS=0
+PASSED=0
 FAIL=0
-_pass() { printf '  PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
+_pass() { printf '  PASS  %s\n' "$1"; PASSED=$((PASSED + 1)); }
 _fail() { printf '  FAIL  %s\n' "$1"; FAIL=$((FAIL + 1)); }
 # expect <desc> <command...>  — pass if the command succeeds
 expect() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then _pass "$d"; else _fail "$d"; fi; }
@@ -38,7 +38,7 @@ expect() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then _pass "$d"; else _
 refute() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then _fail "$d"; else _pass "$d"; fi; }
 file_contains() { grep -qF "$2" "$1"; }
 count_eq() { local n; n=$(grep -cF "$3" "$2" 2>/dev/null || echo 0); [ "$n" -eq "$1" ]; }
-summary() { printf '\n%s: %d passed, %d failed\n' "${1:-RESULT}" "$PASS" "$FAIL"; [ "$FAIL" -eq 0 ]; }
+summary() { printf '\n%s: %d passed, %d failed\n' "${1:-RESULT}" "$PASSED" "$FAIL"; [ "$FAIL" -eq 0 ]; }
 
 # ---------- preconditions ----------
 if [[ "$(uname -s)" != "Darwin" ]]; then

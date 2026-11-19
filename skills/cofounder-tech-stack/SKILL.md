@@ -370,7 +370,7 @@ The Go backend listens for Postgres `NOTIFY` events and holds open a standard HT
 Scaffold the frontend non-interactively with:
 
 ```bash
-bash -c 'cd "$(git rev-parse --show-toplevel)" && mise x -- npx create-react-router@latest frontend --yes --no-git-init --no-install --no-agent-skills'
+bash -c 'cd "$(git rev-parse --show-toplevel)" && mise x -- npx create-react-router@8.5.1 frontend --yes --no-git-init --no-install --no-agent-skills'
 ```
 
 The template ships with Tailwind CSS preconfigured and these npm scripts: `dev` (`react-router dev` — Vite under the hood), `build` (`react-router build`), and `typecheck` (`react-router typegen && tsc`). Routes are declared in `app/routes.ts`:
@@ -720,7 +720,7 @@ After committing, present the session wrap-up as defined in the cofounder agent.
 - **Logging:** `slog` exclusively. Never `fmt.Println` or `log.Println`.
 - **Validation:** Server-side validation for all inputs. Never trust client-side validation alone.
 - **Authorization:** Checks in every handler, not just middleware.
-- **Frontend components:** `bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx shadcn@latest add <component>'`
+- **Frontend components:** `bash -c 'cd "$(git rev-parse --show-toplevel)/frontend" && mise x -- npx shadcn@4.23.0 add <component>'`
 - **No ORMs.** SQL through sqlc only.
 - **No CSS preprocessors.** Tailwind CSS only.
 - **No additional JavaScript frameworks.** React + React Router only.

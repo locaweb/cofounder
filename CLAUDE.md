@@ -1,16 +1,20 @@
-The cofounder is distributed as a set of **skills** (under `skills/`, each named `cofounder-<x>`) installed into user projects via `npx skills` — not as a Claude/Codex plugin. When modifying skill contents, present the changes first. Upon commit, bump the version in `.claude-plugin/plugin.json` (kept solely as the version source-of-truth for the update gate and for `npx skills` discovery). While in the 0.x.y generation: increment minor (x+1) for meaningful changes, increment patch (y+1) for small corrections.
+The cofounder is a set of **skills** (under `skills/`, each named `cofounder-<x>`) distributed through two channels: installed into user projects via `npx skills` straight from this repo, and as a Claude Code / Codex plugin by `locaweb/cofounder-plugin`, whose `skills/` is copied from this repo's `v*` tags by a sync workflow. This repo is the only place where the skills, their scripts, the tests and the CI are developed; never edit the skills in the plugin repo. The skills are identical in both channels and detect at runtime how they were installed: the plugin-only scripts (`claude-settings.sh`, `project-activation.sh` in `cofounder-pre-flight-check`) do nothing on an `npx skills` install.
+
+When modifying skill contents, present the changes first. Upon commit, bump the version in `.claude-plugin/plugin.json` (the version source-of-truth for the update gate, for `npx skills` discovery and for the plugin's version; keep this file). While in the 0.x.y generation: increment minor (x+1) for meaningful changes, increment patch (y+1) for small corrections. Add an entry to `CHANGELOG.md` for every version.
 
 After bumping the version in `plugin.json`, run `scripts/stamp-version.sh` to propagate it to the `COFOUNDER_VERSION` marker in `skills/cofounder-pre-flight-check/SKILL.md`.
 
 IMPORTANT: The `.claude/settings.json` file (which contains agent definitions and other project-level Claude Code configuration) MUST be committed to the repository. It is not a local-only file — it is shared project configuration that all contributors need.
 
-## Sync Azure → GitHub + release
+## Release
 
-Azure DevOps is the canonical repo; GitHub (`locaweb/cofounder`) is the public one that `npx skills` and the install.sh redirect read from. The two histories share no commits, so a sync copies the changes onto a branch cut from GitHub's `main` and goes through a GitHub PR. Every sync must:
+GitHub (`locaweb/cofounder`) is the canonical repo; the old Azure DevOps repo no longer receives changes. Every change goes through a PR to `main`, and every release must:
 
-1. Bump `.claude-plugin/plugin.json` and run `scripts/stamp-version.sh` (the version must not already be tagged on GitHub).
-2. Merge the sync PR on GitHub.
+1. Bump `.claude-plugin/plugin.json`, run `scripts/stamp-version.sh` and add the `CHANGELOG.md` entry (the version must not already be tagged on GitHub).
+2. Merge the PR.
 3. Run `scripts/tag-github-release.sh`. It creates the `v<version>` tag on GitHub's `main` via the API, which triggers `.github/workflows/release.yml`: the workflow fails if the tag differs from `plugin.json`, then publishes a GitHub Release with the `skills/` tarball, `install.sh` and `SHA256SUMS`, all with build provenance attestations.
+
+The tag is also what carries a version to the plugin: `locaweb/cofounder-plugin` only picks up tagged versions. This includes the automatic `supabase/postgres` bump PRs: tag them after merging.
 
 ## install.sh — onboarding entry point + redirect
 
