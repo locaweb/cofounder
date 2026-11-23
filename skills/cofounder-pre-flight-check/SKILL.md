@@ -15,7 +15,7 @@ This is the first skill invoked at session start.
 
 ## Step 0 — Version Check
 
-<!-- COFOUNDER_VERSION: 0.29.1 -->
+<!-- COFOUNDER_VERSION: 0.29.2 -->
 
 The `COFOUNDER_VERSION` marker above contains the loaded version of the cofounder skills.
 
